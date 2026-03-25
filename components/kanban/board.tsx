@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { KanbanColumn, KanbanTask } from "@/types/kanban"
+import { KanbanColumn, KanbanTask, ColumnType } from "@/types/kanban"
 import { Column } from "./column"
+import { AddColumnForm } from "./add-column-form"
 
 interface BoardProps {
   initialColumns?: KanbanColumn[]
@@ -21,45 +22,74 @@ const defaultLabelColors: Record<string, string> = {
   urgent: "bg-red-500",
 }
 
-const defaultColumnColors: Record<string, string> = {
-  backlog: "bg-slate-500",
-  todo: "bg-blue-500",
-  "in-progress": "bg-amber-500",
-  review: "bg-violet-500",
-  done: "bg-emerald-500",
+const defaultColumnPalette: Record<ColumnType, string> = {
+  backlog: "#64748b",
+  todo: "#3b82f6",
+  "in-progress": "#f59e0b",
+  review: "#8b5cf6",
+  done: "#10b981",
+  custom: "#71717a",
 }
 
-const defaultColumns: KanbanColumn[] = [
-  {
-    id: "todo",
-    title: "To Do",
-    tasks: [],
-  },
-  {
-    id: "in-progress",
-    title: "In Progress",
-    tasks: [],
-  },
-  {
-    id: "done",
-    title: "Done",
-    tasks: [],
-  },
-]
+function withColumnDefaults(column: KanbanColumn): KanbanColumn {
+  const columnColor = column.color ?? defaultColumnPalette[column.type]
+
+  return {
+    ...column,
+    color: columnColor,
+    tasks: column.tasks.map((task) => ({
+      ...task,
+      color: task.color ?? columnColor,
+    })),
+  }
+}
 
 export function Board({
-  initialColumns = defaultColumns,
+  initialColumns = [],
   className,
   allowAddTask = true,
 }: BoardProps) {
-  const [columns, setColumns] = React.useState<KanbanColumn[]>(initialColumns)
+  const [columns, setColumns] = React.useState<KanbanColumn[]>(
+    initialColumns.map(withColumnDefaults)
+  )
   const [draggedTask, setDraggedTask] = React.useState<{
     task: KanbanTask
     sourceColumnId: string
   } | null>(null)
   const [dropTarget, setDropTarget] = React.useState<string | null>(null)
+
   const [addingCardTo, setAddingCardTo] = React.useState<string | null>(null)
-  const [newCardTitle, setNewCardTitle] = React.useState("")
+  const [editingTask, setEditingTask] = React.useState<{
+    columnId: string
+    taskId: string
+  } | null>(null)
+  const [taskTitleDraft, setTaskTitleDraft] = React.useState("")
+  const [taskDescriptionDraft, setTaskDescriptionDraft] = React.useState("")
+  const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
+
+  const [isAddingColumn, setIsAddingColumn] = React.useState(false)
+  const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null)
+  const [columnTitleDraft, setColumnTitleDraft] = React.useState("")
+  const [columnTypeDraft, setColumnTypeDraft] = React.useState<ColumnType>("todo")
+  const [columnColorDraft, setColumnColorDraft] = React.useState(
+    defaultColumnPalette.todo
+  )
+
+  const resetTaskForm = () => {
+    setAddingCardTo(null)
+    setEditingTask(null)
+    setTaskTitleDraft("")
+    setTaskDescriptionDraft("")
+    setTaskColorDraft(defaultColumnPalette.todo)
+  }
+
+  const resetColumnForm = () => {
+    setIsAddingColumn(false)
+    setEditingColumnId(null)
+    setColumnTitleDraft("")
+    setColumnTypeDraft("todo")
+    setColumnColorDraft(defaultColumnPalette.todo)
+  }
 
   const handleDragStart = (task: KanbanTask, columnId: string) => {
     setDraggedTask({ task, sourceColumnId: columnId })
@@ -100,28 +130,140 @@ export function Board({
     setDropTarget(null)
   }
 
-  const handleAddCard = (columnId: string) => {
-    if (!newCardTitle.trim()) return
-
-    const newTask: KanbanTask = {
-      id: `task-${Date.now()}`,
-      title: newCardTitle.trim(),
-      labels: [],
-    }
-
-    const updatedColumns = columns.map((column) =>
-      column.id === columnId
-        ? { ...column, tasks: [...column.tasks, newTask] }
-        : column
-    )
-
-    setColumns(updatedColumns)
-    setNewCardTitle("")
-    setAddingCardTo(null)
+  const handleOpenAddTask = (columnId: string, columnColor: string) => {
+    setEditingTask(null)
+    setAddingCardTo(columnId)
+    setTaskTitleDraft("")
+    setTaskDescriptionDraft("")
+    setTaskColorDraft(columnColor)
   }
 
-  const getColumnColor = (columnId: string) =>
-    defaultColumnColors[columnId] || "bg-slate-500"
+  const handleOpenEditTask = (columnId: string, task: KanbanTask, columnColor: string) => {
+    setAddingCardTo(null)
+    setEditingTask({ columnId, taskId: task.id })
+    setTaskTitleDraft(task.title)
+    setTaskDescriptionDraft(task.description ?? "")
+    setTaskColorDraft(task.color ?? columnColor)
+  }
+
+  const handleSubmitTask = (columnId: string) => {
+    if (!taskTitleDraft.trim()) return
+
+    if (editingTask?.columnId === columnId) {
+      setColumns((prev) =>
+        prev.map((column) =>
+          column.id === columnId
+            ? {
+                ...column,
+                tasks: column.tasks.map((task) =>
+                  task.id === editingTask.taskId
+                    ? {
+                        ...task,
+                        title: taskTitleDraft.trim(),
+                        description: taskDescriptionDraft.trim() || undefined,
+                        color: taskColorDraft,
+                      }
+                    : task
+                ),
+              }
+            : column
+        )
+      )
+    } else {
+      const newTask: KanbanTask = {
+        id: `task-${Date.now()}`,
+        title: taskTitleDraft.trim(),
+        description: taskDescriptionDraft.trim() || undefined,
+        labels: [],
+        color: taskColorDraft,
+      }
+
+      setColumns((prev) =>
+        prev.map((column) =>
+          column.id === columnId
+            ? { ...column, tasks: [...column.tasks, newTask] }
+            : column
+        )
+      )
+    }
+
+    resetTaskForm()
+  }
+
+  const handleRemoveTask = (columnId: string, taskId: string) => {
+    setColumns((prev) =>
+      prev.map((column) =>
+        column.id === columnId
+          ? {
+              ...column,
+              tasks: column.tasks.filter((task) => task.id !== taskId),
+            }
+          : column
+      )
+    )
+
+    if (editingTask?.taskId === taskId) {
+      resetTaskForm()
+    }
+  }
+
+  const handleOpenAddColumn = () => {
+    setEditingColumnId(null)
+    setIsAddingColumn(true)
+    setColumnTitleDraft("")
+    setColumnTypeDraft("todo")
+    setColumnColorDraft(defaultColumnPalette.todo)
+  }
+
+  const handleOpenEditColumn = (column: KanbanColumn) => {
+    setIsAddingColumn(false)
+    setEditingColumnId(column.id)
+    setColumnTitleDraft(column.title)
+    setColumnTypeDraft(column.type)
+    setColumnColorDraft(column.color ?? defaultColumnPalette[column.type])
+  }
+
+  const handleSubmitColumn = () => {
+    if (!columnTitleDraft.trim()) return
+
+    if (editingColumnId) {
+      setColumns((prev) =>
+        prev.map((column) =>
+          column.id === editingColumnId
+            ? {
+                ...column,
+                title: columnTitleDraft.trim(),
+                type: columnTypeDraft,
+                color: columnColorDraft,
+              }
+            : column
+        )
+      )
+    } else {
+      const newColumn: KanbanColumn = {
+        id: `column-${Date.now()}`,
+        title: columnTitleDraft.trim(),
+        type: columnTypeDraft,
+        color: columnColorDraft,
+        tasks: [],
+      }
+
+      setColumns((prev) => [...prev, newColumn])
+    }
+
+    resetColumnForm()
+  }
+
+  const handleRemoveColumn = (columnId: string) => {
+    setColumns((prev) => prev.filter((column) => column.id !== columnId))
+
+    if (editingColumnId === columnId) {
+      resetColumnForm()
+    }
+  }
+
+  const getColumnColor = (column: KanbanColumn) =>
+    column.color ?? defaultColumnPalette[column.type]
 
   const getLabelColor = (label: string) =>
     defaultLabelColors[label] || "bg-slate-500"
@@ -132,27 +274,55 @@ export function Board({
         <Column
           key={column.id}
           column={column}
+          columnColor={getColumnColor(column)}
           draggedTask={draggedTask}
           dropTarget={dropTarget}
           addingCardTo={addingCardTo}
-          newCardTitle={newCardTitle}
+          editingTaskId={
+            editingTask?.columnId === column.id ? editingTask.taskId : null
+          }
+          taskTitleDraft={taskTitleDraft}
+          taskDescriptionDraft={taskDescriptionDraft}
+          taskColorDraft={taskColorDraft}
           allowAddTask={allowAddTask}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onDragLeave={() => setDropTarget(null)}
           onTaskDragStart={handleDragStart}
           onTaskDragEnd={() => setDraggedTask(null)}
-          onOpenAddCard={setAddingCardTo}
-          onCancelAddCard={() => {
-            setAddingCardTo(null)
-            setNewCardTitle("")
-          }}
-          onNewCardTitleChange={setNewCardTitle}
-          onAddCard={handleAddCard}
-          getColumnColor={getColumnColor}
+          onOpenAddCard={handleOpenAddTask}
+          onOpenEditTask={handleOpenEditTask}
+          onCancelTaskForm={resetTaskForm}
+          onTaskTitleChange={setTaskTitleDraft}
+          onTaskDescriptionChange={setTaskDescriptionDraft}
+          onTaskColorChange={setTaskColorDraft}
+          onSubmitTask={handleSubmitTask}
+          onRemoveTask={handleRemoveTask}
+          onEditColumn={handleOpenEditColumn}
+          onRemoveColumn={handleRemoveColumn}
           getLabelColor={getLabelColor}
         />
       ))}
+
+      <AddColumnForm
+        isOpen={isAddingColumn || editingColumnId !== null}
+        title={columnTitleDraft}
+        type={columnTypeDraft}
+        color={columnColorDraft}
+        heading={editingColumnId ? "Editar coluna" : "Nova coluna"}
+        submitLabel={editingColumnId ? "Salvar coluna" : "Criar coluna"}
+        onTitleChange={setColumnTitleDraft}
+        onTypeChange={(value) => {
+          setColumnTypeDraft(value)
+          if (!editingColumnId) {
+            setColumnColorDraft(defaultColumnPalette[value])
+          }
+        }}
+        onColorChange={setColumnColorDraft}
+        onOpen={handleOpenAddColumn}
+        onCancel={resetColumnForm}
+        onSubmit={handleSubmitColumn}
+      />
     </div>
   )
 }

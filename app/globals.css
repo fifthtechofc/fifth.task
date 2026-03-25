@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 :root {
   --color-bg: #101214;
@@ -35,7 +34,6 @@
   --color-muted-foreground: var(--color-text-secondary);
   --color-card: var(--color-surface);
   --color-card-foreground: var(--color-text-primary);
-  /* mesmo tom de :root --color-border (#2c333a); evita var() circular com o token Tailwind */
   --color-border: #2c333a;
   --color-primary: #2c333a;
   --color-primary-foreground: #ffffff;
