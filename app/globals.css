@@ -1,26 +1,76 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #101214;
+  --color-surface: #161a1d;
+  --color-muted-surface: #1d2125;
+  --color-border: #2c333a;
+  --color-text-secondary: #596773;
+  --color-text-primary: #c7d1db;
+  --color-heading: #dee4ea;
+  --spacing-6: 1.5rem;
+  --rounded-lg: 0.5rem;
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  --color-text-primary-rgb: 199, 209, 219;
+  --color-bg-2: #c7d1db;
+}
+
+.dark {
+  --color-bg: #101214;
+  --color-surface: #161a1d;
+  --color-muted-surface: #1d2125;
+  --color-border: #2c333a;
+  --color-text-secondary: #596773;
+  --color-text-primary: #c7d1db;
+  --color-heading: #dee4ea;
+  --color-bg-2: #c7d1db;
+  --color-text-primary-rgb: 199, 209, 219;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
+  --color-muted: var(--color-muted-surface);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-primary);
+  /* mesmo tom de :root --color-border (#2c333a); evita var() circular com o token Tailwind */
+  --color-border: #2c333a;
+  --color-primary: #2c333a;
+  --color-primary-foreground: #ffffff;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  width: 100%;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-floaty {
+  animation: floaty 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-floaty {
+    animation: none;
+  }
 }

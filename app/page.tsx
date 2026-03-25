@@ -1,3 +1,5 @@
-import BoardsPage from "./(dashboard)/boards/page";
+import { redirect } from 'next/navigation'
 
-export default BoardsPage;
+export default function Home() {
+  redirect('/login')
+}
