@@ -2,11 +2,21 @@
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import NeuralBackground from '@/components/ui/flow-field-background'
+import { IntroLoadingShell } from '@/components/ui/intro-loading-shell'
+
+const VapourIntro = dynamic(
+  () => import('@/components/ui/vapour-text-effect').then((m) => m.VapourIntro),
+  {
+    ssr: false,
+    loading: () => <IntroLoadingShell className="z-[250]" />,
+  },
+)
 import { signInWithEmail, signUpWithEmail } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
@@ -136,6 +146,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [postAuthRedirect, setPostAuthRedirect] = useState<string | null>(null)
 
   const isRegister = mode === 'register'
 
@@ -214,8 +225,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
         }
       } else {
         await signInWithEmail(trimmedEmail, password)
-        router.push('/boards')
-        router.refresh()
+        setPostAuthRedirect('/boards')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível concluir.')
@@ -226,6 +236,15 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
 
   return (
     <>
+        {postAuthRedirect && (
+          <VapourIntro
+            onSequenceComplete={() => {
+              router.push(postAuthRedirect)
+              router.refresh()
+              setPostAuthRedirect(null)
+            }}
+          />
+        )}
         <div
           className="relative isolate flex min-h-0 w-full flex-1 flex-col overflow-hidden px-5 py-5 sm:px-6 sm:py-6 lg:max-h-full lg:w-1/2 lg:min-h-0 lg:px-12 lg:py-8 xl:px-16"
           onMouseMove={handleMouseMove}

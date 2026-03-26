@@ -72,3 +72,10 @@ body {
     animation: none;
   }
 }
+
+/* Intro: só hints — transform fica 100% na WAAPI (evita competir com fill/commitStyles e piscar) */
+.fifth-intro-panel {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
