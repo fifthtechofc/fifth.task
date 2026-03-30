@@ -4,6 +4,7 @@ import * as React from "react"
 import { Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KanbanTask } from "@/types/kanban"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface TaskCardProps {
   task: KanbanTask
@@ -32,6 +33,15 @@ function hexToRgba(hex: string, alpha: number) {
   const b = int & 255
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 export function TaskCard({
@@ -147,10 +157,28 @@ export function TaskCard({
         </p>
       )}
 
-      {task.assignee && (
+      {task.assignees && task.assignees.length > 0 && (
         <div className="flex justify-end">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
-            {task.assignee}
+          <div className="flex items-center">
+            {task.assignees.slice(0, 3).map((a, idx) => (
+              <Avatar
+                key={a.id}
+                className={cn(
+                  "h-7 w-7 border border-white/10",
+                  idx > 0 && "-ml-2",
+                )}
+              >
+                <AvatarImage src={a.imageSrc || undefined} alt={a.name} />
+                <AvatarFallback className="text-[10px]">
+                  {initials(a.name)}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {task.assignees.length > 3 && (
+              <div className="ml-2 text-xs font-semibold text-muted-foreground">
+                +{task.assignees.length - 3}
+              </div>
+            )}
           </div>
         </div>
       )}

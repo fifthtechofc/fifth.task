@@ -1,4 +1,4 @@
-import { Board } from "@/components/kanban/board"
+import { ProjectBoard } from "@/components/kanban/project-board"
 
 function formatProjectName(value: string) {
   return value
@@ -24,7 +24,7 @@ export default async function ProjectBoardPage({
         </p>
 
         <div className="mt-6">
-          <Board />
+          <ProjectBoard project={project} />
         </div>
       </div>
     </section>

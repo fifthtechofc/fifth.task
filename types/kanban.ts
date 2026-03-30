@@ -6,13 +6,27 @@ export type ColumnType =
   | "done"
   | "custom"
 
+export interface KanbanChecklistItem {
+  id: string
+  title: string
+  position: number
+}
+
+export interface KanbanAssignee {
+  id: string
+  name: string
+  imageSrc: string
+}
+
 export interface KanbanTask {
   id: string
   title: string
   color?: string
   description?: string
   labels?: string[]
-  assignee?: string
+  assignees?: KanbanAssignee[]
+  position?: number
+  checklist?: KanbanChecklistItem[]
 }
 
 export interface KanbanColumn {
@@ -20,5 +34,6 @@ export interface KanbanColumn {
   title: string
   type: ColumnType
   color?: string
+  position?: number
   tasks: KanbanTask[]
 }

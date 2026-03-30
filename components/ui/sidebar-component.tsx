@@ -9,12 +9,17 @@ import {
   ChevronDown,
   FolderKanban,
   LayoutDashboard,
+  Plus,
   PlusSquare,
   Search,
   Settings,
   Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
+import { fetchBoards } from "@/lib/kanban"
+import { getMyProfile } from "@/lib/profile"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type NavSectionId =
   | "dashboard"
@@ -34,6 +39,25 @@ type MenuItem = {
   label: string
   href?: string
   children?: MenuChild[]
+}
+
+function slugify(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 const navItems: {
@@ -125,10 +149,7 @@ const sidebarContent: Record<
           {
             label: "Projetos",
             children: [
-              { label: "Criar projeto", href: "/boards/create" },
-              { label: "Projeto Atlas", href: "/boards/projeto-atlas" },
-              { label: "Projeto Nimbus", href: "/boards/projeto-nimbus" },
-              { label: "Projeto Pulse", href: "/boards/projeto-pulse" },
+              { label: "Criar board", href: "/boards/create" },
             ],
           },
           {
@@ -302,13 +323,109 @@ export default function SidebarComponent() {
   const pathname = usePathname()
   const [isHovered, setIsHovered] = React.useState(false)
   const [previewSection, setPreviewSection] = React.useState<NavSectionId | null>(null)
+  const [boards, setBoards] = React.useState<Array<{ id: string; title: string }>>([])
+  const [me, setMe] = React.useState<{ name: string; email: string; avatarUrl: string } | null>(
+    null,
+  )
   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({
     "Kanban-Projetos": true,
   })
   const activeSection = getActiveSection(pathname)
   const visibleSection = previewSection ?? activeSection
   const isCollapsed = !isHovered
-  const content = sidebarContent[visibleSection]
+  const content = React.useMemo(() => {
+    if (visibleSection !== "boards") return sidebarContent[visibleSection]
+
+    const projectChildren: MenuChild[] = [
+      ...boards.map((b) => {
+        const slug = slugify(b.title) || "board"
+        return {
+          label: b.title,
+          href: `/boards/${slug}?id=${encodeURIComponent(b.id)}`,
+        }
+      }),
+    ]
+
+    return {
+      ...sidebarContent.boards,
+      sections: sidebarContent.boards.sections.map((section) => ({
+        ...section,
+        items: section.items.map((item) =>
+          item.label === "Projetos"
+            ? {
+                ...item,
+                children: projectChildren,
+              }
+            : item,
+        ),
+      })),
+    }
+  }, [boards, visibleSection])
+
+  React.useEffect(() => {
+    let alive = true
+    async function loadBoards() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return
+        const rows = await fetchBoards()
+        if (!alive) return
+        const withLast = rows.map((r) => {
+          let lastAt = 0
+          try {
+            const raw = window.localStorage.getItem(`kanban:boardLastAt:${r.id}`)
+            lastAt = raw ? Number(raw) : 0
+          } catch {
+            lastAt = 0
+          }
+          return { id: r.id, title: r.title, lastAt }
+        })
+
+        withLast.sort((a, b) => b.lastAt - a.lastAt)
+        setBoards(withLast.map((r) => ({ id: r.id, title: r.title })))
+      } catch {
+        // ignore menu load errors
+      }
+    }
+    void loadBoards()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let alive = true
+    async function loadMe() {
+      try {
+        const profile = (await getMyProfile()) as Record<string, unknown>
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return
+
+        const name = String(
+          profile.full_name ?? profile.name ?? profile.display_name ?? user.email ?? "Usuário",
+        )
+        const email = String(profile.email ?? user.email ?? "")
+        const avatarUrl = String(profile.avatar_url ?? profile.avatarUrl ?? profile.avatar ?? "")
+
+        if (!alive) return
+        setMe({
+          name: name.trim() || "Usuário",
+          email: email.trim(),
+          avatarUrl: avatarUrl.trim(),
+        })
+      } catch {
+        // ignore
+      }
+    }
+    void loadMe()
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const toggleExpanded = (key: string) => {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -462,10 +579,10 @@ export default function SidebarComponent() {
 
                     {!isCollapsed && isExpanded && item.children && (
                       <div className="ml-3 flex flex-col gap-1 border-l border-white/10 pl-3">
-                        {item.children.map((child) =>
+                        {item.children.map((child, idx) =>
                           child.href ? (
                             <Link
-                              key={child.label}
+                              key={child.href ?? `${child.label}-${idx}`}
                               href={child.href}
                               className={cn(
                                 "rounded-lg px-3 py-2 text-sm transition-colors",
@@ -474,11 +591,11 @@ export default function SidebarComponent() {
                                   : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                               )}
                             >
-                              {child.label}
+                              <span>{child.label}</span>
                             </Link>
                           ) : (
                             <div
-                              key={child.label}
+                              key={`${child.label}-${idx}`}
                               className="rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200"
                             >
                               {child.label}
@@ -494,17 +611,35 @@ export default function SidebarComponent() {
           ))}
         </div>
 
+        <div className={cn("flex flex-col gap-2", isCollapsed && "items-center")}>
+          <Link
+            href="/boards/create"
+            className={cn(
+              "rounded-2xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
+              isCollapsed ? "flex h-10 w-10 items-center justify-center" : "flex items-center justify-between px-3 py-3",
+            )}
+            title="Criar novo quadro"
+            aria-label="Criar novo quadro"
+          >
+            {!isCollapsed && <span className="text-sm font-semibold">Criar novo quadro</span>}
+            <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
+          </Link>
+
         {!isCollapsed && (
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
-              FT
-            </div>
+            <Avatar className="h-9 w-9 border border-white/10">
+              <AvatarImage src={me?.avatarUrl || undefined} alt={me?.name || "Usuário"} />
+              <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
+                {initials(me?.name || "Usuário")}
+              </AvatarFallback>
+            </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">Fifth Task</p>
-              <p className="truncate text-xs text-zinc-500">workspace@fifth.task</p>
+              <p className="truncate text-sm font-medium">{me?.name || "Usuário"}</p>
+              <p className="truncate text-xs text-zinc-500">{me?.email || "—"}</p>
             </div>
           </div>
         )}
+        </div>
         </aside>
       </div>
     </div>
