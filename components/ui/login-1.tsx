@@ -2,25 +2,47 @@
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import NeuralBackground from '@/components/ui/flow-field-background'
-import { IntroLoadingShell } from '@/components/ui/intro-loading-shell'
-
-const VapourIntro = dynamic(
-  () => import('@/components/ui/vapour-text-effect').then((m) => m.VapourIntro),
-  {
-    ssr: false,
-    loading: () => <IntroLoadingShell className="z-[250]" />,
-  },
-)
+import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
 import { signInWithEmail, signUpWithEmail } from '@/lib/auth'
+import { PREDEFINED_JOB_TITLES } from '@/lib/job-titles'
 import { cn } from '@/lib/utils'
 
+const AUTH_EASE = [0.22, 1, 0.36, 1] as const
+const AUTH_IN_DURATION = 0.48
+
 const MIN_PASSWORD_LENGTH = 6
+
+type AuthEnterOpts = {
+  delay?: number
+  /** Deslocamento inicial em px (eixo oposto zera no animate). */
+  x?: number
+  y?: number
+  scale?: number
+}
+
+function authEnterProps(
+  reduceMotion: boolean | null,
+  { delay = 0, x = 0, y = 0, scale = 1 }: AuthEnterOpts,
+) {
+  if (reduceMotion) {
+    return { initial: false as const }
+  }
+  const initial: Record<string, number> = { opacity: 0 }
+  if (x) initial.x = x
+  if (y) initial.y = y
+  if (scale !== 1) initial.scale = scale
+  return {
+    initial,
+    animate: { opacity: 1, x: 0, y: 0, scale: 1 },
+    transition: { duration: AUTH_IN_DURATION, delay, ease: AUTH_EASE },
+  }
+}
 
 function validatePassword(password: string): string | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -136,10 +158,12 @@ type AuthLayoutProps = {
 
 export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   const router = useRouter()
+  const reduceMotion = useReducedMotion()
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isHovering, setIsHovering] = useState(false)
 
   const [name, setName] = useState('')
+  const [jobTitle, setJobTitle] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -189,6 +213,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
 
     const trimmedEmail = email.trim()
     const trimmedName = name.trim()
+    const trimmedJobTitle = jobTitle.trim()
     if (!trimmedEmail) {
       setError('Informe seu e-mail.')
       return
@@ -205,6 +230,10 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
         setError('Informe seu nome completo.')
         return
       }
+      if (!trimmedJobTitle) {
+        setError('Informe seu cargo.')
+        return
+      }
       if (password !== confirmPassword) {
         setError('As senhas não coincidem.')
         return
@@ -214,10 +243,15 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
     setLoading(true)
     try {
       if (isRegister) {
-        const data = await signUpWithEmail(trimmedEmail, password, trimmedName)
+        const data = await signUpWithEmail(
+          trimmedEmail,
+          password,
+          trimmedName,
+          trimmedJobTitle,
+        )
         if (data.session) {
-          router.push('/boards')
-          router.refresh()
+          // Mostra a splash de carregamento antes do redirect (mesmo comportamento do login).
+          setPostAuthRedirect('/boards')
         } else {
           setInfo(
             'Conta criada. Se o projeto exigir confirmação por e-mail, verifique sua caixa de entrada.',
@@ -237,7 +271,8 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   return (
     <>
         {postAuthRedirect && (
-          <VapourIntro
+          <SimpleIntroSplash
+            className="z-[250]"
             onSequenceComplete={() => {
               router.push(postAuthRedirect)
               router.refresh()
@@ -276,128 +311,252 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
             onSubmit={handleSubmit}
             noValidate
           >
-            <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4 md:gap-5">
-              <h1 className="text-2xl font-extrabold text-[var(--color-heading)] sm:text-3xl md:text-4xl">
-                Fifth Task
-              </h1>
-              {!isRegister ? (
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  Entre com seu e-mail e senha para continuar.
-                </p>
-              ) : (
-                <p className="text-sm text-[var(--color-text-secondary)]">Cadastre-se com seu e-mail</p>
-              )}
-            </div>
-
-            {(error || info) && (
-              <div
-                className="w-full max-w-[360px] shrink-0 rounded-md border px-3 py-2 text-left text-sm"
-                role={error ? 'alert' : 'status'}
-              >
-                {error && (
-                  <p className="text-red-600 dark:text-red-400">{error}</p>
-                )}
-                {info && !error && (
-                  <p className="text-[var(--color-text-primary)]">{info}</p>
-                )}
-              </div>
-            )}
-
-            <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4">
-              {isRegister && (
-                <AppInput
-                  name="name"
-                  placeholder="Nome completo"
-                  type="text"
-                  autoComplete="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={loading}
-                />
-              )}
-              <AppInput
-                name="email"
-                placeholder="E-mail"
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-              />
-              <AppInput
-                name="password"
-                placeholder="Senha"
-                type="password"
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
-              {isRegister && (
-                <AppInput
-                  name="confirmPassword"
-                  placeholder="Confirmar senha"
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                />
-              )}
-            </div>
-
-            {!isRegister && (
-              <div className="mt-4 flex w-full max-w-[360px] flex-col items-center gap-3 sm:mt-6">
-                <ul className="flex gap-3 md:gap-4">
-                  {socialIcons.map((social, index) => (
-                    <li key={index} className="list-none">
-                      <a
-                        href={social.href}
-                        className="group relative z-[1] flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-text-primary)] bg-[var(--color-bg-2)] transition-all duration-300 md:h-[3rem] md:w-[3rem]"
-                      >
-                        <div className="absolute inset-0 h-full w-full origin-bottom scale-y-0 bg-[var(--color-bg)] transition-transform duration-500 ease-in-out group-hover:scale-y-100" />
-                        <span className="relative z-[2] text-[var(--color-border)] transition-all duration-500 group-hover:text-[var(--color-text-primary)]">
-                          {social.icon}
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-
-                <a
-                  href="#"
-                  className="text-sm font-light text-[var(--color-text-primary)] md:text-base"
+            <motion.div
+              key={isRegister ? 'register-fields' : 'login-fields'}
+              className="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden sm:gap-3 md:gap-4"
+              initial={false}
+            >
+              <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4 md:gap-5">
+                <motion.h1
+                  className="text-2xl font-extrabold text-[var(--color-heading)] sm:text-3xl md:text-4xl"
+                  {...authEnterProps(reduceMotion, { y: 18, delay: 0 })}
                 >
-                  Esqueceu sua senha?
-                </a>
+                  Fifth Task
+                </motion.h1>
+                {!isRegister ? (
+                  <motion.p
+                    className="text-sm text-[var(--color-text-secondary)]"
+                    {...authEnterProps(reduceMotion, { x: -16, delay: 0.07 })}
+                  >
+                    Entre com seu e-mail e senha para continuar.
+                  </motion.p>
+                ) : (
+                  <motion.p
+                    className="text-sm text-[var(--color-text-secondary)]"
+                    {...authEnterProps(reduceMotion, { x: 16, delay: 0.07 })}
+                  >
+                    Cadastre-se com seu e-mail
+                  </motion.p>
+                )}
               </div>
-            )}
 
-            <div className="flex w-full max-w-[360px] items-center justify-center">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group/button relative w-full inline-flex cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[var(--color-border)] px-5 py-2 text-white transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-60"
-              >
-                <span className="px-2 py-1 text-sm">
-                  {loading ? 'Aguarde…' : isRegister ? 'Cadastrar' : 'Entrar'}
-                </span>
-                <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-1000 group-hover/button:[transform:skew(-13deg)_translateX(100%)]">
-                  <div className="relative h-full w-8 bg-white/20" />
-                </div>
-              </button>
-            </div>
+              <AnimatePresence mode="sync">
+                {(error || info) && (
+                  <motion.div
+                    key={`${error ?? ''}-${info ?? ''}`}
+                    className="w-full max-w-[360px] shrink-0 rounded-md border px-3 py-2 text-left text-sm"
+                    role={error ? 'alert' : 'status'}
+                    initial={
+                      reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }
+                    }
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={
+                      reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.98 }
+                    }
+                    transition={{ duration: 0.32, ease: AUTH_EASE }}
+                  >
+                    {error && (
+                      <p className="text-red-600 dark:text-red-400">{error}</p>
+                    )}
+                    {info && !error && (
+                      <p className="text-[var(--color-text-primary)]">{info}</p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            <div className="text-sm text-[var(--color-text-secondary)]">
-              {isRegister ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}{' '}
-              <Link
-                href={isRegister ? '/login' : '/register'}
-                className="font-medium text-[var(--color-text-primary)] transition hover:opacity-80"
+              <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4">
+                {isRegister && (
+                  <motion.div
+                    {...authEnterProps(reduceMotion, {
+                      x: -20,
+                      delay: 0.12,
+                    })}
+                  >
+                    <AppInput
+                      name="name"
+                      placeholder="Nome completo"
+                      type="text"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={loading}
+                    />
+                  </motion.div>
+                )}
+                {isRegister && (
+                  <motion.div
+                    {...authEnterProps(reduceMotion, {
+                      x: 20,
+                      delay: 0.16,
+                    })}
+                  >
+                    <div className="relative w-full min-w-[200px]">
+                      <label className="sr-only" htmlFor="register-job-title">
+                        Cargo
+                      </label>
+                      <select
+                        id="register-job-title"
+                        name="jobTitle"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        disabled={loading}
+                        className="peer relative z-10 h-12 w-full min-h-12 cursor-pointer appearance-none rounded-md border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 pr-10 text-center font-light text-[var(--color-text-primary)] outline-none transition-all duration-200 ease-in-out focus:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">Selecione o cargo</option>
+                        {PREDEFINED_JOB_TITLES.map((title) => (
+                          <option key={title} value={title}>
+                            {title}
+                          </option>
+                        ))}
+                      </select>
+                      <span
+                        className="pointer-events-none absolute top-1/2 right-3 z-20 -translate-y-1/2 text-[var(--color-text-secondary)]"
+                        aria-hidden
+                      >
+                        ▾
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+                <motion.div
+                  {...authEnterProps(reduceMotion, {
+                    x: isRegister ? 20 : -20,
+                    delay: isRegister ? 0.18 : 0.12,
+                  })}
+                >
+                  <AppInput
+                    name="email"
+                    placeholder="E-mail"
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                  />
+                </motion.div>
+                <motion.div
+                  {...authEnterProps(reduceMotion, {
+                    x: isRegister ? -20 : 20,
+                    delay: isRegister ? 0.24 : 0.2,
+                  })}
+                >
+                  <AppInput
+                    name="password"
+                    placeholder="Senha"
+                    type="password"
+                    autoComplete={
+                      isRegister ? 'new-password' : 'current-password'
+                    }
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                  />
+                </motion.div>
+                {isRegister && (
+                  <motion.div
+                    {...authEnterProps(reduceMotion, {
+                      x: 20,
+                      delay: 0.3,
+                    })}
+                  >
+                    <AppInput
+                      name="confirmPassword"
+                      placeholder="Confirmar senha"
+                      type="password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={loading}
+                    />
+                  </motion.div>
+                )}
+              </div>
+
+              {!isRegister && (
+                <motion.div
+                  className="mt-4 flex w-full max-w-[360px] flex-col items-center gap-3 sm:mt-6"
+                  {...authEnterProps(reduceMotion, { y: 14, delay: 0.28 })}
+                >
+                  <ul className="flex gap-3 md:gap-4">
+                    {socialIcons.map((social, index) => (
+                      <motion.li
+                        key={index}
+                        className="list-none"
+                        initial={
+                          reduceMotion
+                            ? false
+                            : { opacity: 0, y: 12, scale: 0.88 }
+                        }
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                          duration: AUTH_IN_DURATION * 0.85,
+                          delay: 0.32 + index * 0.06,
+                          ease: AUTH_EASE,
+                        }}
+                      >
+                        <a
+                          href={social.href}
+                          className="group relative z-[1] flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-text-primary)] bg-[var(--color-bg-2)] transition-all duration-300 md:h-[3rem] md:w-[3rem]"
+                        >
+                          <div className="absolute inset-0 h-full w-full origin-bottom scale-y-0 bg-[var(--color-bg)] transition-transform duration-500 ease-in-out group-hover:scale-y-100" />
+                          <span className="relative z-[2] text-[var(--color-border)] transition-all duration-500 group-hover:text-[var(--color-text-primary)]">
+                            {social.icon}
+                          </span>
+                        </a>
+                      </motion.li>
+                    ))}
+                  </ul>
+
+                  <motion.a
+                    href="#"
+                    className="text-sm font-light text-[var(--color-text-primary)] md:text-base"
+                    {...authEnterProps(reduceMotion, { y: 8, delay: 0.52 })}
+                  >
+                    Esqueceu sua senha?
+                  </motion.a>
+                </motion.div>
+              )}
+
+              <motion.div
+                className="flex w-full max-w-[360px] items-center justify-center"
+                {...authEnterProps(reduceMotion, {
+                  y: 16,
+                  scale: 0.97,
+                  delay: isRegister ? 0.34 : 0.36,
+                })}
               >
-                {isRegister ? 'Entrar' : 'Cadastrar'}
-              </Link>
-            </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="group/button relative w-full inline-flex cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[var(--color-border)] px-5 py-2 text-white transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-60"
+                >
+                  <span className="px-2 py-1 text-sm">
+                    {loading ? 'Aguarde…' : isRegister ? 'Cadastrar' : 'Entrar'}
+                  </span>
+                  <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-1000 group-hover/button:[transform:skew(-13deg)_translateX(100%)]">
+                    <div className="relative h-full w-8 bg-white/20" />
+                  </div>
+                </button>
+              </motion.div>
+
+              <motion.div
+                className="text-sm text-[var(--color-text-secondary)]"
+                {...authEnterProps(reduceMotion, {
+                  y: 10,
+                  delay: isRegister ? 0.42 : 0.44,
+                })}
+              >
+                {isRegister ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}{' '}
+                <Link
+                  href={isRegister ? '/login' : '/register'}
+                  className="font-medium text-[var(--color-text-primary)] transition hover:opacity-80"
+                >
+                  {isRegister ? 'Entrar' : 'Cadastrar'}
+                </Link>
+              </motion.div>
+            </motion.div>
           </form>
         </div>
 
@@ -415,7 +574,15 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
             speed={0.85}
           />
           <div className="relative z-20 flex h-full w-full items-center justify-center px-8">
-            <div className="flex items-center justify-center">
+            <motion.div
+              key={isRegister ? 'logo-reg' : 'logo-login'}
+              className="flex items-center justify-center"
+              {...authEnterProps(reduceMotion, {
+                scale: 0.88,
+                y: 24,
+                delay: 0.1,
+              })}
+            >
               <Image
                 src="/Logo.png"
                 alt="Fifth Task"
@@ -424,7 +591,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
                 priority
                 className="brightness-0 invert h-40 w-auto animate-floaty drop-shadow-[0_0_14px_rgba(255,255,255,0.28)] sm:h-48"
               />
-            </div>
+            </motion.div>
           </div>
         </div>
     </>

@@ -28,14 +28,30 @@ export const IntroTimedProgressBar = forwardRef<
     className?: string
     /** Intro com vapor: trava em ~99% até o fim real (`complete()`). Shell de chunk: omitir (vai até 100% no tempo). */
     capUntilComplete?: boolean
+    /** Chamado uma vez quando a barra chega a 100% por tempo (ignorado se `capUntilComplete`). */
+    onComplete?: () => void
+    onLight?: boolean
+    size?: 'sm' | 'md'
+    glow?: boolean
   }
 >(function IntroTimedProgressBar(
-  { durationMs, className, capUntilComplete = false },
+  {
+    durationMs,
+    className,
+    capUntilComplete = false,
+    onComplete,
+    onLight = false,
+    size = 'sm',
+    glow = false,
+  },
   ref,
 ) {
   const [value, setValue] = useState(0)
   const rafRef = useRef(0)
   const stoppedRef = useRef(false)
+  const filledRef = useRef(false)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
   const capRef = useRef(capUntilComplete)
   capRef.current = capUntilComplete
 
@@ -49,12 +65,18 @@ export const IntroTimedProgressBar = forwardRef<
 
   useEffect(() => {
     stoppedRef.current = false
+    filledRef.current = false
     const t0 = performance.now()
     const tick = (now: number) => {
       if (stoppedRef.current) return
       const max = capRef.current ? 99 : 100
       const p = Math.min(max, ((now - t0) / durationMs) * 100)
       setValue(p)
+      if (!capRef.current && p >= max && !filledRef.current) {
+        filledRef.current = true
+        onCompleteRef.current?.()
+        return
+      }
       if (p < max && !stoppedRef.current) {
         rafRef.current = requestAnimationFrame(tick)
       }
@@ -64,7 +86,14 @@ export const IntroTimedProgressBar = forwardRef<
   }, [durationMs, capUntilComplete])
 
   return (
-    <LinearBasic light size="sm" value={value} className={className} />
+    <LinearBasic
+      light={!onLight}
+      onLight={onLight}
+      size={size}
+      glow={glow}
+      value={value}
+      className={className}
+    />
   )
 })
 

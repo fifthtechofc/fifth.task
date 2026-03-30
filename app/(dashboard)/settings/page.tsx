@@ -4,9 +4,9 @@ import {
   KeyRound,
   ShieldCheck,
   SlidersHorizontal,
-  UserRound,
 } from "lucide-react"
 
+import { SettingsProfileSection } from "@/components/settings-profile-section"
 import NeuralBackground from "@/components/ui/flow-field-background"
 
 const notificationSettings = [
@@ -109,56 +109,7 @@ export default function SettingsPage() {
 
           <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-6">
-              <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <UserRound className="h-5 w-5 text-foreground" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-foreground">
-                      Perfil
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Informacoes principais da conta administradora.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Nome
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      Fifth Task Admin
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      E-mail
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      workspace@fifth.task
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Cargo
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      Workspace Owner
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Ultimo acesso
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      Hoje, 09:42
-                    </p>
-                  </div>
-                </div>
-              </section>
+              <SettingsProfileSection />
 
               <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
                 <div className="mb-6 flex items-center gap-3">

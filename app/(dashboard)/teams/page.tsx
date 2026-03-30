@@ -1,78 +1,10 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+
 import { AvatarHoverCard } from "@/components/ui/avatar-hover-card"
 import NeuralBackground from "@/components/ui/flow-field-background"
-
-type TeamMember = {
-  id: string
-  name: string
-  username: string
-  imageSrc: string
-  description: string
-  role: string
-  status: "online" | "focus" | "offline"
-}
-
-const teamMembers: TeamMember[] = [
-  {
-    id: "camila-rocha",
-    name: "Camila Rocha",
-    username: "camilarocha",
-    imageSrc:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80",
-    description: "Lead de produto focada em discovery, alinhamento entre squads e metas trimestrais.",
-    role: "Product Lead",
-    status: "online",
-  },
-  {
-    id: "bruno-martins",
-    name: "Bruno Martins",
-    username: "brunomartins",
-    imageSrc:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=320&q=80",
-    description: "Frontend engineer responsavel por experiencia, performance e consistencia visual.",
-    role: "Frontend Engineer",
-    status: "focus",
-  },
-  {
-    id: "larissa-araujo",
-    name: "Larissa Araujo",
-    username: "larissaaraujo",
-    imageSrc:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=320&q=80",
-    description: "Designer de produto cuidando de fluxos, sistemas e validacao de interface.",
-    role: "Product Designer",
-    status: "online",
-  },
-  {
-    id: "diego-ferraz",
-    name: "Diego Ferraz",
-    username: "diegoferraz",
-    imageSrc:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=320&q=80",
-    description: "Backend engineer focado em arquitetura, integracoes e confiabilidade de APIs.",
-    role: "Backend Engineer",
-    status: "online",
-  },
-  {
-    id: "marina-costa",
-    name: "Marina Costa",
-    username: "marinacosta",
-    imageSrc:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=320&q=80",
-    description: "People ops acompanhando rituais do time, onboarding e saude operacional.",
-    role: "People Ops",
-    status: "offline",
-  },
-  {
-    id: "rafael-lima",
-    name: "Rafael Lima",
-    username: "rafaellima",
-    imageSrc:
-      "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=320&q=80",
-    description: "Analista de dados suportando performance, previsoes e leitura de indicadores do workspace.",
-    role: "Data Analyst",
-    status: "focus",
-  },
-]
+import { getTeamMembers, type TeamMember } from '@/lib/profile'
 
 function getStatusClasses(status: TeamMember["status"]) {
   if (status === "online") return "bg-emerald-400"
@@ -81,6 +13,37 @@ function getStatusClasses(status: TeamMember["status"]) {
 }
 
 export default function TeamsPage() {
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    getTeamMembers()
+      .then((data) => {
+        if (cancelled) return
+        setMembers(data)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Não foi possível carregar o time.')
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const viewMembers = useMemo(() => {
+    if (loading) return []
+    return members
+  }, [loading, members])
+
   return (
     <section className="relative min-h-full overflow-hidden">
       <NeuralBackground
@@ -106,10 +69,21 @@ export default function TeamsPage() {
               Uma visao rapida dos perfis principais do time, com acesso rapido
               para contato e acompanhamento.
             </p>
+            {error && (
+              <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {error}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {teamMembers.map((member) => (
+            {loading && (
+              <div className="col-span-full rounded-[28px] border border-white/10 bg-black/35 p-6 text-sm text-muted-foreground backdrop-blur-sm">
+                Carregando time…
+              </div>
+            )}
+
+            {viewMembers.map((member) => (
               <div
                 key={member.id}
                 className="overflow-visible rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm"
@@ -117,11 +91,15 @@ export default function TeamsPage() {
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">{member.name}</p>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {member.role}
-                    </p>
+                    {member.role && (
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                        {member.role}
+                      </p>
+                    )}
                   </div>
-                  <div className={`h-2.5 w-2.5 rounded-full ${getStatusClasses(member.status)}`} />
+                  {member.status && (
+                    <div className={`h-2.5 w-2.5 rounded-full ${getStatusClasses(member.status)}`} />
+                  )}
                 </div>
 
                 <div className="relative z-20 flex items-start justify-center py-4">
@@ -135,9 +113,11 @@ export default function TeamsPage() {
                   />
                 </div>
 
-                <p className="mt-5 text-sm leading-6 text-muted-foreground">
-                  {member.description}
-                </p>
+                {member.description && (
+                  <p className="mt-5 text-sm leading-6 text-muted-foreground">
+                    {member.description}
+                  </p>
+                )}
               </div>
             ))}
           </div>

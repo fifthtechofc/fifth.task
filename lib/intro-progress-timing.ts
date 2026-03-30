@@ -1,3 +1,11 @@
+/** Intro simples (logo + barra): curta o suficiente para não irritar, longa o suficiente para perceber a marca. */
+export const INTRO_SIMPLE_MS = 2200
+export const INTRO_SIMPLE_REDUCED_MS = 280
+
+export function getSimpleIntroDurationMs(reduceMotion: boolean): number {
+  return reduceMotion ? INTRO_SIMPLE_REDUCED_MS : INTRO_SIMPLE_MS
+}
+
 /**
  * Tempos alinhados à intro em `vapour-text-effect` + `VaporizeTextCycle`:
  * 2 palavras com crossfade → na segunda entra direto em scatter; wipe sai em paralelo.

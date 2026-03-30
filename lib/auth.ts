@@ -17,6 +17,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   name: string,
+  jobTitle: string,
 ) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -24,6 +25,7 @@ export async function signUpWithEmail(
     options: {
       data: {
         full_name: name.trim(),
+        job_title: jobTitle.trim(),
       },
     },
   })
