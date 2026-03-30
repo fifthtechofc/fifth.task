@@ -1,6 +1,14 @@
 import "./globals.css"
 import BackgroundPlus from "@/components/ui/background-plus"
 
+export const metadata = {
+  title: "FifthTask", 
+  description: "Sistema de gestão da empresa",
+  icons: {
+    icon: "/icon.png", 
+  },
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{

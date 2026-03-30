@@ -1,6 +1,18 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
+  --clr-blue: #1890ff;
+  --clr-green: #01c3a8;
+  --clr-orange: #ffb741;
+  --clr-red: #a63d2a;
+  --bg-dark: #232228;
+  --bg-footer: #151419;
+  --color-white: #fff;
+  --color-gray-light: #ddd;
+  --color-gray-medium: #363636;
+  --color-gray-dark: #292929;
+  --color-gray-very-dark: #222127;
   --color-bg: #101214;
   --color-surface: #161a1d;
   --color-muted-surface: #1d2125;
@@ -32,8 +44,16 @@
   --color-foreground: var(--color-text-primary);
   --color-muted: var(--color-muted-surface);
   --color-muted-foreground: var(--color-text-secondary);
+  --color-accent: var(--color-muted-surface);
+  --color-accent-foreground: var(--color-text-primary);
   --color-card: var(--color-surface);
   --color-card-foreground: var(--color-text-primary);
+  --color-secondary: var(--color-muted-surface);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-text-primary);
+  --color-destructive: #7f1d1d;
+  --color-destructive-foreground: #ffffff;
   --color-border: #2c333a;
   --color-primary: #2c333a;
   --color-primary-foreground: #ffffff;
