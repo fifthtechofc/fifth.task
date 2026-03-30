@@ -268,8 +268,35 @@ export function Board({
   const getLabelColor = (label: string) =>
     defaultLabelColors[label] || "bg-slate-500"
 
+  if (columns.length === 0) {
+    return (
+      <div className={cn("flex min-h-[65vh] w-full", className)}>
+        <AddColumnForm
+          isOpen={isAddingColumn || editingColumnId !== null}
+          title={columnTitleDraft}
+          type={columnTypeDraft}
+          color={columnColorDraft}
+          compact={false}
+          heading={editingColumnId ? "Editar coluna" : "Nova coluna"}
+          submitLabel={editingColumnId ? "Salvar coluna" : "Criar coluna"}
+          onTitleChange={setColumnTitleDraft}
+          onTypeChange={(value) => {
+            setColumnTypeDraft(value)
+            if (!editingColumnId) {
+              setColumnColorDraft(defaultColumnPalette[value])
+            }
+          }}
+          onColorChange={setColumnColorDraft}
+          onOpen={handleOpenAddColumn}
+          onCancel={resetColumnForm}
+          onSubmit={handleSubmitColumn}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className={cn("flex gap-4 overflow-x-auto pb-4", className)}>
+    <div className={cn("flex min-h-[65vh] w-full gap-4 overflow-x-auto pb-4", className)}>
       {columns.map((column) => (
         <Column
           key={column.id}
@@ -309,6 +336,7 @@ export function Board({
         title={columnTitleDraft}
         type={columnTypeDraft}
         color={columnColorDraft}
+        compact
         heading={editingColumnId ? "Editar coluna" : "Nova coluna"}
         submitLabel={editingColumnId ? "Salvar coluna" : "Criar coluna"}
         onTitleChange={setColumnTitleDraft}

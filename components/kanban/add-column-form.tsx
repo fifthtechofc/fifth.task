@@ -9,6 +9,7 @@ interface AddColumnFormProps {
   title: string
   type: ColumnType
   color: string
+  compact?: boolean
   submitLabel?: string
   heading?: string
   onTitleChange: (value: string) => void
@@ -33,6 +34,7 @@ export function AddColumnForm({
   title,
   type,
   color,
+  compact = false,
   submitLabel = "Criar coluna",
   heading = "Nova coluna",
   onTitleChange,
@@ -114,7 +116,11 @@ export function AddColumnForm({
     <button
       type="button"
       onClick={onOpen}
-      className="flex min-w-[280px] max-w-[280px] items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 p-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className={
+        compact
+          ? "flex h-14 min-w-[280px] max-w-[280px] items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 p-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          : "flex h-full min-h-[420px] w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/35 p-6 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+      }
     >
       <Plus className="h-4 w-4" />
       Adicionar coluna
