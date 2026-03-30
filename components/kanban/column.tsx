@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { GripVertical, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KanbanColumn, KanbanTask } from "@/types/kanban"
 import { AddTaskForm } from "./add-task-form"
@@ -10,13 +10,24 @@ import { TaskCard } from "./task-card"
 interface ColumnProps {
   column: KanbanColumn
   columnColor: string
+  isColumnDropActive?: boolean
+  onColumnDragStart?: (columnId: string) => void
+  onColumnDragOver?: (e: React.DragEvent, columnId: string) => void
+  onColumnDrop?: (columnId: string) => void
+  onColumnDragEnd?: () => void
   draggedTask: { task: KanbanTask; sourceColumnId: string } | null
   dropTarget: string | null
   addingCardTo: string | null
   editingTaskId: string | null
+  editingCardId: string | null
   taskTitleDraft: string
   taskDescriptionDraft: string
   taskColorDraft: string
+  assigneeIdsDraft: string[]
+  assignees: Array<{ id: string; name: string; imageSrc: string }>
+  onAssigneeIdsChange: (value: string[]) => void
+  checklistItems: Array<{ id: string; title: string; position: number }>
+  checklistTitleDraft: string
   allowAddTask: boolean
   onDragOver: (e: React.DragEvent, columnId: string) => void
   onDrop: (columnId: string) => void
@@ -29,6 +40,8 @@ interface ColumnProps {
   onTaskTitleChange: (value: string) => void
   onTaskDescriptionChange: (value: string) => void
   onTaskColorChange: (value: string) => void
+  onChecklistTitleChange: (value: string) => void
+  onAddChecklistItem: (cardId: string) => void
   onSubmitTask: (columnId: string) => void
   onRemoveTask: (columnId: string, taskId: string) => void
   onEditColumn: (column: KanbanColumn) => void
@@ -39,13 +52,24 @@ interface ColumnProps {
 export function Column({
   column,
   columnColor,
+  isColumnDropActive,
+  onColumnDragStart,
+  onColumnDragOver,
+  onColumnDrop,
+  onColumnDragEnd,
   draggedTask,
   dropTarget,
   addingCardTo,
   editingTaskId,
+  editingCardId,
   taskTitleDraft,
   taskDescriptionDraft,
   taskColorDraft,
+  assigneeIdsDraft,
+  assignees,
+  onAssigneeIdsChange,
+  checklistItems,
+  checklistTitleDraft,
   allowAddTask,
   onDragOver,
   onDrop,
@@ -58,6 +82,8 @@ export function Column({
   onTaskTitleChange,
   onTaskDescriptionChange,
   onTaskColorChange,
+  onChecklistTitleChange,
+  onAddChecklistItem,
   onSubmitTask,
   onRemoveTask,
   onEditColumn,
@@ -84,6 +110,45 @@ export function Column({
     >
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
+          <div
+            draggable={Boolean(onColumnDragStart)}
+            onDragStart={(e) => {
+              e.stopPropagation()
+              onColumnDragStart?.(column.id)
+              try {
+                e.dataTransfer.effectAllowed = "move"
+                e.dataTransfer.setData("text/plain", column.id)
+              } catch {
+                // ignore dataTransfer errors
+              }
+            }}
+            onDragOver={(e) => {
+              if (!onColumnDragOver) return
+              e.preventDefault()
+              e.stopPropagation()
+              onColumnDragOver(e, column.id)
+            }}
+            onDrop={(e) => {
+              if (!onColumnDrop) return
+              e.preventDefault()
+              e.stopPropagation()
+              onColumnDrop(column.id)
+            }}
+            onDragEnd={(e) => {
+              e.stopPropagation()
+              onColumnDragEnd?.()
+            }}
+            className={cn(
+              "mr-1 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground",
+              onColumnDragStart && "cursor-grab active:cursor-grabbing",
+              isColumnDropActive && "ring-2 ring-primary/40",
+            )}
+            aria-label="Arrastar coluna"
+            title="Arrastar coluna"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+
           <div
             className="h-3 w-3 rounded"
             style={{ backgroundColor: columnColor }}
@@ -144,21 +209,70 @@ export function Column({
       <div className="flex min-h-[100px] flex-col gap-2">
         {column.tasks.map((task) =>
           editingTaskId === task.id ? (
-            <AddTaskForm
-              key={task.id}
-              isOpen
-              title={taskTitleDraft}
-              description={taskDescriptionDraft}
-              color={taskColorDraft}
-              heading="Editar tarefa"
-              submitLabel="Salvar tarefa"
-              onTitleChange={onTaskTitleChange}
-              onDescriptionChange={onTaskDescriptionChange}
-              onColorChange={onTaskColorChange}
-              onOpen={() => undefined}
-              onCancel={onCancelTaskForm}
-              onSubmit={() => onSubmitTask(column.id)}
-            />
+            <div key={task.id} className="space-y-2">
+              <AddTaskForm
+                isOpen
+                title={taskTitleDraft}
+                description={taskDescriptionDraft}
+                color={taskColorDraft}
+                assigneeIds={assigneeIdsDraft}
+                assignees={assignees}
+                heading="Editar tarefa"
+                submitLabel="Salvar tarefa"
+                onTitleChange={onTaskTitleChange}
+                onDescriptionChange={onTaskDescriptionChange}
+                onColorChange={onTaskColorChange}
+                onAssigneeIdsChange={onAssigneeIdsChange}
+                onOpen={() => undefined}
+                onCancel={onCancelTaskForm}
+                onSubmit={() => onSubmitTask(column.id)}
+              />
+
+              {editingCardId && (
+                <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Checklist
+                  </h4>
+
+                  {checklistItems.length > 0 ? (
+                    <ul className="mb-3 space-y-1">
+                      {checklistItems
+                        .slice()
+                        .sort((a, b) => a.position - b.position)
+                        .map((item) => (
+                          <li key={item.id} className="text-sm text-foreground">
+                            - {item.title}
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="mb-3 text-sm text-muted-foreground">Sem itens ainda.</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <input
+                      value={checklistTitleDraft}
+                      onChange={(e) => onChecklistTitleChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          onAddChecklistItem(editingCardId)
+                        }
+                      }}
+                      placeholder="Novo item…"
+                      className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onAddChecklistItem(editingCardId)}
+                      className="h-9 shrink-0 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <TaskCard
               key={task.id}
@@ -180,11 +294,14 @@ export function Column({
             title={taskTitleDraft}
             description={taskDescriptionDraft}
             color={taskColorDraft}
+            assigneeIds={assigneeIdsDraft}
+            assignees={assignees}
             heading="Nova tarefa"
             submitLabel="Adicionar"
             onTitleChange={onTaskTitleChange}
             onDescriptionChange={onTaskDescriptionChange}
             onColorChange={onTaskColorChange}
+            onAssigneeIdsChange={onAssigneeIdsChange}
             onOpen={() => undefined}
             onCancel={onCancelTaskForm}
             onSubmit={() => onSubmitTask(column.id)}

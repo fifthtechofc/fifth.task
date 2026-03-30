@@ -5,8 +5,28 @@ import { cn } from "@/lib/utils"
 import { KanbanColumn, KanbanTask, ColumnType } from "@/types/kanban"
 import { Column } from "./column"
 import { AddColumnForm } from "./add-column-form"
+import { getTeamMembers } from "@/lib/profile"
+import {
+  buildKanbanColumns,
+  createBoardCard,
+  createBoardColumn,
+  fetchCardAssignees,
+  setCardAssignees,
+  fetchBoardCards,
+  fetchBoardColumns,
+  fetchCardChecklist,
+  moveBoardCard,
+  removeBoardCard,
+  removeBoardColumn,
+  updateBoardCard,
+  updateBoardColumnsPositions,
+  updateColumnTitle,
+  createChecklistItem,
+} from "@/lib/kanban"
 
 interface BoardProps {
+  boardId: string
+  userId: string
   initialColumns?: KanbanColumn[]
   className?: string
   allowAddTask?: boolean
@@ -45,13 +65,29 @@ function withColumnDefaults(column: KanbanColumn): KanbanColumn {
 }
 
 export function Board({
+  boardId,
+  userId,
   initialColumns = [],
   className,
   allowAddTask = true,
 }: BoardProps) {
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [teamMembers, setTeamMembers] = React.useState<
+    Array<{ id: string; name: string; imageSrc: string }>
+  >([])
   const [columns, setColumns] = React.useState<KanbanColumn[]>(
-    initialColumns.map(withColumnDefaults)
+    initialColumns.map(withColumnDefaults),
   )
+  const [checklistsByCardId, setChecklistsByCardId] = React.useState<
+    Record<string, { id: string; title: string; position: number }[]>
+  >({})
+
+  const [draggedColumnId, setDraggedColumnId] = React.useState<string | null>(null)
+  const [columnDropTargetId, setColumnDropTargetId] = React.useState<string | null>(
+    null,
+  )
+
   const [draggedTask, setDraggedTask] = React.useState<{
     task: KanbanTask
     sourceColumnId: string
@@ -66,6 +102,8 @@ export function Board({
   const [taskTitleDraft, setTaskTitleDraft] = React.useState("")
   const [taskDescriptionDraft, setTaskDescriptionDraft] = React.useState("")
   const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
+  const [taskAssigneeIdsDraft, setTaskAssigneeIdsDraft] = React.useState<string[]>([])
+  const [newChecklistTitleDraft, setNewChecklistTitleDraft] = React.useState("")
 
   const [isAddingColumn, setIsAddingColumn] = React.useState(false)
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null)
@@ -81,6 +119,8 @@ export function Board({
     setTaskTitleDraft("")
     setTaskDescriptionDraft("")
     setTaskColorDraft(defaultColumnPalette.todo)
+    setTaskAssigneeIdsDraft([])
+    setNewChecklistTitleDraft("")
   }
 
   const resetColumnForm = () => {
@@ -100,12 +140,16 @@ export function Board({
     setDropTarget(columnId)
   }
 
-  const handleDrop = (targetColumnId: string) => {
+  const handleDrop = async (targetColumnId: string) => {
     if (!draggedTask || draggedTask.sourceColumnId === targetColumnId) {
       setDraggedTask(null)
       setDropTarget(null)
       return
     }
+
+    const targetColumn = columns.find((c) => c.id === targetColumnId)
+    const nextPosition =
+      Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) + 1
 
     const updatedColumns = columns.map((column) => {
       if (column.id === draggedTask.sourceColumnId) {
@@ -118,16 +162,32 @@ export function Board({
       if (column.id === targetColumnId) {
         return {
           ...column,
-          tasks: [...column.tasks, draggedTask.task],
+          tasks: [
+            ...column.tasks,
+            {
+              ...draggedTask.task,
+              position: nextPosition,
+            },
+          ],
         }
       }
 
       return column
     })
 
-    setColumns(updatedColumns)
+    setColumns(updatedColumns.map(withColumnDefaults))
     setDraggedTask(null)
     setDropTarget(null)
+
+    try {
+      await moveBoardCard({
+        id: draggedTask.task.id,
+        columnId: targetColumnId,
+        position: nextPosition,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao mover card.")
+    }
   }
 
   const handleOpenAddTask = (columnId: string, columnColor: string) => {
@@ -136,20 +196,39 @@ export function Board({
     setTaskTitleDraft("")
     setTaskDescriptionDraft("")
     setTaskColorDraft(columnColor)
+    setTaskAssigneeIdsDraft([])
   }
 
-  const handleOpenEditTask = (columnId: string, task: KanbanTask, columnColor: string) => {
+  const handleOpenEditTask = async (
+    columnId: string,
+    task: KanbanTask,
+    columnColor: string,
+  ) => {
     setAddingCardTo(null)
     setEditingTask({ columnId, taskId: task.id })
     setTaskTitleDraft(task.title)
     setTaskDescriptionDraft(task.description ?? "")
     setTaskColorDraft(task.color ?? columnColor)
+    setTaskAssigneeIdsDraft(task.assignees?.map((a) => a.id) ?? [])
+
+    if (!checklistsByCardId[task.id]) {
+      try {
+        const rows = await fetchCardChecklist(task.id)
+        setChecklistsByCardId((prev) => ({
+          ...prev,
+          [task.id]: rows.map((r) => ({ id: r.id, title: r.title, position: r.position })),
+        }))
+      } catch {
+        // ignore checklist load errors to avoid blocking edit UI
+      }
+    }
   }
 
-  const handleSubmitTask = (columnId: string) => {
+  const handleSubmitTask = async (columnId: string) => {
     if (!taskTitleDraft.trim()) return
 
     if (editingTask?.columnId === columnId) {
+      const cardId = editingTask.taskId
       setColumns((prev) =>
         prev.map((column) =>
           column.id === columnId
@@ -162,6 +241,13 @@ export function Board({
                         title: taskTitleDraft.trim(),
                         description: taskDescriptionDraft.trim() || undefined,
                         color: taskColorDraft,
+                        assignees:
+                          taskAssigneeIdsDraft.length > 0
+                            ? taskAssigneeIdsDraft
+                                .map((id) => teamMembers.find((x) => x.id === id))
+                                .filter(Boolean)
+                                .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+                            : undefined,
                       }
                     : task
                 ),
@@ -169,28 +255,134 @@ export function Board({
             : column
         )
       )
-    } else {
-      const newTask: KanbanTask = {
-        id: `task-${Date.now()}`,
-        title: taskTitleDraft.trim(),
-        description: taskDescriptionDraft.trim() || undefined,
-        labels: [],
-        color: taskColorDraft,
+      try {
+        await updateBoardCard({
+          id: cardId,
+          title: taskTitleDraft,
+          description: taskDescriptionDraft,
+          assignedTo: taskAssigneeIdsDraft[0] || null,
+        })
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Falha ao salvar card.")
       }
 
-      setColumns((prev) =>
-        prev.map((column) =>
-          column.id === columnId
-            ? { ...column, tasks: [...column.tasks, newTask] }
-            : column
+      // Multi-assign is optional (depends on card_assignees table/policies).
+      try {
+        await setCardAssignees({ cardId, userIds: taskAssigneeIdsDraft })
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Card salvo, mas falhou ao salvar responsáveis.",
         )
-      )
+      }
+
+      // Refresh assignees from DB if available.
+      try {
+        const map = await fetchCardAssignees([cardId])
+        const ids = map[cardId] ?? []
+        const assignees =
+          ids.length > 0
+            ? ids
+                .map((id) => teamMembers.find((x) => x.id === id))
+                .filter(Boolean)
+                .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+            : undefined
+        setColumns((prev) =>
+          prev.map((col) =>
+            col.id !== columnId
+              ? col
+              : {
+                  ...col,
+                  tasks: col.tasks.map((t) => (t.id === cardId ? { ...t, assignees } : t)),
+                },
+          ),
+        )
+      } catch {
+        // ignore
+      }
+    } else {
+      const col = columns.find((c) => c.id === columnId)
+      const nextPosition = Math.max(0, ...(col?.tasks ?? []).map((t) => t.position ?? 0)) + 1
+
+      try {
+        const created = await createBoardCard({
+          boardId,
+          columnId,
+          title: taskTitleDraft,
+          description: taskDescriptionDraft,
+          position: nextPosition,
+          createdBy: userId,
+          assignedTo: taskAssigneeIdsDraft[0] || null,
+        })
+
+        const ms = taskAssigneeIdsDraft
+          .map((id) => teamMembers.find((x) => x.id === id))
+          .filter(Boolean)
+        const newTask: KanbanTask = {
+          id: created.id,
+          title: created.title,
+          description: created.description ?? undefined,
+          labels: [],
+          color: taskColorDraft,
+          position: created.position,
+          assignees:
+            ms.length > 0
+              ? ms.map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+              : undefined,
+        }
+
+        setColumns((prev) =>
+          prev.map((column) =>
+            column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column,
+          ),
+        )
+
+        // Multi-assign is optional (depends on card_assignees table/policies).
+        try {
+          await setCardAssignees({ cardId: created.id, userIds: taskAssigneeIdsDraft })
+        } catch (e) {
+          setError(
+            e instanceof Error
+              ? e.message
+              : "Card criado, mas falhou ao salvar responsáveis.",
+          )
+        }
+
+        // Refresh assignees from DB if available.
+        try {
+          const map = await fetchCardAssignees([created.id])
+          const ids = map[created.id] ?? []
+          if (ids.length > 0) {
+            const assignees = ids
+              .map((id) => teamMembers.find((x) => x.id === id))
+              .filter(Boolean)
+              .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+            setColumns((prev) =>
+              prev.map((col) =>
+                col.id !== columnId
+                  ? col
+                  : {
+                      ...col,
+                      tasks: col.tasks.map((t) =>
+                        t.id === created.id ? { ...t, assignees } : t,
+                      ),
+                    },
+              ),
+            )
+          }
+        } catch {
+          // ignore
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Falha ao criar card.")
+      }
     }
 
     resetTaskForm()
   }
 
-  const handleRemoveTask = (columnId: string, taskId: string) => {
+  const handleRemoveTask = async (columnId: string, taskId: string) => {
     setColumns((prev) =>
       prev.map((column) =>
         column.id === columnId
@@ -204,6 +396,12 @@ export function Board({
 
     if (editingTask?.taskId === taskId) {
       resetTaskForm()
+    }
+
+    try {
+      await removeBoardCard(taskId)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao remover card.")
     }
   }
 
@@ -223,7 +421,7 @@ export function Board({
     setColumnColorDraft(column.color ?? defaultColumnPalette[column.type])
   }
 
-  const handleSubmitColumn = () => {
+  const handleSubmitColumn = async () => {
     if (!columnTitleDraft.trim()) return
 
     if (editingColumnId) {
@@ -239,26 +437,49 @@ export function Board({
             : column
         )
       )
-    } else {
-      const newColumn: KanbanColumn = {
-        id: `column-${Date.now()}`,
-        title: columnTitleDraft.trim(),
-        type: columnTypeDraft,
-        color: columnColorDraft,
-        tasks: [],
+      try {
+        await updateColumnTitle({ id: editingColumnId, title: columnTitleDraft })
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Falha ao salvar coluna.")
       }
+    } else {
+      const nextPosition = Math.max(0, ...columns.map((c) => c.position ?? 0)) + 1
+      try {
+        const created = await createBoardColumn({
+          boardId,
+          title: columnTitleDraft,
+          position: nextPosition,
+        })
 
-      setColumns((prev) => [...prev, newColumn])
+        const newColumn: KanbanColumn = {
+          id: created.id,
+          title: created.title,
+          type: columnTypeDraft,
+          color: columnColorDraft,
+          position: created.position,
+          tasks: [],
+        }
+
+        setColumns((prev) => [...prev, newColumn].map(withColumnDefaults))
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Falha ao criar coluna.")
+      }
     }
 
     resetColumnForm()
   }
 
-  const handleRemoveColumn = (columnId: string) => {
+  const handleRemoveColumn = async (columnId: string) => {
     setColumns((prev) => prev.filter((column) => column.id !== columnId))
 
     if (editingColumnId === columnId) {
       resetColumnForm()
+    }
+
+    try {
+      await removeBoardColumn(columnId)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao remover coluna.")
     }
   }
 
@@ -268,9 +489,126 @@ export function Board({
   const getLabelColor = (label: string) =>
     defaultLabelColors[label] || "bg-slate-500"
 
+  async function handleAddChecklistItem(cardId: string) {
+    const title = newChecklistTitleDraft.trim()
+    if (!title) return
+    const existing = checklistsByCardId[cardId] ?? []
+    const nextPosition = Math.max(0, ...existing.map((t) => t.position)) + 1
+    setNewChecklistTitleDraft("")
+
+    try {
+      const created = await createChecklistItem({ cardId, title, position: nextPosition })
+      setChecklistsByCardId((prev) => ({
+        ...prev,
+        [cardId]: [...(prev[cardId] ?? []), created].map((t) => ({
+          id: t.id,
+          title: t.title,
+          position: t.position,
+        })),
+      }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao criar checklist.")
+    }
+  }
+
+  async function handleColumnDragDrop(targetColumnId: string) {
+    const movedId = draggedColumnId
+    if (!movedId || movedId === targetColumnId) {
+      setDraggedColumnId(null)
+      setColumnDropTargetId(null)
+      return
+    }
+
+    setColumns((prev) => {
+      const from = prev.findIndex((c) => c.id === movedId)
+      const to = prev.findIndex((c) => c.id === targetColumnId)
+      if (from < 0 || to < 0) return prev
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next.map((c, idx) => ({ ...c, position: idx + 1 }))
+    })
+
+    const snapshot = columns
+    setDraggedColumnId(null)
+    setColumnDropTargetId(null)
+
+    try {
+      const next = (() => {
+        const from = snapshot.findIndex((c) => c.id === movedId)
+        const to = snapshot.findIndex((c) => c.id === targetColumnId)
+        if (from < 0 || to < 0) return snapshot
+        const arr = [...snapshot]
+        const [moved] = arr.splice(from, 1)
+        arr.splice(to, 0, moved)
+        return arr.map((c, idx) => ({ ...c, position: idx + 1 }))
+      })()
+
+      await updateBoardColumnsPositions({
+        updates: next.map((c) => ({ id: c.id, position: c.position ?? 0 })),
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao mover coluna.")
+    }
+  }
+
+  React.useEffect(() => {
+    let alive = true
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const members = await getTeamMembers()
+        const assignees = members.map((m) => ({
+          id: m.id,
+          name: m.name,
+          imageSrc: m.imageSrc,
+        }))
+        const assigneesById = Object.fromEntries(
+          assignees.map((a) => [a.id, { id: a.id, name: a.name, imageSrc: a.imageSrc }]),
+        )
+
+        const [colRows, cardRows] = await Promise.all([
+          fetchBoardColumns(boardId),
+          fetchBoardCards(boardId),
+        ])
+
+        const assigneeIdsByCardId = await fetchCardAssignees(cardRows.map((c) => c.id))
+
+        const nextColumns = buildKanbanColumns({
+          columns: colRows,
+          cards: cardRows,
+          checklistsByCardId: {},
+          assigneesById,
+          assigneeIdsByCardId,
+        }).map(withColumnDefaults)
+
+        if (!alive) return
+        setTeamMembers(assignees)
+        setColumns(nextColumns)
+      } catch (e) {
+        if (!alive) return
+        setError(e instanceof Error ? e.message : "Falha ao carregar o Kanban.")
+      } finally {
+        if (!alive) return
+        setLoading(false)
+      }
+    }
+
+    void load()
+    return () => {
+      alive = false
+    }
+  }, [boardId])
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Carregando board…</p>
+  }
+
   if (columns.length === 0) {
     return (
       <div className={cn("flex min-h-[65vh] w-full", className)}>
+        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
         <AddColumnForm
           isOpen={isAddingColumn || editingColumnId !== null}
           title={columnTitleDraft}
@@ -296,40 +634,76 @@ export function Board({
   }
 
   return (
-    <div className={cn("flex min-h-[65vh] w-full gap-4 overflow-x-auto pb-4", className)}>
-      {columns.map((column) => (
-        <Column
-          key={column.id}
-          column={column}
-          columnColor={getColumnColor(column)}
-          draggedTask={draggedTask}
-          dropTarget={dropTarget}
-          addingCardTo={addingCardTo}
-          editingTaskId={
-            editingTask?.columnId === column.id ? editingTask.taskId : null
-          }
-          taskTitleDraft={taskTitleDraft}
-          taskDescriptionDraft={taskDescriptionDraft}
-          taskColorDraft={taskColorDraft}
-          allowAddTask={allowAddTask}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onDragLeave={() => setDropTarget(null)}
-          onTaskDragStart={handleDragStart}
-          onTaskDragEnd={() => setDraggedTask(null)}
-          onOpenAddCard={handleOpenAddTask}
-          onOpenEditTask={handleOpenEditTask}
-          onCancelTaskForm={resetTaskForm}
-          onTaskTitleChange={setTaskTitleDraft}
-          onTaskDescriptionChange={setTaskDescriptionDraft}
-          onTaskColorChange={setTaskColorDraft}
-          onSubmitTask={handleSubmitTask}
-          onRemoveTask={handleRemoveTask}
-          onEditColumn={handleOpenEditColumn}
-          onRemoveColumn={handleRemoveColumn}
-          getLabelColor={getLabelColor}
-        />
-      ))}
+    <div className={cn("min-h-[65vh] w-full", className)}>
+      {error && (
+        <div className="mb-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
+      <div className="sr-only" aria-live="polite">
+        {error ?? ""}
+      </div>
+
+      <div className="flex w-full gap-4 overflow-x-auto pb-4">
+      {columns.map((column) => {
+        const isColumnDropActive =
+          columnDropTargetId === column.id && draggedColumnId && draggedColumnId !== column.id
+        return (
+          <Column
+            key={column.id}
+            column={column}
+            columnColor={getColumnColor(column)}
+            isColumnDropActive={Boolean(isColumnDropActive)}
+            onColumnDragStart={(id) => setDraggedColumnId(id)}
+            onColumnDragOver={(e, id) => {
+              e.preventDefault()
+              setColumnDropTargetId(id)
+            }}
+            onColumnDrop={(id) => void handleColumnDragDrop(id)}
+            onColumnDragEnd={() => {
+              setDraggedColumnId(null)
+              setColumnDropTargetId(null)
+            }}
+            draggedTask={draggedTask}
+            dropTarget={dropTarget}
+            addingCardTo={addingCardTo}
+            editingTaskId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+            taskTitleDraft={taskTitleDraft}
+            taskDescriptionDraft={taskDescriptionDraft}
+            taskColorDraft={taskColorDraft}
+            assigneeIdsDraft={taskAssigneeIdsDraft}
+            assignees={teamMembers}
+            onAssigneeIdsChange={setTaskAssigneeIdsDraft}
+            allowAddTask={allowAddTask}
+            onDragOver={handleDragOver}
+            onDrop={(id) => void handleDrop(id)}
+            onDragLeave={() => setDropTarget(null)}
+            onTaskDragStart={handleDragStart}
+            onTaskDragEnd={() => setDraggedTask(null)}
+            onOpenAddCard={handleOpenAddTask}
+            onOpenEditTask={(colId, task, colColor) =>
+              void handleOpenEditTask(colId, task, colColor)
+            }
+            onCancelTaskForm={resetTaskForm}
+            onTaskTitleChange={setTaskTitleDraft}
+            onTaskDescriptionChange={setTaskDescriptionDraft}
+            onTaskColorChange={setTaskColorDraft}
+            onSubmitTask={(colId) => void handleSubmitTask(colId)}
+            onRemoveTask={(colId, taskId) => void handleRemoveTask(colId, taskId)}
+            onEditColumn={handleOpenEditColumn}
+            onRemoveColumn={(colId) => void handleRemoveColumn(colId)}
+            getLabelColor={getLabelColor}
+            checklistItems={
+              editingTask?.columnId === column.id ? checklistsByCardId[editingTask.taskId] ?? [] : []
+            }
+            checklistTitleDraft={newChecklistTitleDraft}
+            onChecklistTitleChange={setNewChecklistTitleDraft}
+            onAddChecklistItem={(cardId) => void handleAddChecklistItem(cardId)}
+            editingCardId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+          />
+        )
+      })}
 
       <AddColumnForm
         isOpen={isAddingColumn || editingColumnId !== null}
@@ -351,6 +725,7 @@ export function Board({
         onCancel={resetColumnForm}
         onSubmit={handleSubmitColumn}
       />
+      </div>
     </div>
   )
 }

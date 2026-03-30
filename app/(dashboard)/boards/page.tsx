@@ -1,5 +1,5 @@
 import NeuralBackground from "@/components/ui/flow-field-background"
-import { Board } from "@/components/kanban/board"
+import { BoardsHome } from "@/components/kanban/boards-home"
 
 export default function BoardsPage() {
   return (
@@ -26,7 +26,7 @@ export default function BoardsPage() {
             </p>
           </div>
 
-          <Board />
+          <BoardsHome />
         </div>
       </div>
     </section>
