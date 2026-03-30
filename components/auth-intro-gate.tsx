@@ -1,18 +1,10 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 
 import { IntroLoadingShell } from '@/components/ui/intro-loading-shell'
+import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
 import { AUTH_INTRO_STORAGE_KEY } from '@/lib/intro-storage'
-
-const VapourIntro = dynamic(
-  () => import('@/components/ui/vapour-text-effect').then((m) => m.VapourIntro),
-  {
-    ssr: false,
-    loading: () => <IntroLoadingShell className="z-[300]" />,
-  },
-)
 
 export function AuthIntroGate({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<'hydrating' | 'splash' | 'done'>('hydrating')
@@ -38,7 +30,7 @@ export function AuthIntroGate({ children }: { children: React.ReactNode }) {
 
   if (phase === 'splash') {
     return (
-      <VapourIntro
+      <SimpleIntroSplash
         onSequenceComplete={() => {
           try {
             sessionStorage.setItem(AUTH_INTRO_STORAGE_KEY, '1')
