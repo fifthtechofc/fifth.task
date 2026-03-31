@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { setMyStatusOffline } from './profile'
 
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -38,6 +39,13 @@ export async function signUpWithEmail(
 }
 
 export async function signOutUser() {
+  try {
+    // Best-effort: marca o usuário como offline antes de sair.
+    await setMyStatusOffline()
+  } catch {
+    // não bloqueia o logout em caso de erro
+  }
+
   const { error } = await supabase.auth.signOut()
 
   if (error) {
