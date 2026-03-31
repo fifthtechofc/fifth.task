@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { SettingsProfileSection } from "@/components/settings-profile-section"
-import { UserAvatars } from "@/components/ui/user-avatars"
+import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -817,99 +817,17 @@ export default function SidebarComponent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between text-xs font-medium text-zinc-300"
-                      onClick={() => {
-                        setMembersCollapsed((prev) => !prev)
-                      }}
-                    >
-                      <span>Membros do time</span>
-                      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
-                        {selectedMemberIds.size > 0 && (
-                          <span>{selectedMemberIds.size} selecionado(s)</span>
-                        )}
-                        <ChevronDown
-                          className={cn(
-                            "h-3 w-3 transition-transform",
-                            membersCollapsed ? "-rotate-90" : "rotate-0",
-                          )}
-                        />
-                      </div>
-                    </button>
-                    {membersCollapsed && selectedMemberIds.size > 0 && (
-                      <div className="flex justify-center pt-4">
-                        <UserAvatars
-                          users={allMembers
-                            .filter((m) => selectedMemberIds.has(m.id))
-                            .map((m) => ({
-                              id: m.id,
-                              name: m.name,
-                              image: m.imageSrc,
-                            }))}
-                          size={48}
-                          maxVisible={6}
-                          overlap={55}
-                          focusScale={1.15}
-                          isOverlapOnly
-                        />
-                      </div>
-                    )}
-                    {!membersCollapsed && (
-                      <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2">
-                      {allMembers.length === 0 && (
-                        <p className="text-xs text-zinc-500">Nenhum membro disponível.</p>
-                      )}
-                      {allMembers.map((member) => {
-                        const checked = selectedMemberIds.has(member.id)
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedMemberIds((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(member.id)) {
-                                  next.delete(member.id)
-                                } else {
-                                  next.add(member.id)
-                                }
-                                return next
-                              })
-                            }}
-                            className={cn(
-                              "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
-                              checked ? "bg-white/15 text-white" : "text-zinc-300 hover:bg-white/5",
-                            )}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Avatar className="h-6 w-6 border border-white/10">
-                                <AvatarImage
-                                  src={member.imageSrc || undefined}
-                                  alt={member.name}
-                                />
-                                <AvatarFallback className="bg-white/10 text-[10px] font-semibold text-white">
-                                  {member.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .slice(0, 2)
-                                    .toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="truncate">{member.name}</span>
-                            </div>
-                            <span
-                              className={cn(
-                                "ml-2 h-3 w-3 rounded-full border border-white/20",
-                                checked ? "bg-emerald-400" : "bg-transparent",
-                              )}
-                            />
-                          </button>
-                        )
-                      })}
-                      </div>
-                    )}
+                    <MembersSelect
+                      label="Membros do time"
+                      buttonLabel="Membros do time"
+                      members={allMembers.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        imageSrc: m.imageSrc,
+                      }))}
+                      selectedIds={[...selectedMemberIds]}
+                      onChange={(ids) => setSelectedMemberIds(new Set(ids))}
+                    />
                     <p className="mt-8 text-center text-[10px] text-zinc-500">
                       * Você será adicionado automaticamente como líder do time.
                     </p>
