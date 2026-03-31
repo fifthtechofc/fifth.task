@@ -9,6 +9,7 @@ import {
   ChevronDown,
   FolderKanban,
   LayoutDashboard,
+  LogOut,
   Plus,
   PlusSquare,
   Search,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { fetchBoards } from "@/lib/kanban"
 import { getMyProfile } from "@/lib/profile"
+import { signOutUser } from "@/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type NavSectionId =
@@ -259,24 +261,29 @@ function RailNavLink({
   icon,
   isActive,
   onHover,
+  onClick,
 }: {
-  href: string
+  href?: string
   label: string
   icon: React.ReactNode
   isActive: boolean
   onHover?: () => void
+  onClick?: () => void
 }) {
   const [isHovered, setIsHovered] = React.useState(false)
 
+  const Comp: React.ElementType = href ? Link : "button"
+
   return (
-    <Link
-      href={href}
+    <Comp
+      {...(href ? { href } : { type: "button" })}
       className="relative flex h-10 w-10 items-center justify-center rounded-xl"
       aria-label={label}
       title={label}
       onMouseEnter={onHover}
       onMouseOver={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
     >
       <span
         className="pointer-events-none absolute inset-0 rounded-xl transition-all duration-300"
@@ -314,7 +321,7 @@ function RailNavLink({
       >
         {label}
       </span>
-    </Link>
+    </Comp>
   )
 }
 
@@ -475,6 +482,19 @@ export default function SidebarComponent() {
             onHover={() => {
               setIsHovered(true)
               setPreviewSection("settings")
+            }}
+          />
+
+          <RailNavLink
+            label="Sair"
+            icon={<LogOut className="h-4 w-4" />}
+            isActive={false}
+            onClick={async () => {
+              try {
+                await signOutUser()
+              } finally {
+                window.location.href = "/login"
+              }
             }}
           />
 

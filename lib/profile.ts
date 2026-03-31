@@ -85,6 +85,24 @@ export async function touchMyPresence() {
     .eq('id', user.id)
 }
 
+export async function setMyStatusOffline() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return
+  }
+
+  // Marca explicitamente como offline; deriveStatusFromActivity respeita isso.
+  await supabase
+    .from('profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ status: 'offline' } as any)
+    .eq('id', user.id)
+}
+
 export type TeamMember = {
   id: string
   name: string
@@ -123,8 +141,11 @@ function deriveStatusFromActivity(row: Record<string, unknown>): TeamMember['sta
   if (!activity) return 'offline'
 
   const minutes = (Date.now() - activity.getTime()) / 60000
-  if (minutes <= 15) return 'online'
+  // Até 1 minuto desde a última atividade: online (verde)
+  if (minutes <= 1) return 'online'
+  // Entre 1 minuto e 2 horas: foco (amarelo)
   if (minutes <= 120) return 'focus'
+  // Acima de 2 horas ou sem atividade: offline (cinza)
   return 'offline'
 }
 
@@ -171,5 +192,21 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
     }),
   )
 
-  return mapped.filter((m) => m.id)
+  const cleaned = mapped.filter((m) => m.id)
+
+  // Ordena por status: online > focus > offline, depois por nome.
+  const statusWeight: Record<NonNullable<TeamMember['status']>, number> = {
+    online: 0,
+    focus: 1,
+    offline: 2,
+  }
+
+  cleaned.sort((a, b) => {
+    const wa = statusWeight[a.status ?? 'offline']
+    const wb = statusWeight[b.status ?? 'offline']
+    if (wa !== wb) return wa - wb
+    return a.name.localeCompare(b.name)
+  })
+
+  return cleaned
 }
