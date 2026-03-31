@@ -582,7 +582,7 @@ export default function SidebarComponent() {
                         {item.children.map((child, idx) =>
                           child.href ? (
                             <Link
-                              key={child.href ?? `${child.label}-${idx}`}
+                              key={`${itemKey}-${child.href ?? child.label}-${idx}`}
                               href={child.href}
                               className={cn(
                                 "rounded-lg px-3 py-2 text-sm transition-colors",

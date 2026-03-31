@@ -11,6 +11,7 @@ interface ColumnProps {
   column: KanbanColumn
   columnColor: string
   isColumnDropActive?: boolean
+  isDraggingAnyColumn?: boolean
   onColumnDragStart?: (columnId: string) => void
   onColumnDragOver?: (e: React.DragEvent, columnId: string) => void
   onColumnDrop?: (columnId: string) => void
@@ -53,6 +54,7 @@ export function Column({
   column,
   columnColor,
   isColumnDropActive,
+  isDraggingAnyColumn,
   onColumnDragStart,
   onColumnDragOver,
   onColumnDrop,
@@ -98,8 +100,21 @@ export function Column({
 
   return (
     <div
-      onDragOver={(e) => onDragOver(e, column.id)}
-      onDrop={() => onDrop(column.id)}
+      onDragOver={(e) => {
+        if (isDraggingAnyColumn && onColumnDragOver) {
+          e.preventDefault()
+          onColumnDragOver(e, column.id)
+          return
+        }
+        onDragOver(e, column.id)
+      }}
+      onDrop={() => {
+        if (isDraggingAnyColumn && onColumnDrop) {
+          onColumnDrop(column.id)
+          return
+        }
+        onDrop(column.id)
+      }}
       onDragLeave={onDragLeave}
       className={cn(
         "min-w-[280px] max-w-[280px] rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200",
@@ -155,13 +170,7 @@ export function Column({
           />
 
           <div>
-            <h2 className="text-sm font-semibold text-foreground">
-              {column.title}
-            </h2>
-
-            <p className="text-[11px] capitalize text-muted-foreground">
-              {column.type}
-            </p>
+            <h2 className="text-sm font-semibold text-foreground">{column.title}</h2>
           </div>
 
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
