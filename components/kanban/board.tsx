@@ -6,6 +6,9 @@ import { KanbanColumn, KanbanTask, type ColumnType } from "@/types/kanban"
 import { Column } from "./column"
 import { AddColumnForm } from "./add-column-form"
 import { EditColumnModal } from "./edit-column-modal"
+import { HorizontalScroll } from "./horizontal-scroll"
+import { GlowCard } from "@/components/ui/spotlight-card"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { getTeamMembers } from "@/lib/profile"
 import {
   buildKanbanColumns,
@@ -113,6 +116,8 @@ export function Board({
   const [columnColorDraft, setColumnColorDraft] = React.useState(
     defaultColumnPalette.custom
   )
+
+  const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
 
   const resetTaskForm = () => {
     setAddingCardTo(null)
@@ -374,6 +379,12 @@ export function Board({
         } catch {
           // ignore
         }
+
+        showAlert({
+          variant: "success",
+          title: "Tarefa criada",
+          description: `A tarefa "${created.title}" foi adicionada à coluna.`,
+        })
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao criar card.")
       }
@@ -470,6 +481,12 @@ export function Board({
         }
 
         setColumns((prev) => [...prev, newColumn].map(withColumnDefaults))
+
+        showAlert({
+          variant: "success",
+          title: "Coluna criada",
+          description: `A coluna "${created.title}" foi adicionada ao quadro.`,
+        })
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao criar coluna.")
       }
@@ -610,42 +627,51 @@ export function Board({
     }
   }, [boardId])
 
+  React.useEffect(() => {
+    setDashboardLoading(loading)
+  }, [loading, setDashboardLoading])
+
   if (loading) {
+    // O loader global do dashboard cuida do estado de loading.
     return null
   }
 
   if (columns.length === 0) {
     return (
-      <div className={cn("flex min-h-[65vh] w-full", className)}>
-        <EditColumnModal
-          open={editingColumnId !== null}
-          onOpenChange={handleCloseEditColumnModal}
-          title={columnTitleDraft}
-          color={columnColorDraft}
-          onTitleChange={setColumnTitleDraft}
-          onColorChange={setColumnColorDraft}
-          onSave={() => void handleSubmitColumn()}
-        />
-        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-        <AddColumnForm
-          isOpen={isAddingColumn}
-          title={columnTitleDraft}
-          color={columnColorDraft}
-          compact={false}
-          heading="Nova coluna"
-          submitLabel="Criar coluna"
-          onTitleChange={setColumnTitleDraft}
-          onColorChange={setColumnColorDraft}
-          onOpen={handleOpenAddColumn}
-          onCancel={resetColumnForm}
-          onSubmit={handleSubmitColumn}
-        />
+      <div className={cn("min-h-screen w-full px-6 py-4", className)}>
+        <div className="mx-auto flex h-[calc(100vh-3rem)] max-w-6xl flex-col rounded-3xl border border-border/40 bg-background px-4 py-6 shadow-sm">
+          <EditColumnModal
+            open={editingColumnId !== null}
+            onOpenChange={handleCloseEditColumnModal}
+            title={columnTitleDraft}
+            color={columnColorDraft}
+            onTitleChange={setColumnTitleDraft}
+            onColorChange={setColumnColorDraft}
+            onSave={() => void handleSubmitColumn()}
+          />
+          {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+          <div className="flex flex-1 items-center justify-center">
+            <AddColumnForm
+              isOpen={isAddingColumn}
+              title={columnTitleDraft}
+              color={columnColorDraft}
+              compact={false}
+              heading="Nova coluna"
+              submitLabel="Criar coluna"
+              onTitleChange={setColumnTitleDraft}
+              onColorChange={setColumnColorDraft}
+              onOpen={handleOpenAddColumn}
+              onCancel={resetColumnForm}
+              onSubmit={handleSubmitColumn}
+            />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className={cn("min-h-[65vh] w-full", className)}>
+    <div className={cn("min-h-screen w-full px-6 py-4", className)}>
       <EditColumnModal
         open={editingColumnId !== null}
         onOpenChange={handleCloseEditColumnModal}
@@ -654,6 +680,13 @@ export function Board({
         onTitleChange={setColumnTitleDraft}
         onColorChange={setColumnColorDraft}
         onSave={() => void handleSubmitColumn()}
+        onDelete={
+          editingColumnId
+            ? () => {
+                void handleRemoveColumn(editingColumnId)
+              }
+            : undefined
+        }
       />
 
       {error && (
@@ -666,81 +699,91 @@ export function Board({
         {error ?? ""}
       </div>
 
-      <div className="flex w-full gap-4 overflow-x-auto pb-4">
-      {columns.map((column) => {
-        const isColumnDropActive =
-          columnDropTargetId === column.id && draggedColumnId && draggedColumnId !== column.id
-        return (
-          <Column
-            key={column.id}
-            column={column}
-            columnColor={getColumnColor(column)}
-            isColumnDropActive={Boolean(isColumnDropActive)}
-            isDraggingAnyColumn={Boolean(draggedColumnId)}
-            onColumnDragStart={(id) => setDraggedColumnId(id)}
-            onColumnDragOver={(e, id) => {
-              e.preventDefault()
-              setColumnDropTargetId(id)
-            }}
-            onColumnDrop={(id) => void handleColumnDragDrop(id)}
-            onColumnDragEnd={() => {
-              setDraggedColumnId(null)
-              setColumnDropTargetId(null)
-            }}
-            draggedTask={draggedTask}
-            dropTarget={dropTarget}
-            addingCardTo={addingCardTo}
-            editingTaskId={editingTask?.columnId === column.id ? editingTask.taskId : null}
-            taskTitleDraft={taskTitleDraft}
-            taskDescriptionDraft={taskDescriptionDraft}
-            taskColorDraft={taskColorDraft}
-            assigneeIdsDraft={taskAssigneeIdsDraft}
-            assignees={teamMembers}
-            onAssigneeIdsChange={setTaskAssigneeIdsDraft}
-            allowAddTask={allowAddTask}
-            onDragOver={handleDragOver}
-            onDrop={(id) => void handleDrop(id)}
-            onDragLeave={() => setDropTarget(null)}
-            onTaskDragStart={handleDragStart}
-            onTaskDragEnd={() => setDraggedTask(null)}
-            onOpenAddCard={handleOpenAddTask}
-            onOpenEditTask={(colId, task, colColor) =>
-              void handleOpenEditTask(colId, task, colColor)
-            }
-            onCancelTaskForm={resetTaskForm}
-            onTaskTitleChange={setTaskTitleDraft}
-            onTaskDescriptionChange={setTaskDescriptionDraft}
-            onTaskColorChange={setTaskColorDraft}
-            onSubmitTask={(colId) => void handleSubmitTask(colId)}
-            onRemoveTask={(colId, taskId) => void handleRemoveTask(colId, taskId)}
-            onEditColumn={handleOpenEditColumn}
-            onRemoveColumn={(colId) => void handleRemoveColumn(colId)}
-            getLabelColor={getLabelColor}
-            checklistItems={
-              editingTask?.columnId === column.id ? checklistsByCardId[editingTask.taskId] ?? [] : []
-            }
-            checklistTitleDraft={newChecklistTitleDraft}
-            onChecklistTitleChange={setNewChecklistTitleDraft}
-            onAddChecklistItem={(cardId) => void handleAddChecklistItem(cardId)}
-            editingCardId={editingTask?.columnId === column.id ? editingTask.taskId : null}
-          />
-        )
-      })}
+      <GlowCard
+        glowColor="blue"
+        customSize
+        className="mx-auto flex h-[calc(100vh-3rem)] max-w-6xl flex-col border border-border/60 bg-background px-4 py-4"
+      >
+        <HorizontalScroll className="mt-1 flex-1">
+          <div className="flex h-full min-h-full w-full flex-1 items-stretch gap-4 pb-4">
+            {columns.map((column) => {
+              const isColumnDropActive =
+                columnDropTargetId === column.id && draggedColumnId && draggedColumnId !== column.id
+              return (
+                <Column
+                  key={column.id}
+                  column={column}
+                  columnColor={getColumnColor(column)}
+                  isColumnDropActive={Boolean(isColumnDropActive)}
+                  isDraggingAnyColumn={Boolean(draggedColumnId)}
+                  onColumnDragStart={(id) => setDraggedColumnId(id)}
+                  onColumnDragOver={(e, id) => {
+                    e.preventDefault()
+                    setColumnDropTargetId(id)
+                  }}
+                  onColumnDrop={(id) => void handleColumnDragDrop(id)}
+                  onColumnDragEnd={() => {
+                    setDraggedColumnId(null)
+                    setColumnDropTargetId(null)
+                  }}
+                  draggedTask={draggedTask}
+                  dropTarget={dropTarget}
+                  addingCardTo={addingCardTo}
+                  editingTaskId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+                  taskTitleDraft={taskTitleDraft}
+                  taskDescriptionDraft={taskDescriptionDraft}
+                  taskColorDraft={taskColorDraft}
+                  assigneeIdsDraft={taskAssigneeIdsDraft}
+                  assignees={teamMembers}
+                  onAssigneeIdsChange={setTaskAssigneeIdsDraft}
+                  allowAddTask={allowAddTask}
+                  onDragOver={handleDragOver}
+                  onDrop={(id) => void handleDrop(id)}
+                  onDragLeave={() => setDropTarget(null)}
+                  onTaskDragStart={handleDragStart}
+                  onTaskDragEnd={() => setDraggedTask(null)}
+                  onOpenAddCard={handleOpenAddTask}
+                  onOpenEditTask={(colId, task, colColor) =>
+                    void handleOpenEditTask(colId, task, colColor)
+                  }
+                  onCancelTaskForm={resetTaskForm}
+                  onTaskTitleChange={setTaskTitleDraft}
+                  onTaskDescriptionChange={setTaskDescriptionDraft}
+                  onTaskColorChange={setTaskColorDraft}
+                  onSubmitTask={(colId) => void handleSubmitTask(colId)}
+                  onRemoveTask={(colId, taskId) => void handleRemoveTask(colId, taskId)}
+                  onEditColumn={handleOpenEditColumn}
+                  onRemoveColumn={(colId) => void handleRemoveColumn(colId)}
+                  getLabelColor={getLabelColor}
+                  checklistItems={
+                    editingTask?.columnId === column.id
+                      ? checklistsByCardId[editingTask.taskId] ?? []
+                      : []
+                  }
+                  checklistTitleDraft={newChecklistTitleDraft}
+                  onChecklistTitleChange={setNewChecklistTitleDraft}
+                  onAddChecklistItem={(cardId) => void handleAddChecklistItem(cardId)}
+                  editingCardId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+                />
+              )
+            })}
 
-      <AddColumnForm
-        isOpen={isAddingColumn}
-        title={columnTitleDraft}
-        color={columnColorDraft}
-        compact
-        heading="Nova coluna"
-        submitLabel="Criar coluna"
-        onTitleChange={setColumnTitleDraft}
-        onColorChange={setColumnColorDraft}
-        onOpen={handleOpenAddColumn}
-        onCancel={resetColumnForm}
-        onSubmit={handleSubmitColumn}
-      />
-      </div>
+            <AddColumnForm
+              isOpen={isAddingColumn}
+              title={columnTitleDraft}
+              color={columnColorDraft}
+              compact
+              heading="Nova coluna"
+              submitLabel="Criar coluna"
+              onTitleChange={setColumnTitleDraft}
+              onColorChange={setColumnColorDraft}
+              onOpen={handleOpenAddColumn}
+              onCancel={resetColumnForm}
+              onSubmit={handleSubmitColumn}
+            />
+          </div>
+        </HorizontalScroll>
+      </GlowCard>
     </div>
   )
 }

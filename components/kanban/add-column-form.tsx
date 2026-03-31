@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Check, Plus, X } from "lucide-react"
+import { ColorPicker } from "@/components/ui/color-picker"
 
 interface AddColumnFormProps {
   isOpen: boolean
@@ -59,16 +60,24 @@ export function AddColumnForm({
           className="mb-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
         />
 
-        <label className="mb-3 flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-card-foreground">
-          <span>Cor</span>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => onColorChange(e.target.value)}
-            className="h-8 w-10 cursor-pointer rounded border-none bg-transparent p-0"
-          />
-          <span className="font-mono text-xs text-muted-foreground">{color}</span>
-        </label>
+        <ColorPicker
+          value={color}
+          hideContrastRatio
+          className="z-50"
+          onValueChange={(val) => onColorChange(val.hex)}
+        >
+          <button
+            type="button"
+            className="mb-3 flex w-full items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-card-foreground"
+          >
+            <span>Cor</span>
+            <span
+              className="h-4 w-4 rounded-md border border-border"
+              style={{ backgroundColor: color }}
+            />
+            <span className="ml-auto font-mono text-xs text-muted-foreground">{color}</span>
+          </button>
+        </ColorPicker>
 
         <div className="flex gap-2">
           <button
