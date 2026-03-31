@@ -138,14 +138,11 @@ export function SettingsProfileSection() {
         </div>
       </div>
 
-      {loading && (
-        <p className="text-sm text-muted-foreground">Carregando perfil…</p>
-      )}
-      {error && !loading && (
+      {error && (
         <p className="text-sm text-red-400">{error}</p>
       )}
 
-      {!loading && !error && (
+      {!error && (
         <>
           <div className="mb-6 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <Avatar className="h-24 w-24 border border-white/10 ring-1 ring-white/10">

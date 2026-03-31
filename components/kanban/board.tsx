@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { KanbanColumn, KanbanTask, ColumnType } from "@/types/kanban"
+import { KanbanColumn, KanbanTask, type ColumnType } from "@/types/kanban"
 import { Column } from "./column"
 import { AddColumnForm } from "./add-column-form"
+import { EditColumnModal } from "./edit-column-modal"
 import { getTeamMembers } from "@/lib/profile"
 import {
   buildKanbanColumns,
@@ -22,6 +23,7 @@ import {
   updateBoardColumnsPositions,
   updateColumnTitle,
   createChecklistItem,
+  inferColumnTypeFromTitle,
 } from "@/lib/kanban"
 
 interface BoardProps {
@@ -108,9 +110,8 @@ export function Board({
   const [isAddingColumn, setIsAddingColumn] = React.useState(false)
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null)
   const [columnTitleDraft, setColumnTitleDraft] = React.useState("")
-  const [columnTypeDraft, setColumnTypeDraft] = React.useState<ColumnType>("todo")
   const [columnColorDraft, setColumnColorDraft] = React.useState(
-    defaultColumnPalette.todo
+    defaultColumnPalette.custom
   )
 
   const resetTaskForm = () => {
@@ -127,8 +128,7 @@ export function Board({
     setIsAddingColumn(false)
     setEditingColumnId(null)
     setColumnTitleDraft("")
-    setColumnTypeDraft("todo")
-    setColumnColorDraft(defaultColumnPalette.todo)
+    setColumnColorDraft(defaultColumnPalette.custom)
   }
 
   const handleDragStart = (task: KanbanTask, columnId: string) => {
@@ -409,39 +409,48 @@ export function Board({
     setEditingColumnId(null)
     setIsAddingColumn(true)
     setColumnTitleDraft("")
-    setColumnTypeDraft("todo")
-    setColumnColorDraft(defaultColumnPalette.todo)
+    setColumnColorDraft(defaultColumnPalette.custom)
   }
 
   const handleOpenEditColumn = (column: KanbanColumn) => {
     setIsAddingColumn(false)
     setEditingColumnId(column.id)
     setColumnTitleDraft(column.title)
-    setColumnTypeDraft(column.type)
     setColumnColorDraft(column.color ?? defaultColumnPalette[column.type])
+  }
+
+  const handleCloseEditColumnModal = (open: boolean) => {
+    if (!open) {
+      resetColumnForm()
+    }
   }
 
   const handleSubmitColumn = async () => {
     if (!columnTitleDraft.trim()) return
 
     if (editingColumnId) {
+      const trimmed = columnTitleDraft.trim()
+      const inferred = inferColumnTypeFromTitle(trimmed)
       setColumns((prev) =>
         prev.map((column) =>
           column.id === editingColumnId
             ? {
                 ...column,
-                title: columnTitleDraft.trim(),
-                type: columnTypeDraft,
+                title: trimmed,
+                type: inferred,
                 color: columnColorDraft,
               }
             : column
         )
       )
       try {
-        await updateColumnTitle({ id: editingColumnId, title: columnTitleDraft })
+        await updateColumnTitle({ id: editingColumnId, title: trimmed })
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao salvar coluna.")
+        return
       }
+      resetColumnForm()
+      return
     } else {
       const nextPosition = Math.max(0, ...columns.map((c) => c.position ?? 0)) + 1
       try {
@@ -454,7 +463,7 @@ export function Board({
         const newColumn: KanbanColumn = {
           id: created.id,
           title: created.title,
-          type: columnTypeDraft,
+          type: inferColumnTypeFromTitle(created.title),
           color: columnColorDraft,
           position: created.position,
           tasks: [],
@@ -602,28 +611,30 @@ export function Board({
   }, [boardId])
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Carregando board…</p>
+    return null
   }
 
   if (columns.length === 0) {
     return (
       <div className={cn("flex min-h-[65vh] w-full", className)}>
+        <EditColumnModal
+          open={editingColumnId !== null}
+          onOpenChange={handleCloseEditColumnModal}
+          title={columnTitleDraft}
+          color={columnColorDraft}
+          onTitleChange={setColumnTitleDraft}
+          onColorChange={setColumnColorDraft}
+          onSave={() => void handleSubmitColumn()}
+        />
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
         <AddColumnForm
-          isOpen={isAddingColumn || editingColumnId !== null}
+          isOpen={isAddingColumn}
           title={columnTitleDraft}
-          type={columnTypeDraft}
           color={columnColorDraft}
           compact={false}
-          heading={editingColumnId ? "Editar coluna" : "Nova coluna"}
-          submitLabel={editingColumnId ? "Salvar coluna" : "Criar coluna"}
+          heading="Nova coluna"
+          submitLabel="Criar coluna"
           onTitleChange={setColumnTitleDraft}
-          onTypeChange={(value) => {
-            setColumnTypeDraft(value)
-            if (!editingColumnId) {
-              setColumnColorDraft(defaultColumnPalette[value])
-            }
-          }}
           onColorChange={setColumnColorDraft}
           onOpen={handleOpenAddColumn}
           onCancel={resetColumnForm}
@@ -635,6 +646,16 @@ export function Board({
 
   return (
     <div className={cn("min-h-[65vh] w-full", className)}>
+      <EditColumnModal
+        open={editingColumnId !== null}
+        onOpenChange={handleCloseEditColumnModal}
+        title={columnTitleDraft}
+        color={columnColorDraft}
+        onTitleChange={setColumnTitleDraft}
+        onColorChange={setColumnColorDraft}
+        onSave={() => void handleSubmitColumn()}
+      />
+
       {error && (
         <div className="mb-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           {error}
@@ -655,6 +676,7 @@ export function Board({
             column={column}
             columnColor={getColumnColor(column)}
             isColumnDropActive={Boolean(isColumnDropActive)}
+            isDraggingAnyColumn={Boolean(draggedColumnId)}
             onColumnDragStart={(id) => setDraggedColumnId(id)}
             onColumnDragOver={(e, id) => {
               e.preventDefault()
@@ -706,20 +728,13 @@ export function Board({
       })}
 
       <AddColumnForm
-        isOpen={isAddingColumn || editingColumnId !== null}
+        isOpen={isAddingColumn}
         title={columnTitleDraft}
-        type={columnTypeDraft}
         color={columnColorDraft}
         compact
-        heading={editingColumnId ? "Editar coluna" : "Nova coluna"}
-        submitLabel={editingColumnId ? "Salvar coluna" : "Criar coluna"}
+        heading="Nova coluna"
+        submitLabel="Criar coluna"
         onTitleChange={setColumnTitleDraft}
-        onTypeChange={(value) => {
-          setColumnTypeDraft(value)
-          if (!editingColumnId) {
-            setColumnColorDraft(defaultColumnPalette[value])
-          }
-        }}
         onColorChange={setColumnColorDraft}
         onOpen={handleOpenAddColumn}
         onCancel={resetColumnForm}

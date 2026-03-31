@@ -66,13 +66,43 @@ type CardTaskRow = {
   position: number
 }
 
-function mapColumnTypeFromTitle(title: string): ColumnType {
+/** Usado para cor padrão da coluna; o nome exibido é sempre o que o usuário digitou. */
+export function inferColumnTypeFromTitle(title: string): ColumnType {
   const t = title.trim().toLowerCase()
   if (t === "backlog") return "backlog"
-  if (t === "to do" || t === "todo") return "todo"
-  if (t === "in progress" || t === "in-progress") return "in-progress"
-  if (t === "review") return "review"
-  if (t === "done") return "done"
+  if (
+    t === "to do" ||
+    t === "todo" ||
+    t === "a fazer" ||
+    t === "afazer" ||
+    t === "por fazer" ||
+    t === "pendente" ||
+    t === "pendentes"
+  ) {
+    return "todo"
+  }
+  if (
+    t === "in progress" ||
+    t === "in-progress" ||
+    t === "doing" ||
+    t === "em andamento" ||
+    t === "em progresso" ||
+    t === "fazendo" ||
+    t === "andamento"
+  ) {
+    return "in-progress"
+  }
+  if (t === "review" || t === "revisão" || t === "revisao" || t === "code review") return "review"
+  if (
+    t === "done" ||
+    t === "concluído" ||
+    t === "concluido" ||
+    t === "feito" ||
+    t === "finalizado" ||
+    t === "entregue"
+  ) {
+    return "done"
+  }
   return "custom"
 }
 
@@ -201,7 +231,7 @@ export function buildKanbanColumns(params: {
   return columns.map((c) => ({
     id: c.id,
     title: c.title,
-    type: mapColumnTypeFromTitle(c.title),
+    type: inferColumnTypeFromTitle(c.title),
     position: c.position,
     tasks: tasksByColumn.get(c.id) ?? [],
   }))

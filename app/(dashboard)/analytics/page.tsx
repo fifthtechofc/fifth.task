@@ -1,7 +1,6 @@
 import { BarChart3, BriefcaseBusiness, FolderPlus, Gauge, Target, Users } from "lucide-react"
 
 import { BudgetCard } from "@/components/ui/analytics-bento"
-import NeuralBackground from "@/components/ui/flow-field-background"
 
 const metrics = [
   {
@@ -44,104 +43,90 @@ const metrics = [
 
 export default function AnalyticsPage() {
   return (
-    <section className="relative min-h-full overflow-hidden">
-      <NeuralBackground
-        className="absolute inset-0 z-0"
-        color="#c7d1db"
-        trailOpacity={0.2}
-        particleCount={650}
-        speed={0.85}
-      />
+    <section className="relative min-h-full p-6 md:p-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
+            Analytics
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-foreground md:text-4xl">
+            Visao consolidada da operacao
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground md:text-base">
+            Indicadores do workspace para acompanhar produtividade, criacao
+            de projetos, entregas e evolucao financeira.
+          </p>
+        </div>
 
-      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-br from-black/55 via-black/25 to-black/55" />
-      <div className="pointer-events-none absolute -top-32 -left-32 z-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 bottom-0 z-10 h-96 w-96 translate-x-1/4 translate-y-1/4 rounded-full bg-white/10 blur-3xl" />
+        <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+          <BudgetCard />
 
-      <div className="relative z-20 min-h-full p-6 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8 max-w-2xl">
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
-              Analytics
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-foreground md:text-4xl">
-              Visao consolidada da operacao
-            </h1>
-            <p className="mt-3 text-sm text-muted-foreground md:text-base">
-              Indicadores do workspace para acompanhar produtividade, criacao
-              de projetos, entregas e evolucao financeira.
-            </p>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
-            <BudgetCard />
-
-            <div className="grid gap-6 sm:grid-cols-2">
-              {metrics.slice(0, 4).map((metric) => {
-                const Icon = metric.icon
-                return (
-                  <article
-                    key={metric.label}
-                    className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {metric.label}
-                      </p>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <Icon className="h-4 w-4 text-foreground" />
-                      </div>
-                    </div>
-
-                    <p className="mt-6 text-4xl font-semibold tracking-tight text-foreground">
-                      {metric.value}
-                    </p>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {metric.detail}
-                    </p>
-                  </article>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {metrics.slice(4).map((metric) => {
+          <div className="grid gap-6 sm:grid-cols-2">
+            {metrics.slice(0, 4).map((metric) => {
               const Icon = metric.icon
               return (
                 <article
                   key={metric.label}
                   className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {metric.label}
-                      </p>
-                      <p className="mt-3 text-3xl font-semibold text-foreground">
-                        {metric.value}
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {metric.label}
+                    </p>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <Icon className="h-5 w-5 text-foreground" />
+                      <Icon className="h-4 w-4 text-foreground" />
                     </div>
                   </div>
 
-                  <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/8">
-                    <div
-                      className="h-full rounded-full bg-zinc-200/90"
-                      style={{
-                        width: metric.label === "Boards em Operacao" ? "64%" : "91%",
-                      }}
-                    />
-                  </div>
-
-                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-6 text-4xl font-semibold tracking-tight text-foreground">
+                    {metric.value}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     {metric.detail}
                   </p>
                 </article>
               )
             })}
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          {metrics.slice(4).map((metric) => {
+            const Icon = metric.icon
+            return (
+              <article
+                key={metric.label}
+                className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {metric.label}
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold text-foreground">
+                      {metric.value}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <Icon className="h-5 w-5 text-foreground" />
+                  </div>
+                </div>
+
+                <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className="h-full rounded-full bg-zinc-200/90"
+                    style={{
+                      width: metric.label === "Boards em Operacao" ? "64%" : "91%",
+                    }}
+                  />
+                </div>
+
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                  {metric.detail}
+                </p>
+              </article>
+            )
+          })}
         </div>
       </div>
     </section>

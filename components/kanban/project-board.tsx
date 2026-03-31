@@ -75,7 +75,7 @@ export function ProjectBoard({ project }: { project: string }) {
   }, [project])
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Carregando Kanban…</p>
+    return null
   }
 
   if (error) {

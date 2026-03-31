@@ -1,11 +1,11 @@
 import "./globals.css"
-import BackgroundPlus from "@/components/ui/background-plus"
+import NeuralBackground from "@/components/ui/flow-field-background"
 
 export const metadata = {
-  title: "FifthTask", 
+  title: "FifthTask",
   description: "Sistema de gestão da empresa",
   icons: {
-    icon: "/icon.png", 
+    icon: "/icon.png",
   },
 }
 
@@ -16,8 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>
-        <BackgroundPlus plusColor="#ffffff22" plusSize={52} />
+      <body className="bg-black">
+        <div className="fixed inset-0 -z-10">
+          <NeuralBackground color="#c7d1db" trailOpacity={0.2} />
+        </div>
         <div className="relative z-10 min-h-screen">
           {children}
         </div>

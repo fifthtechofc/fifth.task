@@ -2,43 +2,29 @@
 
 import * as React from "react"
 import { Check, Plus, X } from "lucide-react"
-import { ColumnType } from "@/types/kanban"
 
 interface AddColumnFormProps {
   isOpen: boolean
   title: string
-  type: ColumnType
   color: string
   compact?: boolean
   submitLabel?: string
   heading?: string
   onTitleChange: (value: string) => void
-  onTypeChange: (value: ColumnType) => void
   onColorChange: (value: string) => void
   onOpen: () => void
   onCancel: () => void
   onSubmit: () => void
 }
 
-const columnOptions: { label: string; value: ColumnType }[] = [
-  { label: "Backlog", value: "backlog" },
-  { label: "To Do", value: "todo" },
-  { label: "In Progress", value: "in-progress" },
-  { label: "Review", value: "review" },
-  { label: "Done", value: "done" },
-  { label: "Custom", value: "custom" },
-]
-
 export function AddColumnForm({
   isOpen,
   title,
-  type,
   color,
   compact = false,
   submitLabel = "Criar coluna",
   heading = "Nova coluna",
   onTitleChange,
-  onTypeChange,
   onColorChange,
   onOpen,
   onCancel,
@@ -55,31 +41,26 @@ export function AddColumnForm({
   if (isOpen) {
     return (
       <div className="min-w-[280px] max-w-[280px] rounded-xl border border-border bg-card p-4 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">{heading}</h3>
+        <h3 className="mb-1 text-sm font-semibold text-foreground">{heading}</h3>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Use o nome que fizer sentido para o seu fluxo — em qualquer idioma.
+        </p>
 
+        <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="kanban-col-title">
+          Nome da coluna
+        </label>
         <input
           ref={inputRef}
+          id="kanban-col-title"
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Nome da coluna"
+          placeholder="Ex: Em análise, QA, Bloqueado…"
           className="mb-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
         />
 
-        <select
-          value={type}
-          onChange={(e) => onTypeChange(e.target.value as ColumnType)}
-          className="mb-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
-        >
-          {columnOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-
         <label className="mb-3 flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-card-foreground">
-          <span>Cor da coluna</span>
+          <span>Cor</span>
           <input
             type="color"
             value={color}
