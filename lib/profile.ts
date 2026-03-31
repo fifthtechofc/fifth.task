@@ -45,6 +45,35 @@ export async function updateMyProfileAvatar(avatarUrl: string) {
   }
 }
 
+export async function updateMyProfileDetails(params: {
+  birthday?: string | null
+  jobTitle?: string | null
+  bio?: string | null
+  workHours?: string | null
+}) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    throw new Error('Usuário não autenticado.')
+  }
+
+  const payload: Record<string, unknown> = {}
+  if (params.birthday !== undefined) payload.birthday = params.birthday
+  if (params.jobTitle !== undefined) payload.job_title = params.jobTitle
+  if (params.bio !== undefined) payload.bio = params.bio
+  if (params.workHours !== undefined) payload.work_hours = params.workHours
+
+  if (Object.keys(payload).length === 0) return
+
+  const { error } = await supabase.from('profiles').update(payload).eq('id', user.id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 export async function touchMyPresence() {
   const {
     data: { user },
@@ -111,6 +140,9 @@ export type TeamMember = {
   description?: string
   role?: string
   status?: 'online' | 'focus' | 'offline'
+  birthday?: string | null
+  workHours?: string | null
+  bio?: string | null
 }
 
 function coalesceString(...values: Array<unknown>) {
@@ -128,7 +160,10 @@ function parseDateMaybe(value: unknown): Date | null {
 
 function deriveStatusFromActivity(row: Record<string, unknown>): TeamMember['status'] | undefined {
   const explicit = coalesceString(row.status).toLowerCase()
-  if (explicit === 'online' || explicit === 'focus' || explicit === 'offline') {
+  // Tratamos apenas "online" e "focus" como estados explícitos fortes.
+  // "offline" não bloqueia o cálculo por atividade – isso permite que o
+  // usuário volte a ficar online após logar novamente.
+  if (explicit === 'online' || explicit === 'focus') {
     return explicit as TeamMember['status']
   }
 
@@ -177,8 +212,13 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
       }
 
       const role = coalesceString(row.job_title, row.role)
-      const description = coalesceString(row.description, row.bio) || getJobTitleDescription(role) || ''
+      // Descrição exibida na tela de Times deve refletir o cargo,
+      // e não a bio pessoal (que é mostrada apenas no modal/perfil).
+      const description = getJobTitleDescription(role) || ''
       const status = deriveStatusFromActivity(row)
+      const birthday = coalesceString(row.birthday)
+      const workHours = coalesceString(row.work_hours)
+      const bio = coalesceString(row.bio)
 
       return {
         id,
@@ -188,6 +228,9 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
         description: description || undefined,
         role: role || undefined,
         status,
+        birthday: birthday || null,
+        workHours: workHours || null,
+        bio: bio || null,
       } satisfies TeamMember
     }),
   )
