@@ -145,7 +145,6 @@ const sidebarContent: Record<
       {
         title: "Kanban",
         items: [
-          { label: "Quadro principal", href: "/boards" },
           {
             label: "Projetos",
             children: [

@@ -1,11 +1,21 @@
 "use client"
 
 import * as React from "react"
-import { GripVertical, Pencil, Trash2 } from "lucide-react"
+import { GripVertical, Pencil, Trash2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KanbanColumn, KanbanTask } from "@/types/kanban"
 import { AddTaskForm } from "./add-task-form"
 import { TaskCard } from "./task-card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 interface ColumnProps {
   column: KanbanColumn
@@ -117,7 +127,7 @@ export function Column({
       }}
       onDragLeave={onDragLeave}
       className={cn(
-        "min-w-[280px] max-w-[280px] rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200",
+        "flex h-full min-h-full min-w-[360px] max-w-[360px] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200",
         isDropActive
           ? "border-primary/50 border-dashed bg-primary/5"
           : "border-transparent"
@@ -196,26 +206,63 @@ export function Column({
             />
           </button>
 
-          <button
-            type="button"
-            onMouseEnter={() => setIsDeleteHovered(true)}
-            onMouseLeave={() => setIsDeleteHovered(false)}
-            onClick={() => onRemoveColumn(column.id)}
-            className="rounded-md p-1.5 transition-all duration-200"
-            style={{
-              backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
-            }}
-            aria-label="Remover coluna"
-          >
-            <Trash2
-              className="h-4 w-4 transition-colors duration-200"
-              style={{ color: isDeleteHovered ? "#ef4444" : "#f4f4f5" }}
-            />
-          </button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                onMouseEnter={() => setIsDeleteHovered(true)}
+                onMouseLeave={() => setIsDeleteHovered(false)}
+                className="rounded-md p-1.5 transition-all duration-200"
+                style={{
+                  backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
+                }}
+                aria-label="Remover coluna"
+                title="Remover coluna"
+              >
+                <Trash2
+                  className="h-4 w-4 transition-colors duration-200"
+                  style={{ color: isDeleteHovered ? "#ef4444" : "#f4f4f5" }}
+                />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                  <AlertTriangle className="h-6 w-6 text-red-400" />
+                </div>
+                <DialogHeader className="flex-1 space-y-2 text-left">
+                  <DialogTitle>Excluir coluna</DialogTitle>
+                  <DialogDescription>
+                    Tem certeza que deseja excluir esta coluna? Todas as tarefas dentro dela serão removidas.
+                    Essa ação não pode ser desfeita.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+              <DialogFooter className="mt-4">
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                  >
+                    Cancelar
+                  </button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveColumn(column.id)}
+                    className="inline-flex items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Excluir
+                  </button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      <div className="flex min-h-[100px] flex-col gap-2">
+      <div className="flex flex-1 flex-col gap-2">
         {column.tasks.map((task) =>
           editingTaskId === task.id ? (
             <div key={task.id} className="space-y-2">

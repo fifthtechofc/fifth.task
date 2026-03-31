@@ -1,9 +1,10 @@
-'use client'
+"use client"
 
 import { useEffect, useMemo, useState } from "react"
 
 import { AvatarHoverCard } from "@/components/ui/avatar-hover-card"
 import { getTeamMembers, type TeamMember } from "@/lib/profile"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 
 function getStatusClasses(status: TeamMember["status"]) {
   if (status === "online") return "bg-emerald-400"
@@ -15,10 +16,12 @@ export default function TeamsPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { setLoading: setDashboardLoading } = useDashboardLoading()
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setDashboardLoading(true)
     setError(null)
     getTeamMembers()
       .then((data) => {
@@ -32,6 +35,7 @@ export default function TeamsPage() {
       .finally(() => {
         if (cancelled) return
         setLoading(false)
+        setDashboardLoading(false)
       })
     return () => {
       cancelled = true

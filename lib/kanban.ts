@@ -12,6 +12,8 @@ type BoardRow = {
   title: string
   description: string | null
   created_by: string
+  background_color: string | null
+  logo_url: string | null
 }
 
 export async function fetchBoards(): Promise<BoardRow[]> {
@@ -19,7 +21,7 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   try {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by")
+      .select("id,title,description,created_by,background_color,logo_url")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .order("created_at" as any, { ascending: false })
 
@@ -28,7 +30,7 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   } catch {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by")
+      .select("id,title,description,created_by,background_color,logo_url")
 
     if (error) throw new Error(error.message)
     return (data ?? []) as BoardRow[]
@@ -114,7 +116,7 @@ export async function getOrCreateBoardByTitle(params: {
   const title = params.title.trim()
   const { data: existing, error: findError } = await supabase
     .from("boards")
-    .select("id,title,description,created_by")
+    .select("id,title,description,created_by,background_color,logo_url")
     .eq("title", title)
     .limit(1)
 
@@ -129,7 +131,7 @@ export async function getOrCreateBoardByTitle(params: {
       description: params.description?.trim() || null,
       created_by: params.createdBy,
     })
-    .select("id,title,description,created_by")
+    .select("id,title,description,created_by,background_color,logo_url")
     .single()
 
   if (error) throw new Error(error.message)
@@ -140,6 +142,7 @@ export async function createBoard(params: {
   title: string
   description?: string
   createdBy: string
+  backgroundColor?: string
 }): Promise<BoardRow> {
   const { data, error } = await supabase
     .from("boards")
@@ -147,8 +150,33 @@ export async function createBoard(params: {
       title: params.title.trim(),
       description: params.description?.trim() || null,
       created_by: params.createdBy,
+      background_color: params.backgroundColor ?? null,
     })
-    .select("id,title,description,created_by")
+    .select("id,title,description,created_by,background_color,logo_url")
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data as BoardRow
+}
+
+export async function updateBoard(params: {
+  id: string
+  title?: string
+  description?: string | null
+  backgroundColor?: string | null
+  logoUrl?: string | null
+}): Promise<BoardRow> {
+  const payload: Partial<BoardRow> & { background_color?: string | null } = {}
+  if (params.title !== undefined) payload.title = params.title.trim()
+  if (params.description !== undefined) payload.description = params.description?.trim() || null
+  if (params.backgroundColor !== undefined) payload.background_color = params.backgroundColor
+  if (params.logoUrl !== undefined) payload.logo_url = params.logoUrl
+
+  const { data, error } = await supabase
+    .from("boards")
+    .update(payload)
+    .eq("id", params.id)
+    .select("id,title,description,created_by,background_color,logo_url")
     .single()
 
   if (error) throw new Error(error.message)
@@ -259,8 +287,29 @@ export async function createBoardColumn(params: {
 export async function updateBoardColumnsPositions(params: {
   updates: Array<{ id: string; position: number }>
 }) {
-  const { error } = await supabase.from("board_columns").upsert(params.updates, { onConflict: "id" })
-  if (error) throw new Error(error.message)
+  // Usamos UPDATE simples em vez de UPSERT para evitar inserts com board_id nulo.
+  const { error } = await supabase
+    .from("board_columns")
+    .update(
+      params.updates.reduce<Record<string, number>>((acc, curr) => {
+        // esse objeto é ignorado, pois usamos .eq por id em cada chamada abaixo
+        return acc
+      }, {}),
+    )
+
+  // Como o update em lote acima não funciona bem com diferentes posições por linha,
+  // aplicamos as atualizações individualmente para cada coluna.
+  if (error) {
+    // fallback: atualizar uma a uma
+    for (const u of params.updates) {
+      const { error: updateError } = await supabase
+        .from("board_columns")
+        .update({ position: u.position })
+        .eq("id", u.id)
+      if (updateError) throw new Error(updateError.message)
+    }
+    return
+  }
 }
 
 export async function createBoardCard(params: {
@@ -365,6 +414,68 @@ export async function removeBoardCard(cardId: string) {
 export async function removeBoardColumn(columnId: string) {
   const { error } = await supabase.from("board_columns").delete().eq("id", columnId)
   if (error) throw new Error(error.message)
+}
+
+export async function removeBoard(boardId: string) {
+  // Remove um quadro inteiro e todos os dados relacionados.
+  // Assumimos as seguintes relações:
+  // - board_cards.board_id -> boards.id
+  // - board_columns.board_id -> boards.id
+  // - card_tasks.card_id -> board_cards.id
+  // - card_assignees.card_id -> board_cards.id
+
+  // 1) Buscar todos os cards do board
+  const { data: cardRows, error: cardsError } = await supabase
+    .from("board_cards")
+    .select("id")
+    .eq("board_id", boardId)
+
+  if (cardsError) throw new Error(cardsError.message)
+
+  const cardIds = (cardRows ?? []).map((c) => c.id as string)
+
+  // 2) Apagar tarefas de checklist ligadas aos cards
+  if (cardIds.length > 0) {
+    const { error: tasksError } = await supabase
+      .from("card_tasks")
+      .delete()
+      .in("card_id", cardIds)
+    if (tasksError && tasksError.code !== "PGRST116") {
+      // PGRST116 = no rows to delete; ignoramos
+      throw new Error(tasksError.message)
+    }
+
+    // 3) Apagar responsáveis (card_assignees)
+    const { error: assigneesError } = await supabase
+      .from("card_assignees")
+      .delete()
+      .in("card_id", cardIds)
+    if (assigneesError && assigneesError.code !== "PGRST116") {
+      throw new Error(assigneesError.message)
+    }
+  }
+
+  // 4) Apagar cards do board
+  const { error: deleteCardsError } = await supabase
+    .from("board_cards")
+    .delete()
+    .eq("board_id", boardId)
+  if (deleteCardsError && deleteCardsError.code !== "PGRST116") {
+    throw new Error(deleteCardsError.message)
+  }
+
+  // 5) Apagar colunas do board
+  const { error: deleteColumnsError } = await supabase
+    .from("board_columns")
+    .delete()
+    .eq("board_id", boardId)
+  if (deleteColumnsError && deleteColumnsError.code !== "PGRST116") {
+    throw new Error(deleteColumnsError.message)
+  }
+
+  // 6) Finalmente, apagar o próprio board
+  const { error: deleteBoardError } = await supabase.from("boards").delete().eq("id", boardId)
+  if (deleteBoardError) throw new Error(deleteBoardError.message)
 }
 
 export async function moveBoardCard(params: {

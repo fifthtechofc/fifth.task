@@ -11,8 +11,10 @@ import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
-import { createBoard, createBoardColumn, getOrCreateBoardByTitle } from "@/lib/kanban"
+import { createBoard, createBoardColumn, getOrCreateBoardByTitle, updateBoard } from "@/lib/kanban"
 import { Button } from "@/components/ui/button"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import { HorizontalScroll } from "@/components/kanban/horizontal-scroll"
 import {
   Card,
   CardContent,
@@ -25,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
+import { ColorPicker } from "@/components/ui/color-picker"
 import { cn } from "@/lib/utils"
 
 const steps = [
@@ -40,6 +43,8 @@ interface BoardWizardData {
   description: string
   columnTemplate: ColumnTemplate
   customColumns: string
+  backgroundColor: string
+  logoUrl: string | null
 }
 
 function slugify(input: string) {
@@ -90,7 +95,11 @@ export function BoardCreateMultistepForm() {
     description: "",
     columnTemplate: "simple",
     customColumns: "",
+    backgroundColor: "#0f172a",
+    logoUrl: null,
   })
+
+  const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
 
   const updateFormData = <K extends keyof BoardWizardData>(field: K, value: BoardWizardData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -120,6 +129,7 @@ export function BoardCreateMultistepForm() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
+    setDashboardLoading(true)
     try {
       const {
         data: { user },
@@ -138,6 +148,7 @@ export function BoardCreateMultistepForm() {
           title: t,
           description: formData.description,
           createdBy: user.id,
+          backgroundColor: formData.backgroundColor,
         })
         boardId = created.id
       } catch {
@@ -151,6 +162,11 @@ export function BoardCreateMultistepForm() {
 
       if (!boardId) throw new Error("Não foi possível criar o board.")
 
+      // se o usuário já escolheu uma logo, salva logo_url
+      if (formData.logoUrl) {
+        await updateBoard({ id: boardId, logoUrl: formData.logoUrl })
+      }
+
       for (let i = 0; i < titles.length; i++) {
         await createBoardColumn({
           boardId,
@@ -160,17 +176,25 @@ export function BoardCreateMultistepForm() {
       }
 
       const slug = slugify(t) || "board"
-      toast.success(
+      const message =
         titles.length > 0
           ? `Quadro criado com ${titles.length} coluna(s).`
-          : "Quadro criado. Adicione colunas no Kanban.",
-      )
+          : "Quadro criado. Adicione colunas no Kanban."
+
+      showAlert({
+        variant: "success",
+        title: "Quadro criado com sucesso",
+        description: message,
+      })
       router.push(`/boards/${slug}?id=${encodeURIComponent(boardId)}`)
       router.refresh()
+
+      // Mantém o loader do dashboard ativo até a próxima tela assumir o controle.
+      return
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao criar o quadro.")
-    } finally {
       setIsSubmitting(false)
+      setDashboardLoading(false)
     }
   }
 
@@ -182,59 +206,72 @@ export function BoardCreateMultistepForm() {
     formData.customColumns,
   )
 
-  return (
-    <div className="mx-auto w-full max-w-lg py-6">
-      <motion.div
-        className="mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="mb-2 flex justify-between">
-          {steps.map((step, index) => (
-            <motion.div key={step.id} className="flex flex-col items-center" whileHover={{ scale: 1.1 }}>
-              <motion.div
-                className={cn(
-                  "h-4 w-4 cursor-pointer rounded-full transition-colors duration-300",
-                  index < currentStep
-                    ? "bg-primary"
-                    : index === currentStep
-                      ? "bg-primary ring-4 ring-primary/20"
-                      : "bg-muted",
-                )}
-                onClick={() => {
-                  if (index <= currentStep) setCurrentStep(index)
-                }}
-                whileTap={{ scale: 0.95 }}
-              />
-              <motion.span
-                className={cn(
-                  "mt-1.5 hidden text-xs sm:block",
-                  index === currentStep ? "font-medium text-primary" : "text-muted-foreground",
-                )}
-              >
-                {step.title}
-              </motion.span>
-            </motion.div>
-          ))}
-        </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <motion.div
-            className="h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-      </motion.div>
+  const previewColors = [
+    "bg-sky-500",
+    "bg-amber-500",
+    "bg-violet-500",
+    "bg-emerald-500",
+    "bg-rose-500",
+    "bg-slate-500",
+  ] as const
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <Card className="overflow-hidden rounded-3xl border shadow-md">
-          <div>
+  const effectiveLogoUrl = formData.logoUrl ?? "/Logo.png"
+  const isDefaultLogo = !formData.logoUrl
+
+  return (
+    <div className="relative mx-auto flex w-full max-w-6xl gap-10 py-0">
+      <div className="hidden flex-[0.9] flex-col space-y-6 md:flex">
+        <motion.h1
+          className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          Criar novo quadro
+        </motion.h1>
+        <motion.p
+          className="max-w-md text-sm text-muted-foreground"
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+        >
+          Defina o nome, descrição e colunas iniciais do seu quadro. Você também pode enviar uma logo
+          personalizada agora para deixá-lo com a cara do seu time.
+        </motion.p>
+
+        <motion.div
+          className="mt-8 flex h-64 items-center justify-center"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.12 }}
+        >
+          <div className="relative h-60 w-[22rem] max-w-sm">
+            <div className="absolute -left-3 -top-2 h-44 w-80 overflow-hidden rounded-3xl border border-white/10 bg-black/70 shadow-[0_18px_36px_rgba(0,0,0,0.8)]">
+              <img
+                src="/exemplo2.png"
+                alt="Exemplo de quadro vazio"
+                className="h-full w-full object-cover object-[70%_center]"
+              />
+            </div>
+            <div className="absolute right-0 -bottom-6 h-48 w-[21rem] overflow-hidden rounded-3xl border border-white/10 bg-black/80 shadow-[0_22px_50px_rgba(0,0,0,0.95)]">
+              <img
+                src="/exemplo1.png"
+                alt="Exemplo de quadro com tarefas"
+                className="h-full w-full object-cover object-[60%_center]"
+              />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="flex-[1.6] min-w-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+        <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-3xl border shadow-md">
+          <div className="flex-1">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
@@ -272,6 +309,55 @@ export function BoardCreateMultistepForm() {
                           className="min-h-[100px] transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
                         />
                       </motion.div>
+
+                      <motion.div variants={fadeInUp} className="space-y-2">
+                        <Label>Logo do quadro</Label>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)]">
+                            <img
+                              src={formData.logoUrl ?? "/Logo.png"}
+                              alt="Preview da logo"
+                              className={`h-8 w-8 object-contain ${
+                                formData.logoUrl ? "" : "brightness-0 invert"
+                              }`}
+                            />
+                          </div>
+                          <label className="inline-flex cursor-pointer items-center rounded-md border border-white/15 bg-black/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-black/60">
+                            <span>Enviar logo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+
+                                try {
+                                  const path = `wizard-temp/${Date.now()}-${file.name}`
+                                  const { error: uploadError } = await supabase.storage
+                                    .from("board-logos")
+                                    .upload(path, file, { upsert: true })
+                                  if (uploadError) throw uploadError
+
+                                  const { data } = supabase.storage
+                                    .from("board-logos")
+                                    .getPublicUrl(path)
+                                  if (data?.publicUrl) {
+                                    updateFormData("logoUrl", data.publicUrl)
+                                  }
+                                } catch {
+                                  // feedback de erro pode ser adicionado com toast se necessário
+                                } finally {
+                                  e.target.value = ""
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Se nenhuma logo for enviada, usamos a padrão do sistema.
+                        </p>
+                      </motion.div>
                     </CardContent>
                   </>
                 )}
@@ -284,7 +370,7 @@ export function BoardCreateMultistepForm() {
                         Escolha um modelo ou defina nomes personalizados (um por linha).
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="mt-4 space-y-4">
                       <motion.div variants={fadeInUp} className="space-y-2">
                         <Label>Modelo</Label>
                         <RadioGroup
@@ -341,35 +427,60 @@ export function BoardCreateMultistepForm() {
                   <>
                     <CardHeader>
                       <CardTitle>Revisar e criar</CardTitle>
-                      <CardDescription>Confira antes de abrir o Kanban.</CardDescription>
+                      <CardDescription>Veja uma prévia de como o quadro será criado.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 text-sm">
-                      <motion.div variants={fadeInUp} className="rounded-lg border bg-muted/30 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Título
-                        </p>
-                        <p className="mt-1 font-medium text-foreground">{formData.title.trim() || "—"}</p>
-                        {formData.description.trim() && (
-                          <>
-                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Descrição
-                            </p>
-                            <p className="mt-1 text-muted-foreground">{formData.description.trim()}</p>
-                          </>
-                        )}
-                      </motion.div>
-                      <motion.div variants={fadeInUp} className="rounded-lg border bg-muted/30 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Colunas ({previewColumns.length})
-                        </p>
+                      <motion.div
+                        variants={fadeInUp}
+                        className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                      >
                         {previewColumns.length === 0 ? (
-                          <p className="mt-2 text-muted-foreground">Nenhuma — você adiciona no board.</p>
+                          <p className="text-sm text-muted-foreground">
+                            Este quadro será criado <span className="font-semibold">sem colunas</span>. Você
+                            poderá adicioná-las depois diretamente no Kanban.
+                          </p>
                         ) : (
-                          <ol className="mt-2 list-decimal space-y-1 pl-5 text-foreground">
-                            {previewColumns.map((c) => (
-                              <li key={c}>{c}</li>
-                            ))}
-                          </ol>
+                          <>
+                            <div className="mb-2 text-center">
+                              <p className="text-sm font-semibold text-foreground">
+                                {formData.title.trim() || "Quadro sem título"}
+                              </p>
+                              {formData.description.trim() && (
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {formData.description.trim()}
+                                </p>
+                              )}
+                            </div>
+                            <HorizontalScroll className="mt-1 h-56 rounded-2xl border border-white/15 bg-zinc-950/70 px-3 py-3">
+                              <div className="flex h-full items-stretch gap-3">
+                                {previewColumns.map((col, index) => (
+                                  <div
+                                    key={col}
+                                    className="flex w-48 flex-shrink-0 flex-col rounded-xl border border-white/15 bg-zinc-900/80 p-3"
+                                  >
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            "h-2.5 w-2.5 rounded-full",
+                                            previewColors[index % previewColors.length],
+                                          )}
+                                        />
+                                        <p className="truncate text-xs font-semibold text-foreground">
+                                          {col}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="h-9 rounded-md bg-zinc-800/90" />
+                                      <div className="h-9 rounded-md bg-zinc-800/70" />
+                                      <div className="h-9 rounded-md bg-zinc-800/60" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </HorizontalScroll>
+                          </>
                         )}
                       </motion.div>
                     </CardContent>
@@ -377,55 +488,47 @@ export function BoardCreateMultistepForm() {
                 )}
               </motion.div>
             </AnimatePresence>
-
-            <CardFooter className="flex justify-between pb-4 pt-6">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 0 || isSubmitting}
-                  className="flex items-center gap-1 rounded-2xl transition-all duration-300"
-                >
-                  <ChevronLeft className="h-4 w-4" /> Voltar
-                </Button>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  type="button"
-                  onClick={currentStep === steps.length - 1 ? handleSubmit : nextStep}
-                  disabled={!isStepValid() || isSubmitting}
-                  className="flex items-center gap-1 rounded-2xl transition-all duration-300"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Criando…
-                    </>
-                  ) : (
-                    <>
-                      {currentStep === steps.length - 1 ? "Criar quadro" : "Próximo"}
-                      {currentStep === steps.length - 1 ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            </CardFooter>
           </div>
-        </Card>
-      </motion.div>
 
-      <motion.p
-        className="mt-4 text-center text-sm text-muted-foreground"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        Etapa {currentStep + 1} de {steps.length}: {steps[currentStep].title}
-      </motion.p>
+          <CardFooter className="mt-auto flex justify-between pb-4 pt-6">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 0 || isSubmitting}
+                className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+              >
+                <ChevronLeft className="h-4 w-4" /> Voltar
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                type="button"
+                onClick={currentStep === steps.length - 1 ? handleSubmit : nextStep}
+                disabled={!isStepValid() || isSubmitting}
+                className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Criando…
+                  </>
+                ) : (
+                  <>
+                    {currentStep === steps.length - 1 ? "Criar quadro" : "Próximo"}
+                    {currentStep === steps.length - 1 ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          </CardFooter>
+        </Card>
+        </motion.div>
+      </div>
     </div>
   )
 }
