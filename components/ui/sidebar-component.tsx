@@ -20,12 +20,24 @@ import {
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { fetchBoards } from "@/lib/kanban"
-import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails } from "@/lib/profile"
+import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers, type TeamMember } from "@/lib/profile"
 import { signOutUser } from "@/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { SettingsProfileSection } from "@/components/settings-profile-section"
+import { UserAvatars } from "@/components/ui/user-avatars"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 type NavSectionId =
   | "dashboard"
@@ -157,13 +169,6 @@ const sidebarContent: Record<
               { label: "Criar board", href: "/boards/create" },
             ],
           },
-          {
-            label: "Colunas",
-            children: [
-              { label: "Editar fluxo", href: "/boards" },
-              { label: "Personalizar status", href: "/boards" },
-            ],
-          },
         ],
       },
     ],
@@ -209,10 +214,7 @@ const sidebarContent: Record<
     sections: [
       {
         title: "Pessoas",
-        items: [
-          { label: "Time de desenvolvimento", href: "/teams" },
-          { label: "Time de design", href: "/teams" },
-        ],
+        items: [],
       },
     ],
   },
@@ -334,6 +336,7 @@ export default function SidebarComponent() {
   const [isHovered, setIsHovered] = React.useState(false)
   const [previewSection, setPreviewSection] = React.useState<NavSectionId | null>(null)
   const [boards, setBoards] = React.useState<Array<{ id: string; title: string }>>([])
+  const [teams, setTeams] = React.useState<Array<{ id: string; name: string }>>([])
   const [me, setMe] = React.useState<{ name: string; email: string; avatarUrl: string } | null>(
     null,
   )
@@ -341,37 +344,137 @@ export default function SidebarComponent() {
     "Kanban-Projetos": true,
   })
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
+  const [createTeamOpen, setCreateTeamOpen] = React.useState(false)
+  const [teamName, setTeamName] = React.useState("")
+  const [teamDescription, setTeamDescription] = React.useState("")
+  const [creatingTeam, setCreatingTeam] = React.useState(false)
+  const [allMembers, setAllMembers] = React.useState<TeamMember[]>([])
+  const [selectedMemberIds, setSelectedMemberIds] = React.useState<Set<string>>(new Set())
+  const [membersCollapsed, setMembersCollapsed] = React.useState(false)
   const activeSection = getActiveSection(pathname)
   const visibleSection = previewSection ?? activeSection
   const isCollapsed = !isHovered
-  const content = React.useMemo(() => {
-    if (visibleSection !== "boards") return sidebarContent[visibleSection]
 
-    const projectChildren: MenuChild[] = [
-      ...boards.map((b) => {
-        const slug = slugify(b.title) || "board"
-        return {
-          label: b.title,
-          href: `/boards/${slug}?id=${encodeURIComponent(b.id)}`,
-        }
-      }),
-    ]
-
-    return {
-      ...sidebarContent.boards,
-      sections: sidebarContent.boards.sections.map((section) => ({
-        ...section,
-        items: section.items.map((item) =>
-          item.label === "Projetos"
-            ? {
-                ...item,
-                children: projectChildren,
-              }
-            : item,
-        ),
-      })),
+  React.useEffect(() => {
+    if (!createTeamOpen) return
+    let alive = true
+    ;(async () => {
+      try {
+        const members = await getTeamMembers()
+        if (!alive) return
+        setAllMembers(members)
+      } catch {
+        // silencioso no menu
+      }
+    })()
+    return () => {
+      alive = false
     }
-  }, [boards, visibleSection])
+  }, [createTeamOpen])
+
+  async function handleCreateTeam() {
+    if (!teamName.trim()) return
+    setCreatingTeam(true)
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+      if (userError || !user) throw userError ?? new Error("Usuário não autenticado.")
+
+      const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .insert({
+          name: teamName.trim(),
+          description: teamDescription.trim() || null,
+          created_by: user.id,
+        })
+        .select("id")
+        .single()
+      if (teamError || !team) {
+        console.error("Erro ao criar time:", teamError)
+        throw teamError ?? new Error("Falha ao criar time.")
+      }
+
+      const memberIds = new Set(selectedMemberIds)
+      memberIds.add(user.id)
+
+      if (memberIds.size > 0) {
+        const payload = Array.from(memberIds).map((profileId) => ({
+          team_id: team.id,
+          profile_id: profileId,
+          role: profileId === user.id ? "Líder" : "Membro",
+        }))
+
+        const { error: memberError } = await supabase.from("team_members").insert(payload)
+        if (memberError) {
+          console.error("Erro ao vincular membros ao time:", memberError)
+          throw memberError
+        }
+      }
+
+      setCreateTeamOpen(false)
+      setTeamName("")
+      setTeamDescription("")
+      setSelectedMemberIds(new Set())
+
+      // adiciona o time recém-criado na lista local do sidebar
+      setTeams((prev) => [...prev, { id: team.id, name: teamName.trim() }])
+    } catch (error) {
+      console.error("Erro em handleCreateTeam:", error)
+    } finally {
+      setCreatingTeam(false)
+    }
+  }
+  const content = React.useMemo(() => {
+    if (visibleSection === "boards") {
+      const projectChildren: MenuChild[] = [
+        ...boards.map((b) => {
+          const slug = slugify(b.title) || "board"
+          return {
+            label: b.title,
+            href: `/boards/${slug}?id=${encodeURIComponent(b.id)}`,
+          }
+        }),
+      ]
+
+      return {
+        ...sidebarContent.boards,
+        sections: sidebarContent.boards.sections.map((section) => ({
+          ...section,
+          items: section.items.map((item) =>
+            item.label === "Projetos"
+              ? {
+                  ...item,
+                  children: projectChildren,
+                }
+              : item,
+          ),
+        })),
+      }
+    }
+
+    if (visibleSection === "teams") {
+      return {
+        ...sidebarContent.teams,
+        sections: sidebarContent.teams.sections.map((section) => ({
+          ...section,
+          items: [
+            {
+              label: "Todos os membros",
+              href: "/teams",
+            },
+            ...teams.map((t) => ({
+              label: t.name,
+              href: `/teams?teamId=${encodeURIComponent(t.id)}`,
+            })),
+          ],
+        })),
+      }
+    }
+
+    return sidebarContent[visibleSection]
+  }, [boards, teams, visibleSection])
 
   React.useEffect(() => {
     let alive = true
@@ -401,6 +504,34 @@ export default function SidebarComponent() {
       }
     }
     void loadBoards()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // carrega times que o usuário criou para mostrar no sidebar
+  React.useEffect(() => {
+    let alive = true
+    async function loadTeams() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data, error } = await supabase
+          .from("teams")
+          .select("id, name")
+          .eq("created_by", user.id)
+          .order("created_at", { ascending: true })
+
+        if (error || !data || !alive) return
+        setTeams(data.map((t) => ({ id: t.id, name: t.name })))
+      } catch {
+        // ignora erros silenciosamente no menu
+      }
+    }
+    void loadTeams()
     return () => {
       alive = false
     }
@@ -637,18 +768,189 @@ export default function SidebarComponent() {
         </div>
 
         <div className={cn("flex flex-col gap-2", isCollapsed && "items-center")}>
-          <Link
-            href="/boards/create"
-            className={cn(
-              "rounded-2xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
-              isCollapsed ? "flex h-10 w-10 items-center justify-center" : "flex items-center justify-between px-3 py-3",
-            )}
-            title="Criar novo quadro"
-            aria-label="Criar novo quadro"
-          >
-            {!isCollapsed && <span className="text-sm font-semibold">Criar novo quadro</span>}
-            <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
-          </Link>
+          {visibleSection === "teams" ? (
+            <Sheet open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-2xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
+                    isCollapsed
+                      ? "flex h-10 w-10 items-center justify-center"
+                      : "flex items-center justify-between px-3 py-3",
+                  )}
+                  title="Criar novo time"
+                  aria-label="Criar novo time"
+                >
+                  {!isCollapsed && <span className="text-sm font-semibold">Criar novo time</span>}
+                  <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                showClose
+                className="border-l border-white/10 bg-zinc-950/95 text-foreground"
+              >
+                <SheetHeader>
+                  <SheetTitle>Novo time</SheetTitle>
+                  <SheetDescription>
+                    Defina o nome e uma breve descrição para o time.
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-4 space-y-4 px-2">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-zinc-300">Nome do time</p>
+                    <Input
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      placeholder="Ex: Time de desenvolvimento"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-zinc-300">Descrição (opcional)</p>
+                    <Textarea
+                      rows={3}
+                      value={teamDescription}
+                      onChange={(e) => setTeamDescription(e.target.value)}
+                      placeholder="Uma frase que explique o foco deste time."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between text-xs font-medium text-zinc-300"
+                      onClick={() => {
+                        setMembersCollapsed((prev) => !prev)
+                      }}
+                    >
+                      <span>Membros do time</span>
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                        {selectedMemberIds.size > 0 && (
+                          <span>{selectedMemberIds.size} selecionado(s)</span>
+                        )}
+                        <ChevronDown
+                          className={cn(
+                            "h-3 w-3 transition-transform",
+                            membersCollapsed ? "-rotate-90" : "rotate-0",
+                          )}
+                        />
+                      </div>
+                    </button>
+                    {membersCollapsed && selectedMemberIds.size > 0 && (
+                      <div className="flex justify-center pt-4">
+                        <UserAvatars
+                          users={allMembers
+                            .filter((m) => selectedMemberIds.has(m.id))
+                            .map((m) => ({
+                              id: m.id,
+                              name: m.name,
+                              image: m.imageSrc,
+                            }))}
+                          size={48}
+                          maxVisible={6}
+                          overlap={55}
+                          focusScale={1.15}
+                          isOverlapOnly
+                        />
+                      </div>
+                    )}
+                    {!membersCollapsed && (
+                      <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2">
+                      {allMembers.length === 0 && (
+                        <p className="text-xs text-zinc-500">Nenhum membro disponível.</p>
+                      )}
+                      {allMembers.map((member) => {
+                        const checked = selectedMemberIds.has(member.id)
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedMemberIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(member.id)) {
+                                  next.delete(member.id)
+                                } else {
+                                  next.add(member.id)
+                                }
+                                return next
+                              })
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
+                              checked ? "bg-white/15 text-white" : "text-zinc-300 hover:bg-white/5",
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Avatar className="h-6 w-6 border border-white/10">
+                                <AvatarImage
+                                  src={member.imageSrc || undefined}
+                                  alt={member.name}
+                                />
+                                <AvatarFallback className="bg-white/10 text-[10px] font-semibold text-white">
+                                  {member.name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{member.name}</span>
+                            </div>
+                            <span
+                              className={cn(
+                                "ml-2 h-3 w-3 rounded-full border border-white/20",
+                                checked ? "bg-emerald-400" : "bg-transparent",
+                              )}
+                            />
+                          </button>
+                        )
+                      })}
+                      </div>
+                    )}
+                    <p className="mt-8 text-center text-[10px] text-zinc-500">
+                      * Você será adicionado automaticamente como líder do time.
+                    </p>
+                  </div>
+                </div>
+
+                <SheetFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCreateTeamOpen(false)}
+                    disabled={creatingTeam}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCreateTeam}
+                    disabled={!teamName.trim() || creatingTeam}
+                  >
+                    {creatingTeam ? "Criando..." : "Criar time"}
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Link
+              href="/boards/create"
+              className={cn(
+                "rounded-2xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
+                isCollapsed
+                  ? "flex h-10 w-10 items-center justify-center"
+                  : "flex items-center justify-between px-3 py-3",
+              )}
+              title="Criar novo quadro"
+              aria-label="Criar novo quadro"
+            >
+              {!isCollapsed && <span className="text-sm font-semibold">Criar novo quadro</span>}
+              <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
+            </Link>
+          )}
 
         {!isCollapsed && me && (
           <button
@@ -673,6 +975,9 @@ export default function SidebarComponent() {
 
         <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
           <DialogContent className="w-full max-w-3xl max-h-[85vh] overflow-y-auto border-none bg-transparent p-0">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Editar perfil</DialogTitle>
+            </DialogHeader>
             <SettingsProfileSection
               showSummary={false}
               onDetailsSaved={() => setProfileDialogOpen(false)}
