@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Calendar,
+  Camera,
   ChevronDown,
   FolderKanban,
   LayoutDashboard,
@@ -19,9 +20,12 @@ import {
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { fetchBoards } from "@/lib/kanban"
-import { getMyProfile } from "@/lib/profile"
+import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails } from "@/lib/profile"
 import { signOutUser } from "@/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { SettingsProfileSection } from "@/components/settings-profile-section"
 
 type NavSectionId =
   | "dashboard"
@@ -336,6 +340,7 @@ export default function SidebarComponent() {
   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({
     "Kanban-Projetos": true,
   })
+  const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
   const activeSection = getActiveSection(pathname)
   const visibleSection = previewSection ?? activeSection
   const isCollapsed = !isHovered
@@ -418,8 +423,9 @@ export default function SidebarComponent() {
         const avatarUrl = String(profile.avatar_url ?? profile.avatarUrl ?? profile.avatar ?? "")
 
         if (!alive) return
+        const safeName = name.trim() || "Usuário"
         setMe({
-          name: name.trim() || "Usuário",
+          name: safeName,
           email: email.trim(),
           avatarUrl: avatarUrl.trim(),
         })
@@ -644,22 +650,35 @@ export default function SidebarComponent() {
             <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
           </Link>
 
-        {!isCollapsed && (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+        {!isCollapsed && me && (
+          <button
+            type="button"
+            onClick={() => setProfileDialogOpen(true)}
+            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/10"
+          >
             <Avatar className="h-9 w-9 border border-white/10">
-              <AvatarImage src={me?.avatarUrl || undefined} alt={me?.name || "Usuário"} />
+              <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuário"} />
               <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
-                {initials(me?.name || "Usuário")}
+                {initials(me.name || "Usuário")}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{me?.name || "Usuário"}</p>
-              <p className="truncate text-xs text-zinc-500">{me?.email || "—"}</p>
+              <p className="truncate text-sm font-medium">{me.name || "Usuário"}</p>
+              <p className="truncate text-xs text-zinc-500">{me.email || "—"}</p>
             </div>
-          </div>
+          </button>
         )}
         </div>
         </aside>
+
+        <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+          <DialogContent className="w-full max-w-3xl max-h-[85vh] overflow-y-auto border-none bg-transparent p-0">
+            <SettingsProfileSection
+              showSummary={false}
+              onDetailsSaved={() => setProfileDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

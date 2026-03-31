@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 
 import NeuralBackground from '@/components/ui/flow-field-background'
 import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
+import PasswordInput from '@/components/ui/password-input-1'
 import { signInWithEmail, signUpWithEmail } from '@/lib/auth'
 import { PREDEFINED_JOB_TITLES } from '@/lib/job-titles'
 import { cn } from '@/lib/utils'
@@ -307,7 +308,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
           />
 
           <form
-            className="relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden text-center sm:gap-3 md:gap-4"
+            className="relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-2 overflow-y-auto text-center sm:gap-3 md:gap-4"
             onSubmit={handleSubmit}
             noValidate
           >
@@ -442,17 +443,21 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
                     delay: isRegister ? 0.24 : 0.2,
                   })}
                 >
-                  <AppInput
-                    name="password"
-                    placeholder="Senha"
-                    type="password"
-                    autoComplete={
-                      isRegister ? 'new-password' : 'current-password'
-                    }
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
+                  {isRegister ? (
+                    <div className="flex justify-center">
+                      <PasswordInput />
+                    </div>
+                  ) : (
+                    <AppInput
+                      name="password"
+                      placeholder="Senha"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                    />
+                  )}
                 </motion.div>
                 {isRegister && (
                   <motion.div
