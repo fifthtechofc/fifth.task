@@ -16,7 +16,7 @@ import { getTeamMembers, type TeamMember } from "@/lib/profile"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { Crown, Pencil, ChevronDown, Plus } from "lucide-react"
+import { Crown, Pencil, Plus } from "lucide-react"
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { UserAvatars } from "@/components/ui/user-avatars"
+import { MembersSelect } from "@/components/ui/members-select"
 
 function getStatusClasses(status: TeamMember["status"]) {
   if (status === "online") return "bg-emerald-400"
@@ -56,7 +56,6 @@ export default function TeamsPage() {
   const [editDescription, setEditDescription] = useState("")
   const [savingTeam, setSavingTeam] = useState(false)
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set())
-  const [membersCollapsed, setMembersCollapsed] = useState(false)
 
   const isCurrentUserLeader =
     !!teamId &&
@@ -312,116 +311,17 @@ export default function TeamsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between text-xs font-medium text-zinc-300"
-                      onClick={() => setMembersCollapsed((prev) => !prev)}
-                    >
-                      <span>Membros deste time</span>
-                      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
-                        {selectedMemberIds.size > 0 && (
-                          <span>{selectedMemberIds.size} selecionado(s)</span>
-                        )}
-                        <ChevronDown
-                          className={cn(
-                            "h-3 w-3 transition-transform",
-                            membersCollapsed ? "-rotate-90" : "rotate-0",
-                          )}
-                        />
-                      </div>
-                    </button>
-                    {membersCollapsed && selectedMemberIds.size > 0 && (
-                      <div className="flex justify-center pt-6">
-                        <UserAvatars
-                          users={allProfiles
-                            .filter((m) => selectedMemberIds.has(m.id))
-                            .map((m) => ({
-                              id: m.id,
-                              name: m.name,
-                              image: m.imageSrc,
-                            }))}
-                          size={52}
-                          maxVisible={6}
-                          overlap={55}
-                          focusScale={1.15}
-                          isOverlapOnly
-                        />
-                      </div>
-                    )}
-                    {!membersCollapsed && (
-                      <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-3">
-                      {allProfiles.length === 0 && (
-                        <p className="text-xs text-zinc-500">
-                          Nenhum membro disponível para vincular.
-                        </p>
-                      )}
-                      {allProfiles.map((member) => {
-                        const selected = selectedMemberIds.has(member.id)
-                        return (
-                        <div
-                          key={member.id}
-                          className={cn(
-                            "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs transition-colors",
-                            selected ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
-                          )}
-                          onClick={() => {
-                            setSelectedMemberIds((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(member.id)) next.delete(member.id)
-                              else next.add(member.id)
-                              return next
-                            })
-                          }}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Avatar className="h-7 w-7 border border-white/15">
-                              <AvatarImage src={member.imageSrc} alt={member.name} />
-                              <AvatarFallback className="bg-white/10 text-[10px] font-semibold text-white">
-                                {member.name
-                                  .split(" ")
-                                  .map((p) => p[0])
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-medium text-foreground">
-                                {member.name}
-                              </p>
-                              {member.role && (
-                                <p className="truncate text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                                  {member.role}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {teamRolesByMember[member.id] === "Líder" && (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-white/25 bg-white/5 text-white">
-                                <Crown className="h-3 w-3" />
-                              </span>
-                            )}
-                            {member.status && (
-                              <span
-                                className={cn(
-                                  "h-2.5 w-2.5 rounded-full",
-                                  getStatusClasses(member.status),
-                                )}
-                              />
-                            )}
-                            <span
-                              className={cn(
-                                "ml-1 h-3 w-3 rounded-full border border-white/30",
-                                selected ? "bg-emerald-400" : "bg-transparent",
-                              )}
-                            />
-                          </div>
-                        </div>
-                        )
-                      })}
-                      </div>
-                    )}
+                    <MembersSelect
+                      label="Membros deste time"
+                      buttonLabel="Membros deste time"
+                      members={allProfiles.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        imageSrc: m.imageSrc,
+                      }))}
+                      selectedIds={[...selectedMemberIds]}
+                      onChange={(ids) => setSelectedMemberIds(new Set(ids))}
+                    />
                   </div>
                 </div>
 

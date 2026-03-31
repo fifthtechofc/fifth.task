@@ -262,7 +262,8 @@ export function Column({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2">
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto pr-1">
+        <div className="space-y-2">
         {column.tasks.map((task) =>
           editingTaskId === task.id ? (
             <div key={task.id} className="space-y-2">
@@ -334,6 +335,7 @@ export function Column({
               key={task.id}
               task={task}
               columnColor={columnColor}
+              columnTitle={column.title}
               isDragging={draggedTask?.task.id === task.id}
               onDragStart={() => onTaskDragStart(task, column.id)}
               onDragEnd={onTaskDragEnd}
@@ -343,6 +345,7 @@ export function Column({
             />
           )
         )}
+        </div>
 
         {allowAddTask && addingCardTo === column.id && (
           <AddTaskForm

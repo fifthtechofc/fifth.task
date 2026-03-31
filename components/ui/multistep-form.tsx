@@ -7,7 +7,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, Loader2, Pencil } from "lucide-react"
 import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
@@ -245,19 +245,19 @@ export function BoardCreateMultistepForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.12 }}
         >
-          <div className="relative h-60 w-[22rem] max-w-sm">
-            <div className="absolute -left-3 -top-2 h-44 w-80 overflow-hidden rounded-3xl border border-white/10 bg-black/70 shadow-[0_18px_36px_rgba(0,0,0,0.8)]">
+          <div className="group relative h-60 w-[22rem] max-w-sm">
+            <div className="absolute -left-3 -top-2 h-44 w-80 overflow-hidden rounded-3xl border border-white/10 bg-black/70 shadow-[0_14px_30px_rgba(0,0,0,0.75)] transition-all duration-300 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.35)] group-hover:scale-[1.02]">
               <img
                 src="/exemplo2.png"
                 alt="Exemplo de quadro vazio"
-                className="h-full w-full object-cover object-[70%_center]"
+                className="h-full w-full object-cover object-[70%_center] transition-transform duration-300 group-hover:scale-105"
               />
             </div>
-            <div className="absolute right-0 -bottom-6 h-48 w-[21rem] overflow-hidden rounded-3xl border border-white/10 bg-black/80 shadow-[0_22px_50px_rgba(0,0,0,0.95)]">
+            <div className="absolute right-0 -bottom-6 h-48 w-[21rem] overflow-hidden rounded-3xl border border-white/10 bg-black/80 shadow-[0_18px_40px_rgba(0,0,0,0.9)] transition-all duration-300 group-hover:shadow-[0_0_38px_rgba(255,255,255,0.4)] group-hover:scale-[1.02]">
               <img
                 src="/exemplo1.png"
                 alt="Exemplo de quadro com tarefas"
-                className="h-full w-full object-cover object-[60%_center]"
+                className="h-full w-full object-cover object-[60%_center] transition-transform duration-300 group-hover:scale-105"
               />
             </div>
           </div>
@@ -312,18 +312,20 @@ export function BoardCreateMultistepForm() {
 
                       <motion.div variants={fadeInUp} className="space-y-2">
                         <Label>Logo do quadro</Label>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)]">
-                            <img
-                              src={formData.logoUrl ?? "/Logo.png"}
-                              alt="Preview da logo"
-                              className={`h-8 w-8 object-contain ${
-                                formData.logoUrl ? "" : "brightness-0 invert"
-                              }`}
-                            />
-                          </div>
-                          <label className="inline-flex cursor-pointer items-center rounded-md border border-white/15 bg-black/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-black/60">
-                            <span>Enviar logo</span>
+                        <div className="flex items-center gap-3 pt-1">
+                          <label className="relative inline-flex cursor-pointer items-center">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_0_26px_rgba(255,255,255,0.55)]">
+                              <img
+                                src={formData.logoUrl ?? "/Logo.png"}
+                                alt="Preview da logo"
+                                className={`h-10 w-10 object-contain ${
+                                  formData.logoUrl ? "" : "brightness-0 invert"
+                                }`}
+                              />
+                              <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black/60 bg-white text-black shadow-md">
+                                <Pencil className="h-3 w-3" />
+                              </span>
+                            </div>
                             <input
                               type="file"
                               accept="image/*"
