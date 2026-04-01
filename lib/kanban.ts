@@ -12,8 +12,32 @@ type BoardRow = {
   title: string
   description: string | null
   created_by: string
+  created_at?: string | null
   background_color: string | null
   logo_url: string | null
+}
+
+function slugifyBoardTitle(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+}
+
+export function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim(),
+  )
+}
+
+export function getBoardDisplayTitle(title: string | null | undefined) {
+  const normalized = title?.trim() ?? ""
+  if (!normalized) return "Quadro sem nome"
+  if (isUuidLike(normalized)) return "Quadro sem nome"
+  return normalized
 }
 
 export async function fetchBoards(): Promise<BoardRow[]> {
@@ -21,7 +45,7 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   try {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by,background_color,logo_url")
+      .select("id,title,description,created_by,created_at,background_color,logo_url")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .order("created_at" as any, { ascending: false })
 
@@ -30,11 +54,27 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   } catch {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by,background_color,logo_url")
+      .select("id,title,description,created_by,created_at,background_color,logo_url")
 
     if (error) throw new Error(error.message)
     return (data ?? []) as BoardRow[]
   }
+}
+
+export async function fetchBoardById(boardId: string): Promise<BoardRow | null> {
+  const { data, error } = await supabase
+    .from("boards")
+    .select("id,title,description,created_by,created_at,background_color,logo_url")
+    .eq("id", boardId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as BoardRow | null) ?? null
+}
+
+export async function fetchBoardBySlug(slug: string): Promise<BoardRow | null> {
+  const boards = await fetchBoards()
+  return boards.find((board) => slugifyBoardTitle(board.title) === slug) ?? null
 }
 
 type ColumnRow = {
@@ -116,7 +156,7 @@ export async function getOrCreateBoardByTitle(params: {
   const title = params.title.trim()
   const { data: existing, error: findError } = await supabase
     .from("boards")
-    .select("id,title,description,created_by,background_color,logo_url")
+    .select("id,title,description,created_by,created_at,background_color,logo_url")
     .eq("title", title)
     .limit(1)
 
@@ -131,7 +171,7 @@ export async function getOrCreateBoardByTitle(params: {
       description: params.description?.trim() || null,
       created_by: params.createdBy,
     })
-    .select("id,title,description,created_by,background_color,logo_url")
+    .select("id,title,description,created_by,created_at,background_color,logo_url")
     .single()
 
   if (error) throw new Error(error.message)

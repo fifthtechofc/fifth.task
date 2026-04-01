@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
-import { fetchBoards } from "@/lib/kanban"
+import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
 import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers, type TeamMember } from "@/lib/profile"
 import { signOutUser } from "@/lib/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -83,12 +83,14 @@ const navItems: {
   label: string
   href: string
   icon: React.ReactNode
+  disabled?: boolean
 }[] = [
   {
     id: "dashboard",
     label: "Dashboard",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
+    disabled: true,
   },
   {
     id: "boards",
@@ -119,6 +121,7 @@ const navItems: {
     label: "Analytics",
     href: "/analytics",
     icon: <BarChart3 className="h-4 w-4" />,
+    disabled: true,
   },
   {
     id: "settings",
@@ -136,23 +139,10 @@ const sidebarContent: Record<
     title: "Dashboard",
     sections: [
       {
-        title: "Visao Geral",
+        title: "Em breve",
         items: [
-          { label: "Resumo executivo", href: "/dashboard" },
-          {
-            label: "Indicadores",
-            children: [
-              { label: "Performance geral", href: "/analytics" },
-              { label: "Meta mensal", href: "/analytics" },
-            ],
-          },
-          {
-            label: "Operacao",
-            children: [
-              { label: "Fluxo do time", href: "/teams" },
-              { label: "Capacidade", href: "/projects" },
-            ],
-          },
+          { label: "Modulo em preparacao" },
+          { label: "Liberaremos futuramente" },
         ],
       },
     ],
@@ -180,13 +170,6 @@ const sidebarContent: Record<
         title: "Ativos",
         items: [
           { label: "Todos os projetos", href: "/projects" },
-          {
-            label: "Em andamento",
-            children: [
-              { label: "Website institucional", href: "/projects" },
-              { label: "App mobile", href: "/projects" },
-            ],
-          },
         ],
       },
     ],
@@ -222,16 +205,10 @@ const sidebarContent: Record<
     title: "Analytics",
     sections: [
       {
-        title: "Relatorios",
+        title: "Em breve",
         items: [
-          { label: "Produtividade", href: "/analytics" },
-          {
-            label: "Entregas",
-            children: [
-              { label: "Por sprint", href: "/analytics" },
-              { label: "Por membro", href: "/analytics" },
-            ],
-          },
+          { label: "Modulo em preparacao" },
+          { label: "Liberaremos futuramente" },
         ],
       },
     ],
@@ -265,6 +242,7 @@ function RailNavLink({
   href,
   label,
   icon,
+  disabled = false,
   isActive,
   onHover,
   onClick,
@@ -272,24 +250,26 @@ function RailNavLink({
   href?: string
   label: string
   icon: React.ReactNode
+  disabled?: boolean
   isActive: boolean
   onHover?: () => void
   onClick?: () => void
 }) {
   const [isHovered, setIsHovered] = React.useState(false)
 
-  const Comp: React.ElementType = href ? Link : "button"
+  const Comp: React.ElementType = href && !disabled ? Link : "button"
 
   return (
     <Comp
-      {...(href ? { href } : { type: "button" })}
+      {...(href && !disabled ? { href } : { type: "button" })}
       className="relative flex h-10 w-10 items-center justify-center rounded-xl"
       aria-label={label}
-      title={label}
-      onMouseEnter={onHover}
+      title={disabled ? `${label} • Em breve` : label}
+      onMouseEnter={disabled ? undefined : onHover}
       onMouseOver={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
     >
       <span
         className="pointer-events-none absolute inset-0 rounded-xl transition-all duration-300"
@@ -303,20 +283,35 @@ function RailNavLink({
       <span
         className={cn(
           "relative z-10 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
-          isActive ? "bg-white/12 text-white" : "text-zinc-400"
+          disabled
+            ? "text-zinc-600"
+            : isActive
+              ? "bg-white/12 text-white"
+              : "text-zinc-400"
         )}
         style={{
-          transform: isHovered ? "translateY(-2px) scale(1.08)" : "translateY(0) scale(1)",
-          backgroundColor: isActive
-            ? "rgba(255,255,255,0.12)"
+          transform: disabled
+            ? "translateY(0) scale(1)"
             : isHovered
-              ? "rgba(255,255,255,0.09)"
-              : "transparent",
-          color: isActive || isHovered ? "#ffffff" : "#a1a1aa",
-          boxShadow: isHovered ? "0 0 24px rgba(255,255,255,0.08)" : "none",
+              ? "translateY(-2px) scale(1.08)"
+              : "translateY(0) scale(1)",
+          backgroundColor: disabled
+            ? "rgba(255,255,255,0.03)"
+            : isActive
+              ? "rgba(255,255,255,0.12)"
+              : isHovered
+                ? "rgba(255,255,255,0.09)"
+                : "transparent",
+          color: disabled ? "#52525b" : isActive || isHovered ? "#ffffff" : "#a1a1aa",
+          boxShadow: disabled ? "none" : isHovered ? "0 0 24px rgba(255,255,255,0.08)" : "none",
         }}
       >
         {icon}
+        {disabled && (
+          <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/15 bg-zinc-200 text-[9px] font-bold text-black shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+            ?
+          </span>
+        )}
       </span>
       <span
         className="pointer-events-none absolute top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/10 bg-black/95 px-3 py-1 text-xs font-medium text-white shadow-lg transition-all duration-300"
@@ -325,7 +320,7 @@ function RailNavLink({
           opacity: isHovered ? 1 : 0,
         }}
       >
-        {label}
+        {disabled ? "Pagina em breve" : label}
       </span>
     </Comp>
   )
@@ -494,7 +489,7 @@ export default function SidebarComponent() {
           } catch {
             lastAt = 0
           }
-          return { id: r.id, title: r.title, lastAt }
+          return { id: r.id, title: getBoardDisplayTitle(r.title), lastAt }
         })
 
         withLast.sort((a, b) => b.lastAt - a.lastAt)
@@ -600,8 +595,10 @@ export default function SidebarComponent() {
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
+                disabled={item.disabled}
                 isActive={activeSection === item.id}
                 onHover={() => {
+                  if (item.disabled) return
                   setIsHovered(true)
                   setPreviewSection(item.id)
                 }}
@@ -853,6 +850,21 @@ export default function SidebarComponent() {
                 </SheetFooter>
               </SheetContent>
             </Sheet>
+          ) : visibleSection === "calendar" ? (
+            <Link
+              href="/calendar"
+              className={cn(
+                "rounded-2xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
+                isCollapsed
+                  ? "flex h-10 w-10 items-center justify-center"
+                  : "flex items-center justify-between px-3 py-3",
+              )}
+              title="Adicionar evento"
+              aria-label="Adicionar evento"
+            >
+              {!isCollapsed && <span className="text-sm font-semibold">Adicionar evento</span>}
+              <Plus className={cn("h-4 w-4", isCollapsed && "h-5 w-5")} />
+            </Link>
           ) : (
             <Link
               href="/boards/create"

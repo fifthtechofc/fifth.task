@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { fetchBoards } from "@/lib/kanban"
 
+function slugify(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+}
+
 export function BoardsHome() {
   const router = useRouter()
 
@@ -38,7 +48,8 @@ export function BoardsHome() {
         // Fallback: vai para o primeiro board existente
         const first = boards[0]
         if (first?.id) {
-          router.replace(`/boards/${encodeURIComponent(first.id)}?project=geral`)
+          const slug = slugify(first.title) || "board"
+          router.replace(`/boards/${slug}?id=${encodeURIComponent(first.id)}`)
         }
       } catch {
         // ignore errors

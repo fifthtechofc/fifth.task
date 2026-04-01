@@ -2,7 +2,17 @@
 
 import * as React from "react"
 import { supabase } from "@/lib/supabase"
-import { fetchBoardCards, fetchBoardColumns, getOrCreateBoardByTitle, updateBoard, removeBoard } from "@/lib/kanban"
+import {
+  fetchBoardById,
+  fetchBoardBySlug,
+  fetchBoardCards,
+  fetchBoardColumns,
+  getBoardDisplayTitle,
+  getOrCreateBoardByTitle,
+  isUuidLike,
+  updateBoard,
+  removeBoard,
+} from "@/lib/kanban"
 import { Board } from "@/components/kanban/board"
 import { GlowCard } from "@/components/ui/spotlight-card"
 import { Pencil, Trash2, AlertTriangle } from "lucide-react"
@@ -96,6 +106,23 @@ export function ProjectBoard({ project }: { project: string }) {
           return
         }
 
+        // Compatibilidade com URLs antigas que usavam o id no segmento da rota
+        // em vez de /boards/<slug>?id=<boardId>.
+        const resolvedExistingBoard = isUuidLike(project)
+          ? await fetchBoardById(project)
+          : await fetchBoardBySlug(project)
+
+        if (resolvedExistingBoard) {
+          if (!alive) return
+          setUserId(user.id)
+          setBoardId(resolvedExistingBoard.id)
+          setBoardTitle(resolvedExistingBoard.title)
+          setBoardDescription(resolvedExistingBoard.description)
+          setBackgroundColor(resolvedExistingBoard.background_color ?? null)
+          setLogoUrl(resolvedExistingBoard.logo_url ?? null)
+          return
+        }
+
         const title = formatProjectName(project)
         const board = await getOrCreateBoardByTitle({
           title,
@@ -151,7 +178,7 @@ export function ProjectBoard({ project }: { project: string }) {
     // ignore storage errors
   }
 
-  const heading = boardTitle ?? formatProjectName(project)
+  const heading = getBoardDisplayTitle(boardTitle ?? formatProjectName(project))
   const isDefaultLogo = !logoUrl
   const effectiveLogoUrl = isDefaultLogo ? "/Logo.png" : logoUrl
 
