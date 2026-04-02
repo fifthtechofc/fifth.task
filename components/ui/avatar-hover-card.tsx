@@ -9,7 +9,6 @@ export interface NativeHoverCardProps {
   imageSrc: string
   imageAlt?: string
   name: string
-  username?: string
   description?: string
   buttonText?: string
   onButtonClick?: () => void
@@ -45,7 +44,6 @@ export function AvatarHoverCard({
   imageSrc,
   imageAlt,
   name,
-  username,
   size = "md",
   className,
   variant = "default",
@@ -118,7 +116,6 @@ export function AvatarHoverCard({
             <div className="relative space-y-1.5">
               <div>
                 <h3 className="text-sm font-bold leading-tight text-foreground">{name}</h3>
-                {username && <p className="text-sm text-muted-foreground">@{username}</p>}
               </div>
             </div>
           </motion.div>

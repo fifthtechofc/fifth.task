@@ -48,31 +48,68 @@ function buildCalendarData(events: CalendarEventRecord[]): CalendarData[] {
     .sort((a, b) => a.day.getTime() - b.day.getTime())
 }
 
+function CalendarLoadingSkeleton() {
+  return (
+    <div
+      className="min-h-[520px] animate-pulse rounded-[28px] border border-white/10 bg-black/20"
+      aria-busy="true"
+      aria-label="Carregando calendario"
+    >
+      <div className="flex flex-col gap-4 border-b border-white/10 p-4 lg:flex-row lg:items-center">
+        <div className="h-10 flex-1 max-w-md rounded-md bg-white/10" />
+        <div className="h-10 flex-1 max-w-[220px] rounded-md bg-white/10" />
+        <div className="h-10 w-40 rounded-md bg-white/10" />
+      </div>
+      <div className="grid grid-cols-7 gap-px border-b border-white/10 bg-white/6 p-px">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={`w-${i}`} className="bg-black/25 py-2.5" />
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-px bg-white/6 p-2">
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div key={i} className="min-h-[88px] rounded-lg bg-white/5 lg:min-h-[120px]" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function CalendarWorkspaceView() {
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [eventsLoadError, setEventsLoadError] = React.useState<string | null>(null)
   const [workspaces, setWorkspaces] = React.useState<WorkspaceOption[]>([])
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<string>("")
   const [events, setEvents] = React.useState<CalendarEventRecord[]>([])
 
-  React.useLayoutEffect(() => {
-    setDashboardLoading(loading)
-  }, [loading, setDashboardLoading])
-
   const loadCalendar = React.useCallback(async () => {
     setLoading(true)
     setError(null)
+    setEventsLoadError(null)
 
     try {
       const access = await fetchCalendarAccess()
       const workspaceIds = access.workspaces.map((workspace) => workspace.id)
-      const rows = await fetchCalendarEvents(workspaceIds)
 
       setWorkspaces(access.workspaces)
-      setSelectedWorkspaceId((current) => current || access.defaultWorkspaceId || "")
-      setEvents(rows)
+      setSelectedWorkspaceId((current) => {
+        const next = current || access.defaultWorkspaceId || access.workspaces[0]?.id || ""
+        return next
+      })
+
+      try {
+        const rows = await fetchCalendarEvents(workspaceIds)
+        setEvents(rows)
+      } catch (evErr) {
+        setEvents([])
+        setEventsLoadError(
+          evErr instanceof Error ? evErr.message : "Nao foi possivel carregar os eventos.",
+        )
+      }
     } catch (e) {
+      setWorkspaces([])
+      setEvents([])
       setError(e instanceof Error ? e.message : "Nao foi possivel carregar o calendario.")
     } finally {
       setLoading(false)
@@ -176,7 +213,7 @@ export function CalendarWorkspaceView() {
   }
 
   if (loading) {
-    return null
+    return <CalendarLoadingSkeleton />
   }
 
   if (error) {
@@ -185,21 +222,40 @@ export function CalendarWorkspaceView() {
 
   if (workspaces.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Nenhum workspace disponivel para este usuario.
-      </p>
+      <div className="max-w-xl space-y-2 text-sm text-muted-foreground">
+        <p>Nenhum workspace disponivel para este usuario.</p>
+        <p className="text-xs leading-relaxed text-zinc-500">
+          <span className="font-medium text-zinc-400">Opção A (recomendado, equipa interna):</span> corre{" "}
+          <code className="rounded bg-white/5 px-1">supabase/workspaces_rls_single_tenant_open.sql</code> no
+          SQL Editor.{" "}
+          <span className="font-medium text-zinc-400">Opção B:</span>{" "}
+          <code className="rounded bg-white/5 px-1">workspaces_rls_authenticated_select.sql</code> (mais
+          restritivo).{" "}
+          <span className="font-medium text-zinc-400">Opção C:</span>{" "}
+          <code className="rounded bg-white/5 px-1">SUPABASE_SERVICE_ROLE_KEY</code> no servidor; opcional{" "}
+          <code className="rounded bg-white/5 px-1">CALENDAR_FALLBACK_ALL_WORKSPACES=1</code> se não houver
+          linha em <code className="rounded bg-white/5 px-1">workspace_members</code>.
+        </p>
+      </div>
     )
   }
 
   return (
-    <FullScreenCalendar
-      data={calendarData}
-      workspaces={workspaces}
-      selectedWorkspaceId={selectedWorkspaceId}
-      onWorkspaceChange={setSelectedWorkspaceId}
-      onCreateEvent={handleCreateEvent}
-      onUpdateEvent={handleUpdateEvent}
-      onDeleteEvent={handleDeleteEvent}
-    />
+    <div className="flex flex-col gap-3">
+      {eventsLoadError ? (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          Eventos nao carregaram (o grid do mes continua disponivel): {eventsLoadError}
+        </p>
+      ) : null}
+      <FullScreenCalendar
+        data={calendarData}
+        workspaces={workspaces}
+        selectedWorkspaceId={selectedWorkspaceId}
+        onWorkspaceChange={setSelectedWorkspaceId}
+        onCreateEvent={handleCreateEvent}
+        onUpdateEvent={handleUpdateEvent}
+        onDeleteEvent={handleDeleteEvent}
+      />
+    </div>
   )
 }
