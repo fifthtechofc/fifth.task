@@ -285,7 +285,12 @@ export function ProjectBoard({ project }: { project: string }) {
         </div>
       </GlowCard>
 
-      <Board boardId={boardId} userId={userId} />
+      <Board
+        boardId={boardId}
+        userId={userId}
+        boardProjectSlug={project}
+        boardTitle={boardTitle ?? undefined}
+      />
 
       <Sheet
         open={editingBoard}

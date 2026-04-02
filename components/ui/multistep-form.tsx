@@ -12,6 +12,7 @@ import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
 import { createBoard, createBoardColumn, getOrCreateBoardByTitle, updateBoard } from "@/lib/kanban"
+import { rpcNotifyBoardCreated } from "@/lib/kanban-notifications-rpc"
 import { Button } from "@/components/ui/button"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { HorizontalScroll } from "@/components/kanban/horizontal-scroll"
@@ -143,6 +144,7 @@ export function BoardCreateMultistepForm() {
       const titles = columnTitlesFromTemplate(formData.columnTemplate, formData.customColumns)
 
       let boardId: string | null = null
+      let createdNewBoard = false
       try {
         const created = await createBoard({
           title: t,
@@ -151,6 +153,7 @@ export function BoardCreateMultistepForm() {
           backgroundColor: formData.backgroundColor,
         })
         boardId = created.id
+        createdNewBoard = true
       } catch {
         const existing = await getOrCreateBoardByTitle({
           title: t,
@@ -176,6 +179,9 @@ export function BoardCreateMultistepForm() {
       }
 
       const slug = slugify(t) || "board"
+      if (createdNewBoard && boardId) {
+        void rpcNotifyBoardCreated({ boardId, boardProjectSlug: slug })
+      }
       const message =
         titles.length > 0
           ? `Quadro criado com ${titles.length} coluna(s).`

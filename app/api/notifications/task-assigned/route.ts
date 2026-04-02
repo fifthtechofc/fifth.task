@@ -4,6 +4,7 @@ import { rateLimit, getClientIp } from "@/lib/server/rate-limit"
 import { getSupabaseAnon } from "@/lib/server/supabase-auth"
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin"
 import { sendMail } from "@/lib/server/mailer"
+import { slugifyBoardTitle } from "@/lib/kanban"
 
 type Body = {
   boardId: string
@@ -11,6 +12,7 @@ type Body = {
   taskTitle: string
   taskDescription?: string | null
   assignedUserIds: string[]
+  boardProjectSlug?: string | null
 }
 
 function cleanText(v: unknown) {
@@ -150,7 +152,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseAdmin()
 
-  // Actor display name
+  // Actor display name + avatar (in-app notification)
   const { data: actorProfile } = await admin
     .from("profiles")
     .select("full_name,display_name,email")
@@ -172,7 +174,9 @@ export async function POST(req: Request) {
     .maybeSingle()
   const boardTitle = cleanText(boardRow?.title) || "Quadro"
   const origin = req.headers.get("origin") || "http://localhost:3000"
-  const boardUrl = `${origin}/boards/board?id=${encodeURIComponent(boardId)}`
+  const boardPathSlug =
+    cleanText(body.boardProjectSlug) || slugifyBoardTitle(boardTitle) || "board"
+  const boardUrl = `${origin}/boards/${encodeURIComponent(boardPathSlug)}?id=${encodeURIComponent(boardId)}`
 
   // Recipients
   const { data: recipientRows, error: recipientsErr } = await admin

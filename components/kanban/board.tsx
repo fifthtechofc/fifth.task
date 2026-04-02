@@ -9,6 +9,7 @@ import { EditColumnModal } from "./edit-column-modal"
 import { HorizontalScroll } from "./horizontal-scroll"
 import { GlowCard } from "@/components/ui/spotlight-card"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import { useAppNotifications } from "@/lib/app-notifications-context"
 import { getTeamMembers } from "@/lib/profile"
 import {
   buildKanbanColumns,
@@ -28,11 +29,17 @@ import {
   createChecklistItem,
   inferColumnTypeFromTitle,
 } from "@/lib/kanban"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { httpNotifyTaskAssigned } from "@/lib/notifications-http"
+import { rpcNotifyTaskCreated } from "@/lib/kanban-notifications-rpc"
 
 interface BoardProps {
   boardId: string
   userId: string
+  /** Slug da rota /boards/[project] — usado no link das notificações. */
+  boardProjectSlug?: string
+  /** Título do quadro (ex.: vindo do ProjectBoard) — texto nas notificações locais de atribuição. */
+  boardTitle?: string
   initialColumns?: KanbanColumn[]
   className?: string
   allowAddTask?: boolean
@@ -70,13 +77,41 @@ function withColumnDefaults(column: KanbanColumn): KanbanColumn {
   }
 }
 
+function formatAssigneeNames(
+  ids: string[],
+  teamMembers: Array<{ id: string; name: string; imageSrc: string }>,
+) {
+  const names = ids
+    .map((id) => teamMembers.find((m) => m.id === id)?.name?.trim())
+    .filter((x): x is string => Boolean(x))
+  return names.length > 0 ? names.join(", ") : "Utilizador"
+}
+
+function boardNotificationHref(
+  boardProjectSlug: string | undefined,
+  boardId: string,
+  cardId: string,
+) {
+  const base =
+    boardProjectSlug && boardProjectSlug.length > 0
+      ? `/boards/${encodeURIComponent(boardProjectSlug)}?id=${encodeURIComponent(boardId)}`
+      : `/boards/board?id=${encodeURIComponent(boardId)}`
+  return `${base}&card=${encodeURIComponent(cardId)}`
+}
+
 export function Board({
   boardId,
   userId,
+  boardProjectSlug,
+  boardTitle,
   initialColumns = [],
   className,
   allowAddTask = true,
 }: BoardProps) {
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
+  const handledCardFromQueryRef = React.useRef<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [teamMembers, setTeamMembers] = React.useState<
@@ -122,6 +157,7 @@ export function Board({
   )
 
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
+  const { pushNotification, refreshNotifications } = useAppNotifications()
 
   const resetTaskForm = () => {
     setAddingCardTo(null)
@@ -247,16 +283,20 @@ export function Board({
       return
     }
 
+    const dragSnapshot = draggedTask
+    const movedCardId = dragSnapshot.task.id
+    const sourceColumnId = dragSnapshot.sourceColumnId
+
     const targetColumn = columns.find((c) => c.id === targetColumnId)
     const nextPosition =
       Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) + 1
     const targetColor = targetColumn ? getColumnColor(targetColumn) : defaultColumnPalette.custom
 
     const updatedColumns = columns.map((column) => {
-      if (column.id === draggedTask.sourceColumnId) {
+      if (column.id === sourceColumnId) {
         return {
           ...column,
-          tasks: column.tasks.filter((task) => task.id !== draggedTask.task.id),
+          tasks: column.tasks.filter((task) => task.id !== movedCardId),
         }
       }
 
@@ -266,7 +306,7 @@ export function Board({
           tasks: [
             ...column.tasks,
             {
-              ...draggedTask.task,
+              ...dragSnapshot.task,
               position: nextPosition,
               color: targetColor,
             },
@@ -283,10 +323,12 @@ export function Board({
 
     try {
       await moveBoardCard({
-        id: draggedTask.task.id,
+        id: movedCardId,
         columnId: targetColumnId,
         position: nextPosition,
       })
+      // Notificação: trigger board_cards_column_change_app_notify na base (kanban_activity_notifications_rpc.sql).
+      refreshNotifications()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao mover card.")
     }
@@ -329,6 +371,9 @@ export function Board({
       }
     }
   }
+
+  const openEditTaskRef = React.useRef(handleOpenEditTask)
+  openEditTaskRef.current = handleOpenEditTask
 
   const handleSubmitTask = async (columnId: string) => {
     if (!taskTitleDraft.trim()) return
@@ -413,13 +458,36 @@ export function Board({
       // Notify only newly added assignees.
       const added = nextAssigneeIds.filter((id) => !prevAssigneeIds.includes(id))
       if (added.length > 0) {
-        void httpNotifyTaskAssigned({
-          boardId,
-          cardId,
-          taskTitle: taskTitleDraft.trim(),
-          taskDescription: taskDescriptionDraft.trim() || null,
-          assignedUserIds: added,
-        })
+        void (async () => {
+          const r = await httpNotifyTaskAssigned({
+            boardId,
+            cardId,
+            taskTitle: taskTitleDraft.trim(),
+            taskDescription: taskDescriptionDraft.trim() || null,
+            assignedUserIds: added,
+            boardProjectSlug: boardProjectSlug,
+          })
+          if (!r.ok && "error" in r && r.error) {
+            setError(r.error)
+          } else if (r.inAppRpcError) {
+            setError(`Notificação in-app: ${r.inAppRpcError}`)
+          }
+          if (r.ok) {
+            const boardHref = boardNotificationHref(boardProjectSlug, boardId, cardId)
+            const boardLabel = boardTitle?.trim() || "Quadro"
+            const assigneeLabel = formatAssigneeNames(added, teamMembers)
+            const selfMember = teamMembers.find((m) => m.id === userId)
+            await pushNotification({
+              notificationType: "assignment_actor_confirm",
+              title: "Atribuição",
+              body: `«${taskTitleDraft.trim()}» · «${boardLabel}» · «${assigneeLabel}»`,
+              href: boardHref,
+              cardId,
+              actorName: selfMember?.name?.trim(),
+              imageSrc: selfMember?.imageSrc?.trim() || undefined,
+            })
+          }
+        })()
       }
     } else {
       const col = columns.find((c) => c.id === columnId)
@@ -496,12 +564,45 @@ export function Board({
         }
 
         if (taskAssigneeIdsDraft.length > 0) {
-          void httpNotifyTaskAssigned({
+          void (async () => {
+            const r = await httpNotifyTaskAssigned({
+              boardId,
+              cardId: created.id,
+              taskTitle: taskTitleDraft.trim(),
+              taskDescription: taskDescriptionDraft.trim() || null,
+              assignedUserIds: taskAssigneeIdsDraft,
+              boardProjectSlug: boardProjectSlug,
+            })
+            if (!r.ok && "error" in r && r.error) {
+              setError(r.error)
+            } else if (r.inAppRpcError) {
+              setError(`Notificação in-app: ${r.inAppRpcError}`)
+            }
+            if (r.ok) {
+              const boardHref = boardNotificationHref(boardProjectSlug, boardId, created.id)
+              const boardLabel = boardTitle?.trim() || "Quadro"
+              const assigneeLabel = formatAssigneeNames(taskAssigneeIdsDraft, teamMembers)
+              const selfMember = teamMembers.find((m) => m.id === userId)
+              await pushNotification({
+                notificationType: "assignment_actor_confirm",
+                title: "Atribuição",
+                body: `«${taskTitleDraft.trim()}» · «${boardLabel}» · «${assigneeLabel}»`,
+                href: boardHref,
+                cardId: created.id,
+                actorName: selfMember?.name?.trim(),
+                imageSrc: selfMember?.imageSrc?.trim() || undefined,
+              })
+            }
+          })()
+        }
+
+        {
+          const createdInColumn = columns.find((c) => c.id === columnId)
+          void rpcNotifyTaskCreated({
             boardId,
             cardId: created.id,
-            taskTitle: taskTitleDraft.trim(),
-            taskDescription: taskDescriptionDraft.trim() || null,
-            assignedUserIds: taskAssigneeIdsDraft,
+            columnTitle: createdInColumn?.title ?? "Coluna",
+            boardProjectSlug,
           })
         }
 
@@ -639,6 +740,41 @@ export function Board({
 
   const getLabelColor = (label: string) =>
     defaultLabelColors[label] || "bg-slate-500"
+
+  React.useEffect(() => {
+    const cardId = searchParams.get("card")?.trim() ?? ""
+    if (!cardId) {
+      handledCardFromQueryRef.current = null
+      return
+    }
+    if (loading) return
+    if (handledCardFromQueryRef.current === cardId) return
+
+    let found: { columnId: string; task: KanbanTask; color: string } | null = null
+    for (const col of columns) {
+      const task = col.tasks.find((t) => t.id === cardId)
+      if (task) {
+        const color =
+          task.color ?? col.color ?? defaultColumnPalette[col.type]
+        found = { columnId: col.id, task, color }
+        break
+      }
+    }
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("card")
+    const nextQs = params.toString()
+    const nextUrl = nextQs ? `${pathname}?${nextQs}` : pathname
+
+    if (!found) {
+      router.replace(nextUrl)
+      return
+    }
+
+    handledCardFromQueryRef.current = cardId
+    void openEditTaskRef.current(found.columnId, found.task, found.color)
+    router.replace(nextUrl)
+  }, [loading, columns, searchParams, pathname, router])
 
   async function handleAddChecklistItem(cardId: string) {
     const title = newChecklistTitleDraft.trim()
