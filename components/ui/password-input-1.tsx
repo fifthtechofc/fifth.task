@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Check, Eye, EyeOff, X } from 'lucide-react';
 
 const PASSWORD_REQUIREMENTS = [
@@ -40,9 +40,32 @@ type PasswordStrength = {
   requirements: Requirement[];
 };
 
-const PasswordInput = () => {
-  const [password, setPassword] = useState('');
+type PasswordInputProps = {
+  id?: string
+  name?: string
+  label?: string
+  placeholder?: string
+  autoComplete?: string
+  disabled?: boolean
+  value?: string
+  onChange?: (value: string) => void
+  className?: string
+}
+
+const PasswordInput = ({
+  id = 'password',
+  name = 'password',
+  label = 'Senha',
+  placeholder = 'Senha',
+  autoComplete = 'new-password',
+  disabled = false,
+  value,
+  onChange,
+  className,
+}: PasswordInputProps) => {
+  const [internal, setInternal] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const password = value ?? internal
 
   const calculateStrength = useMemo((): PasswordStrength => {
     const requirements = PASSWORD_REQUIREMENTS.map((req) => ({
@@ -57,32 +80,42 @@ const PasswordInput = () => {
   }, [password]);
 
   return (
-    <div className="w-96 mx-auto">
-      <form className="space-y-2">
-        <label htmlFor="password" className="block text-sm font-medium">
-          Senha
-        </label>
+    <div className={className ?? "w-96 mx-auto"}>
+      <div className="space-y-2">
+        {label ? (
+          <label htmlFor={id} className="block text-sm font-medium">
+            {label}
+          </label>
+        ) : null}
         <div className="relative">
           <input
-            id="password"
+            id={id}
+            name={name}
             type={isVisible ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Senha"
+            onChange={(e) => {
+              const next = e.target.value
+              if (onChange) onChange(next)
+              else setInternal(next)
+            }}
+            placeholder={placeholder}
+            autoComplete={autoComplete}
+            disabled={disabled}
             aria-invalid={calculateStrength.score < 4}
             aria-describedby="password-strength"
-            className="w-full p-2 border-2 rounded-md bg-background outline-none focus-within:border-blue-700 transition"
+            className="w-full p-2 border-2 rounded-md bg-background text-center outline-none focus-within:border-blue-700 transition placeholder:text-center"
           />
           <button
             type="button"
             onClick={() => setIsVisible((prev) => !prev)}
             aria-label={isVisible ? 'Ocultar senha' : 'Mostrar senha'}
-            className="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-muted-foreground/80 "
+            className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-white/90 transition hover:text-white"
+            disabled={disabled}
           >
             {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
-      </form>
+      </div>
 
       <div
         className="mt-3 mb-4 h-1 rounded-full bg-border overflow-hidden"

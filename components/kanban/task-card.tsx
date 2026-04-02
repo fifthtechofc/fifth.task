@@ -1,18 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { AlertTriangle, MessageSquareText, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KanbanTask } from "@/types/kanban"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { AnimatePresence, motion } from "framer-motion"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { MembersSelect } from "@/components/ui/members-select"
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { createCardComment, deleteCardComment, fetchCardComments, fetchUnreadCardCommentsCount, type CardComment } from "@/lib/card-comments"
+import { supabase } from "@/lib/supabase"
 
 interface TaskCardProps {
   task: KanbanTask
@@ -53,6 +69,102 @@ function initials(name: string) {
     .slice(0, 2)
 }
 
+function CommentAuthorAvatar({
+  name,
+  avatarUrl,
+  jobTitle,
+}: {
+  name: string
+  avatarUrl?: string | null
+  jobTitle?: string | null
+}) {
+  const [hover, setHover] = React.useState(false)
+  const label = (jobTitle ?? "").trim() || "Sem cargo"
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <motion.div
+        initial={false}
+        animate={{ y: hover ? -4 : 0, scale: hover ? 1.08 : 1 }}
+        transition={{ type: "spring", stiffness: 320, damping: 24 }}
+        className="h-7 w-7"
+      >
+        <Avatar className="h-7 w-7 ring-1 ring-white/10">
+          <AvatarImage src={avatarUrl || undefined} alt={name} />
+          <AvatarFallback className="text-[8px]">{initials(name)}</AvatarFallback>
+        </Avatar>
+      </motion.div>
+
+      <AnimatePresence initial={false}>
+        {hover && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.14 }}
+            className="pointer-events-none absolute left-1/2 top-7 z-20 w-max max-w-44 -translate-x-1/2 text-center text-[10px] font-semibold text-zinc-200 drop-shadow-[0_10px_28px_rgba(0,0,0,0.6)] break-words"
+          >
+            {label}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CompactTaskPreview({
+  title,
+  description,
+  color,
+  assignees,
+}: {
+  title: string
+  description?: string | null
+  color: string
+  assignees?: Array<{ id: string; name: string; imageSrc: string }>
+}) {
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+      style={{
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06)`,
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="mt-1 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+            <h3 className="truncate text-sm font-semibold text-white">{title}</h3>
+          </div>
+          {description ? (
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-300">{description}</p>
+          ) : (
+            <p className="mt-1 text-xs text-zinc-500">Sem descrição.</p>
+          )}
+        </div>
+
+        {assignees && assignees.length > 0 && (
+          <div className="flex items-center">
+            {assignees.slice(0, 3).map((a, idx) => (
+              <Avatar key={a.id} className={cn("h-7 w-7 border border-white/10", idx > 0 && "-ml-2")}>
+                <AvatarImage src={a.imageSrc || undefined} alt={a.name} />
+                <AvatarFallback className="text-[10px]">{initials(a.name)}</AvatarFallback>
+              </Avatar>
+            ))}
+            {assignees.length > 3 && (
+              <div className="ml-2 text-[10px] font-semibold text-zinc-300">+{assignees.length - 3}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function TaskCard({
   task,
   columnColor,
@@ -67,7 +179,96 @@ export function TaskCard({
   const [isDeleteHovered, setIsDeleteHovered] = React.useState(false)
   const [isEditHovered, setIsEditHovered] = React.useState(false)
   const [openDetails, setOpenDetails] = React.useState(false)
+  const [openComments, setOpenComments] = React.useState(false)
+  const [unreadCount, setUnreadCount] = React.useState(0)
+  const meIdRef = React.useRef<string>("")
+  const [meId, setMeId] = React.useState("")
+  const [commentsLoading, setCommentsLoading] = React.useState(false)
+  const [commentsError, setCommentsError] = React.useState<string | null>(null)
+  const [comments, setComments] = React.useState<CardComment[]>([])
+  const [commentDraft, setCommentDraft] = React.useState("")
+  const [posting, setPosting] = React.useState(false)
   const cardColor = task.color ?? columnColor
+
+  // localStorage is shared across accounts, so "seen" must be per-user
+  const seenKey = React.useMemo(
+    () => (meId ? `ft:cardCommentsSeenAt:${meId}:${task.id}` : ""),
+    [meId, task.id],
+  )
+
+  const markCommentsSeenNow = React.useCallback(() => {
+    if (!seenKey) return
+    try {
+      window.localStorage.setItem(seenKey, new Date().toISOString())
+    } catch {
+      // ignore
+    }
+    setUnreadCount(0)
+  }, [seenKey])
+
+  const refreshUnreadCount = React.useCallback(async () => {
+    try {
+      if (!meId) return
+      if (!seenKey) return
+      let sinceIso: string | null = null
+      try {
+        sinceIso = window.localStorage.getItem(seenKey)
+      } catch {
+        sinceIso = null
+      }
+      const count = await fetchUnreadCardCommentsCount({
+        cardId: task.id,
+        // if the user never opened comments for this card, count everything (excluding own)
+        sinceIso: sinceIso || null,
+        excludeAuthorId: meId,
+      })
+      setUnreadCount(count)
+    } catch {
+      // ignore
+    }
+  }, [meId, seenKey, task.id])
+
+  const loadComments = React.useCallback(async () => {
+    setCommentsLoading(true)
+    setCommentsError(null)
+    try {
+      const rows = await fetchCardComments(task.id)
+      setComments(rows)
+    } catch (e) {
+      setCommentsError(e instanceof Error ? e.message : "Não foi possível carregar comentários.")
+    } finally {
+      setCommentsLoading(false)
+    }
+  }, [task.id])
+
+  React.useEffect(() => {
+    if (!openComments) return
+    void loadComments()
+    markCommentsSeenNow()
+  }, [openComments, loadComments])
+
+  React.useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const { data } = await supabase.auth.getUser()
+        if (!alive) return
+        const id = data.user?.id ?? ""
+        meIdRef.current = id
+        setMeId(id)
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!meId) return
+    void refreshUnreadCount()
+  }, [meId, refreshUnreadCount])
 
   return (
     <>
@@ -144,23 +345,78 @@ export function TaskCard({
               draggable={false}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              onMouseEnter={() => setIsDeleteHovered(true)}
-              onMouseLeave={() => setIsDeleteHovered(false)}
               onClick={(e) => {
                 e.stopPropagation()
-                onRemove()
+                setOpenComments(true)
               }}
-              className="rounded-md p-1.5 transition-all duration-200"
-              style={{
-                backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
-              }}
-              aria-label="Remover tarefa"
+              className="relative rounded-md p-1.5 transition-all duration-200 hover:bg-white/5"
+              aria-label="Comentários"
+              title="Comentários"
             >
-              <Trash2
-                className="h-4 w-4 transition-colors duration-200"
-                style={{ color: isDeleteHovered ? "#ef4444" : "#f4f4f5" }}
-              />
+              <MessageSquareText className="h-4 w-4 text-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-white/10 bg-black/90 px-1 text-[10px] font-semibold text-white shadow-[0_6px_16px_rgba(0,0,0,0.55)]">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  draggable={false}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={() => setIsDeleteHovered(true)}
+                  onMouseLeave={() => setIsDeleteHovered(false)}
+                  className="rounded-md p-1.5 transition-all duration-200"
+                  style={{
+                    backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
+                  }}
+                  aria-label="Remover tarefa"
+                  title="Remover tarefa"
+                >
+                  <Trash2
+                    className="h-4 w-4 transition-colors duration-200"
+                    style={{ color: isDeleteHovered ? "#ef4444" : "#f4f4f5" }}
+                  />
+                </button>
+              </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                      <AlertTriangle className="h-6 w-6 text-red-400" />
+                    </div>
+                    <DialogHeader className="flex-1 space-y-2 text-left">
+                      <DialogTitle>Excluir tarefa</DialogTitle>
+                      <DialogDescription>
+                        Tem certeza que deseja excluir esta tarefa? Essa ação não pode ser desfeita.
+                      </DialogDescription>
+                    </DialogHeader>
+                  </div>
+                  <DialogFooter className="mt-4">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">
+                        Cancelar
+                      </Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemove()
+                        }}
+                      >
+                        Excluir
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -234,6 +490,171 @@ export function TaskCard({
           )}
         </DialogContent>
       </Dialog>
+
+      <Sheet
+        open={openComments}
+        onOpenChange={(open) => {
+          setOpenComments(open)
+          if (!open) {
+            setCommentsError(null)
+            setCommentDraft("")
+            void refreshUnreadCount()
+          }
+        }}
+      >
+        <SheetContent side="right" showClose className="border-l border-border bg-zinc-950/95 text-foreground">
+          <SheetHeader>
+            <SheetTitle>Comentários</SheetTitle>
+          <SheetDescription>Discussão da tarefa</SheetDescription>
+          </SheetHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-3">
+            <CompactTaskPreview
+              title={task.title}
+              description={task.description ?? null}
+              color={cardColor}
+              assignees={task.assignees}
+            />
+
+            <div className="my-2 border-t border-white/10" />
+
+            {commentsError && (
+              <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                {commentsError}
+              </div>
+            )}
+
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 pb-2">
+              {commentsLoading ? (
+                <p className="text-sm text-zinc-400">Carregando…</p>
+              ) : comments.length === 0 ? (
+                <p className="text-sm text-zinc-400">Ainda não há comentários.</p>
+              ) : (
+                comments.map((c) => (
+                  <div
+                    key={c.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-zinc-200">
+                          {c.author?.name || "Usuário"}
+                        </p>
+                      </div>
+                      <CommentAuthorAvatar
+                        name={c.author?.name || "Usuário"}
+                        avatarUrl={c.author?.avatarUrl || null}
+                        jobTitle={c.author?.jobTitle || null}
+                      />
+                    </div>
+                  <div className="mt-3 border-t border-white/10 pt-3">
+                    <p className="whitespace-pre-wrap break-words text-sm text-zinc-200">{c.body}</p>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[10px] text-zinc-500">
+                        {c.createdAt ? new Date(c.createdAt).toLocaleString() : ""}
+                      </p>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-300 transition hover:bg-red-500/10 hover:text-red-400"
+                            aria-label="Excluir comentário"
+                            title="Excluir comentário"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-lg">
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                              <AlertTriangle className="h-6 w-6 text-red-400" />
+                            </div>
+                            <DialogHeader className="flex-1 space-y-2 text-left">
+                              <DialogTitle>Excluir comentário</DialogTitle>
+                              <DialogDescription>
+                                Tem certeza que deseja excluir este comentário? Essa ação não pode ser desfeita.
+                              </DialogDescription>
+                            </DialogHeader>
+                          </div>
+                          <DialogFooter className="mt-4">
+                            <DialogClose asChild>
+                              <Button type="button" variant="outline">
+                                Cancelar
+                              </Button>
+                            </DialogClose>
+                            <DialogClose asChild>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={async () => {
+                                  try {
+                                    await deleteCardComment(c.id)
+                                    await loadComments()
+                                  } catch (e) {
+                                    setCommentsError(
+                                      e instanceof Error ? e.message : "Não foi possível excluir o comentário.",
+                                    )
+                                  }
+                                }}
+                              >
+                                Excluir
+                              </Button>
+                            </DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <SheetFooter>
+            <div className="w-full space-y-2">
+              <Textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Escreva um comentário…"
+                rows={3}
+                className="resize-none border-white/10 bg-black/40 text-sm"
+              />
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadComments()}
+                  disabled={commentsLoading || posting}
+                >
+                  Atualizar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    const body = commentDraft.trim()
+                    if (!body) return
+                    setPosting(true)
+                    try {
+                      await createCardComment({ cardId: task.id, body })
+                      setCommentDraft("")
+                      await loadComments()
+                      markCommentsSeenNow()
+                    } catch (e) {
+                      setCommentsError(e instanceof Error ? e.message : "Não foi possível enviar comentário.")
+                    } finally {
+                      setPosting(false)
+                    }
+                  }}
+                  disabled={posting || !commentDraft.trim()}
+                >
+                  {posting ? "Enviando…" : "Comentar"}
+                </Button>
+              </div>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

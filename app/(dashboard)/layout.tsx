@@ -1,3 +1,4 @@
+import { RequireAuth } from '@/components/auth/require-auth'
 import { DashboardShell } from "@/components/ui/dashboard-shell"
 
 export default function DashboardLayout({
@@ -6,6 +7,8 @@ export default function DashboardLayout({
   children: React.ReactNode
 }>) {
   return (
-    <DashboardShell>{children}</DashboardShell>
+    <RequireAuth>
+      <DashboardShell>{children}</DashboardShell>
+    </RequireAuth>
   )
 }

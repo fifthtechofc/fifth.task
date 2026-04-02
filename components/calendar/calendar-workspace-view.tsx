@@ -56,6 +56,10 @@ export function CalendarWorkspaceView() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<string>("")
   const [events, setEvents] = React.useState<CalendarEventRecord[]>([])
 
+  React.useLayoutEffect(() => {
+    setDashboardLoading(loading)
+  }, [loading, setDashboardLoading])
+
   const loadCalendar = React.useCallback(async () => {
     setLoading(true)
     setError(null)

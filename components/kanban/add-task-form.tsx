@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Menu } from "@ark-ui/react/menu"
 import { ChevronDown } from "lucide-react"
-import { ColorPicker } from "@/components/ui/color-picker"
 import {
   Sheet,
   SheetContent,
@@ -29,7 +28,6 @@ interface AddTaskFormProps {
   heading?: string
   onTitleChange: (value: string) => void
   onDescriptionChange: (value: string) => void
-  onColorChange: (value: string) => void
   onAssigneeIdsChange?: (value: string[]) => void
   onOpen: () => void
   onCancel: () => void
@@ -56,7 +54,6 @@ export function AddTaskForm({
   heading = "Nova tarefa",
   onTitleChange,
   onDescriptionChange,
-  onColorChange,
   onAssigneeIdsChange,
   onOpen,
   onCancel,
@@ -64,6 +61,12 @@ export function AddTaskForm({
 }: AddTaskFormProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [isMembersMenuOpen, setIsMembersMenuOpen] = React.useState(false)
+  const safeColor = React.useMemo(() => {
+    const c = (color ?? '').trim()
+    if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c as `#${string}`
+    if (/^[0-9a-fA-F]{3,8}$/.test(c)) return `#${c}` as `#${string}`
+    return '#64748b' as `#${string}`
+  }, [color])
 
   React.useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -88,7 +91,7 @@ export function AddTaskForm({
           <SheetHeader>
             <SheetTitle>{heading}</SheetTitle>
             <SheetDescription>
-              Defina os detalhes da tarefa, como título, descrição, cor e responsáveis.
+              Defina os detalhes da tarefa, como título, descrição e responsáveis.
             </SheetDescription>
           </SheetHeader>
 
@@ -111,26 +114,16 @@ export function AddTaskForm({
               className="resize-none text-sm transition-all duration-200 focus-visible:ring-primary/40"
             />
 
-            <ColorPicker
-              value={color}
-              hideContrastRatio
-              className="z-50"
-              onValueChange={(val) => onColorChange(val.hex)}
-            >
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-card-foreground"
-              >
-                <span className="text-xs font-medium text-muted-foreground">Cor do card</span>
-                <span
-                  className="h-4 w-4 rounded-md border border-border"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="ml-auto font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {color}
-                </span>
-              </button>
-            </ColorPicker>
+            <div className="flex w-full items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-card-foreground">
+              <span className="text-xs font-medium text-muted-foreground">Cor</span>
+              <span
+                className="h-4 w-4 rounded-md border border-border"
+                style={{ backgroundColor: safeColor }}
+              />
+              <span className="ml-auto text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Herdada da coluna
+              </span>
+            </div>
 
             {onAssigneeIdsChange && assignees.length > 0 && (
               <MembersSelect

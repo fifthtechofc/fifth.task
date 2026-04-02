@@ -404,7 +404,6 @@ export default function TeamsPage() {
               type="button"
               onClick={() => {
                 setEditOpen(true)
-                setMembersCollapsed(false)
               }}
               className="flex min-h-[220px] items-center justify-center rounded-[28px] border border-dashed border-white/15 bg-black/20 px-6 py-6 text-center text-sm text-zinc-300 transition-colors hover:border-white/35 hover:bg-black/30"
             >

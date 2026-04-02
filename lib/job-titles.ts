@@ -10,6 +10,7 @@ export const PREDEFINED_JOB_TITLES = [
   'Analista de Negócios',
   'QA / Testes',
   'DevOps',
+  'CTO',
   'COO',
   'Marketing',
   'Outro (definir depois no perfil)',
@@ -38,6 +39,8 @@ export const JOB_TITLE_DESCRIPTIONS: Record<PredefinedJobTitle, string> = {
     'Garante qualidade com testes e validações, prevenindo regressões e melhorando a confiança.',
   DevOps:
     'Automatiza deploy e infraestrutura, melhorando observabilidade, segurança e performance.',
+  CTO:
+    'Lidera a visão técnica, arquitetura e qualidade da engenharia, alinhando tecnologia às metas do produto.',
   COO:
     'Organiza operações e processos internos para escalar entregas com previsibilidade e eficiência.',
   Marketing:

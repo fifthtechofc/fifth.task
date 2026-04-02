@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { fetchBoards } from "@/lib/kanban"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 
 function slugify(input: string) {
   return input
@@ -17,10 +18,12 @@ function slugify(input: string) {
 
 export function BoardsHome() {
   const router = useRouter()
+  const { setLoading: setDashboardLoading } = useDashboardLoading()
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     let alive = true
     async function decideStartBoard() {
+      setDashboardLoading(true)
       try {
         const {
           data: { user },
@@ -60,7 +63,7 @@ export function BoardsHome() {
     return () => {
       alive = false
     }
-  }, [router])
+  }, [router, setDashboardLoading])
 
   // Não renderiza um board aqui; apenas deixa o loader global aparecer enquanto redireciona.
   return null

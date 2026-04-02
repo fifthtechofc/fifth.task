@@ -65,6 +65,12 @@ export function ProjectBoard({ project }: { project: string }) {
   const [deletingBoard, setDeletingBoard] = React.useState(false)
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
 
+  React.useLayoutEffect(() => {
+    // Mantém o loader global ativo durante a resolução do board.
+    // Quem desliga "de vez" é o componente `Board` quando terminar de carregar colunas/cards.
+    if (loading) setDashboardLoading(true)
+  }, [loading, setDashboardLoading])
+
   React.useEffect(() => {
     let alive = true
     async function load() {

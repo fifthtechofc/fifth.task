@@ -94,7 +94,12 @@ function coalesceProjectTitle(title: string | null | undefined, fallbackId: stri
 function normalizeMember(profile: ProfileRow): ProjectMember {
   return {
     id: profile.id,
-    name: profile.full_name?.trim() || profile.name?.trim() || profile.display_name?.trim() || "Sem nome",
+    name:
+      profile.full_name?.trim() ||
+      profile.display_name?.trim() ||
+      // fallback for older schemas where email is present in ProfileRow
+      (profile as unknown as { email?: string | null }).email?.trim() ||
+      "Sem nome",
     avatarUrl: profile.avatar_url?.trim() || null,
   }
 }
@@ -206,7 +211,7 @@ export async function fetchProjects(): Promise<Project[]> {
     if (allProfileIds.length > 0) {
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id,full_name,name,display_name,avatar_url")
+        .select("id,full_name,display_name,email,avatar_url")
         .in("id", allProfileIds)
 
       for (const profile of (profilesData ?? []) as ProfileRow[]) {

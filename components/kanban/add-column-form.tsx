@@ -42,6 +42,12 @@ export function AddColumnForm({
   onSubmit,
 }: AddColumnFormProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const safeColor = React.useMemo(() => {
+    const c = (color ?? '').trim()
+    if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c as `#${string}`
+    if (/^[0-9a-fA-F]{3,8}$/.test(c)) return `#${c}` as `#${string}`
+    return '#64748b' as `#${string}`
+  }, [color])
 
   React.useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -94,7 +100,7 @@ export function AddColumnForm({
             </div>
 
             <ColorPicker
-              value={color}
+              value={safeColor}
               hideContrastRatio
               className="z-50"
               onValueChange={(val) => onColorChange(val.hex)}
@@ -106,10 +112,10 @@ export function AddColumnForm({
                 <span className="text-xs font-medium text-muted-foreground">Cor da coluna</span>
                 <span
                   className="h-4 w-4 rounded-md border border-border"
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: safeColor }}
                 />
                 <span className="ml-auto font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {color}
+                  {safeColor}
                 </span>
               </button>
             </ColorPicker>

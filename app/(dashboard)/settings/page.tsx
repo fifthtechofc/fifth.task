@@ -1,12 +1,9 @@
 import {
   Bell,
-  Building2,
-  KeyRound,
-  ShieldCheck,
-  SlidersHorizontal,
 } from "lucide-react"
 
 import { SettingsProfileSection } from "@/components/settings-profile-section"
+import { LoginInfoCard } from "@/components/settings/login-info-card"
 
 const notificationSettings = [
   {
@@ -26,20 +23,6 @@ const notificationSettings = [
   },
 ]
 
-const workspaceSettings = [
-  {
-    label: "Fuso horario",
-    value: "America/Sao_Paulo",
-  },
-  {
-    label: "Idioma",
-    value: "Portugues (Brasil)",
-  },
-  {
-    label: "Tema atual",
-    value: "Dark workspace",
-  },
-]
 
 function SettingToggle({
   title,
@@ -93,7 +76,7 @@ export default function SettingsPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
-            <SettingsProfileSection />
+            <SettingsProfileSection showSummary={false} />
 
             <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
               <div className="mb-6 flex items-center gap-3">
@@ -124,122 +107,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-6">
-            <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl border border:white/10 bg-white/5 p-3">
-                  <ShieldCheck className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Seguranca
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Visibilidade do acesso e protecao do workspace.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <KeyRound className="h-4 w-4 text-foreground" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          Autenticacao em duas etapas
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Ativada para contas com permissao administrativa.
-                        </p>
-                      </div>
-                    </div>
-                    <span className="rounded-full border border-white/10 bg-zinc-200/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-black">
-                      Ativa
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        Sessoes abertas
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        3 dispositivos autenticados no momento.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground transition-colors hover:bg-white/10"
-                    >
-                      Revisar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <Building2 className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Workspace
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Parametros gerais do ambiente da equipe.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {workspaceSettings.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4"
-                  >
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      {item.label}
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <SlidersHorizontal className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Preferencias rapidas
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Ajustes frequentes do dia a dia.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <SettingToggle
-                  title="Auto-save"
-                  description="Salvar alteracoes automaticamente ao editar."
-                  enabled={true}
-                />
-                <SettingToggle
-                  title="Modo foco"
-                  description="Reduzir distracoes nas areas de trabalho."
-                  enabled={false}
-                />
-              </div>
-            </section>
+            <LoginInfoCard />
           </div>
         </div>
       </div>

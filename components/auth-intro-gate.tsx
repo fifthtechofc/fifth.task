@@ -2,31 +2,26 @@
 
 import { useEffect, useState } from 'react'
 
-import { IntroLoadingShell } from '@/components/ui/intro-loading-shell'
 import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
 import { AUTH_INTRO_STORAGE_KEY } from '@/lib/intro-storage'
 
 export function AuthIntroGate({ children }: { children: React.ReactNode }) {
-  const [phase, setPhase] = useState<'hydrating' | 'splash' | 'done'>('hydrating')
+  const [phase, setPhase] = useState<'splash' | 'done'>(() => {
+    try {
+      return sessionStorage.getItem(AUTH_INTRO_STORAGE_KEY) === '1' ? 'done' : 'splash'
+    } catch {
+      return 'splash'
+    }
+  })
 
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      try {
-        if (sessionStorage.getItem(AUTH_INTRO_STORAGE_KEY) === '1') {
-          setPhase('done')
-        } else {
-          setPhase('splash')
-        }
-      } catch {
-        setPhase('splash')
-      }
-    }, 0)
-    return () => clearTimeout(id)
+    // cleanup: a tela do dashboard pode travar o loader no logout
+    try {
+      sessionStorage.removeItem('ft:forceDashboardLoader')
+    } catch {
+      // ignore
+    }
   }, [])
-
-  if (phase === 'hydrating') {
-    return <IntroLoadingShell className="z-[300]" />
-  }
 
   if (phase === 'splash') {
     return (
