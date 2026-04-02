@@ -50,7 +50,6 @@ interface ColumnProps {
   onCancelTaskForm: () => void
   onTaskTitleChange: (value: string) => void
   onTaskDescriptionChange: (value: string) => void
-  onTaskColorChange: (value: string) => void
   onChecklistTitleChange: (value: string) => void
   onAddChecklistItem: (cardId: string) => void
   onSubmitTask: (columnId: string) => void
@@ -93,7 +92,6 @@ export function Column({
   onCancelTaskForm,
   onTaskTitleChange,
   onTaskDescriptionChange,
-  onTaskColorChange,
   onChecklistTitleChange,
   onAddChecklistItem,
   onSubmitTask,
@@ -278,7 +276,6 @@ export function Column({
                 submitLabel="Salvar tarefa"
                 onTitleChange={onTaskTitleChange}
                 onDescriptionChange={onTaskDescriptionChange}
-                onColorChange={onTaskColorChange}
                 onAssigneeIdsChange={onAssigneeIdsChange}
                 onOpen={() => undefined}
                 onCancel={onCancelTaskForm}
@@ -359,7 +356,6 @@ export function Column({
             submitLabel="Adicionar"
             onTitleChange={onTaskTitleChange}
             onDescriptionChange={onTaskDescriptionChange}
-            onColorChange={onTaskColorChange}
             onAssigneeIdsChange={onAssigneeIdsChange}
             onOpen={() => undefined}
             onCancel={onCancelTaskForm}
@@ -375,7 +371,6 @@ export function Column({
             color={columnColor}
             onTitleChange={() => undefined}
             onDescriptionChange={() => undefined}
-            onColorChange={() => undefined}
             onOpen={() => onOpenAddCard(column.id, columnColor)}
             onCancel={() => undefined}
             onSubmit={() => undefined}

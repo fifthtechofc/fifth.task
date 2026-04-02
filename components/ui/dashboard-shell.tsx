@@ -29,8 +29,22 @@ export function useDashboardLoading() {
   return ctx;
 }
 
+const POST_AUTH_LOADER_KEY = "ft:postAuthLoader";
+const FORCE_DASHBOARD_LOADER_KEY = "ft:forceDashboardLoader";
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = React.useState(false);
+  const [loading, _setLoading] = React.useState(() => {
+    try {
+      return (
+        window.sessionStorage.getItem(POST_AUTH_LOADER_KEY) === "1" ||
+        window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1"
+      );
+    } catch {
+      return false;
+    }
+  });
+  const desiredLoadingRef = React.useRef<boolean>(loading);
+  const hideTimeoutRef = React.useRef<number | null>(null);
   const [alert, setAlert] = React.useState<{
     id: number;
     variant: AlertVariant;
@@ -38,14 +52,87 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     description?: string;
   } | null>(null);
 
-  const showAlert: DashboardUIContextValue["showAlert"] = (params) => {
+  const setLoading: DashboardUIContextValue["setLoading"] = React.useCallback((value) => {
+    // If a hard lock is active (logout flow), never hide.
+    try {
+      if (!value && window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1") {
+        desiredLoadingRef.current = true;
+        _setLoading(true);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    desiredLoadingRef.current = value;
+
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+
+    if (value) {
+      _setLoading(true);
+      return;
+    }
+
+    // Avoid flicker when multiple components toggle loading back-to-back.
+    hideTimeoutRef.current = window.setTimeout(() => {
+      hideTimeoutRef.current = null;
+      if (!desiredLoadingRef.current) {
+        _setLoading(false);
+        try {
+          window.sessionStorage.removeItem(POST_AUTH_LOADER_KEY);
+        } catch {
+          // ignore
+        }
+      }
+    }, 180);
+  }, []);
+
+  React.useEffect(() => {
+    // Failsafe: if the logout loader lock gets stuck, clear it.
+    // This prevents "infinite loading" in dashboard pages if navigation is interrupted.
+    let id: number | null = null;
+    try {
+      if (window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1") {
+        id = window.setTimeout(() => {
+          try {
+            window.sessionStorage.removeItem(FORCE_DASHBOARD_LOADER_KEY);
+          } catch {
+            // ignore
+          }
+          // if nobody is actively requesting loading, allow hiding
+          if (!desiredLoadingRef.current) {
+            _setLoading(false);
+          }
+        }, 6000);
+      }
+    } catch {
+      // ignore
+    }
+    return () => {
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+      if (id) {
+        window.clearTimeout(id);
+      }
+    };
+  }, []);
+
+  const showAlert: DashboardUIContextValue["showAlert"] = React.useCallback((params) => {
     setAlert({
       id: Date.now(),
       variant: params.variant ?? "success",
       title: params.title,
       description: params.description,
     });
-  };
+  }, []);
+
+  const ctxValue = React.useMemo(
+    () => ({ loading, setLoading, showAlert }),
+    [loading, setLoading, showAlert],
+  );
 
   React.useEffect(() => {
     if (!alert) return;
@@ -56,7 +143,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [alert]);
 
   return (
-    <DashboardUIContext.Provider value={{ loading, setLoading, showAlert }}>
+    <DashboardUIContext.Provider value={ctxValue}>
       <div className="relative h-screen overflow-hidden">
         {/* Alert global do dashboard, sempre acima do conteúdo e do loader */}
         {alert && (

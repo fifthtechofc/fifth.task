@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { setMyStatusOffline } from './profile'
+import { logAuditEvent } from './audit'
 
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -11,6 +12,7 @@ export async function signInWithEmail(email: string, password: string) {
     throw new Error(error.message)
   }
 
+  void logAuditEvent({ action: 'auth.login', metadata: { method: 'password' } })
   return data
 }
 
@@ -38,6 +40,49 @@ export async function signUpWithEmail(
   return data
 }
 
+export async function requestPasswordReset(email: string, redirectTo?: string) {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export async function exchangeCodeForSession(code: string) {
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+
+export async function setSessionFromTokens(params: {
+  accessToken: string
+  refreshToken: string
+}) {
+  const { data, error } = await supabase.auth.setSession({
+    access_token: params.accessToken,
+    refresh_token: params.refreshToken,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+
+export async function updateMyPassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) {
+    throw new Error(error.message)
+  }
+  void logAuditEvent({ action: 'auth.password_change' })
+  return data
+}
+
 export async function signOutUser() {
   try {
     // Best-effort: marca o usuário como offline antes de sair.
@@ -51,4 +96,6 @@ export async function signOutUser() {
   if (error) {
     throw new Error(error.message)
   }
+
+  void logAuditEvent({ action: 'auth.logout' })
 }

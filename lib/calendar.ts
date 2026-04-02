@@ -61,7 +61,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
-    readStartAt: (row) => combineDateAndTime(row.event_date, row.start_time),
+    readStartAt: (row) => combineDateAndTime(row.event_date, row.start_time) ?? "",
     readEndAt: (row) => combineDateAndTime(row.event_date, row.end_time),
   },
   {
@@ -85,7 +85,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
-    readStartAt: (row) => combineDateAndTime(row.date, row.start_time),
+    readStartAt: (row) => combineDateAndTime(row.date, row.start_time) ?? "",
     readEndAt: (row) => combineDateAndTime(row.date, row.end_time),
   },
   {
@@ -151,7 +151,8 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
-    readStartAt: (row) => combineDateAndTime(new Date().toISOString().slice(0, 10), row.start_time),
+    readStartAt: (row) =>
+      combineDateAndTime(new Date().toISOString().slice(0, 10), row.start_time) ?? "",
     readEndAt: (row) => combineDateAndTime(new Date().toISOString().slice(0, 10), row.end_time),
   },
 ]
@@ -363,7 +364,8 @@ export async function fetchCalendarEvents(workspaceIds: string[]) {
     throw new Error(error.message)
   }
 
-  return ((data ?? []) as CalendarEventDbRow[]).map((row) => mapCalendarEventRow(row, schema))
+  const rows = (data ?? []) as unknown as CalendarEventDbRow[]
+  return rows.map((row) => mapCalendarEventRow(row, schema))
 }
 
 export async function createCalendarEvent(input: CalendarEventInput) {
@@ -380,7 +382,7 @@ export async function createCalendarEvent(input: CalendarEventInput) {
     throw new Error(error.message)
   }
 
-  return mapCalendarEventRow(data as CalendarEventDbRow, schema)
+  return mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
 }
 
 export async function updateCalendarEvent(eventId: string, input: CalendarEventInput) {
@@ -396,7 +398,7 @@ export async function updateCalendarEvent(eventId: string, input: CalendarEventI
     throw new Error(error.message)
   }
 
-  return mapCalendarEventRow(data as CalendarEventDbRow, schema)
+  return mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
 }
 
 export async function deleteCalendarEvent(eventId: string) {

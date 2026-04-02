@@ -1,5 +1,6 @@
 "use client"
 
+import type React from "react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react"
@@ -14,7 +15,7 @@ interface CustomAlertProps {
   onClose?: () => void
 }
 
-const icons: Record<AlertVariant, JSX.Element> = {
+const icons: Record<AlertVariant, React.ReactElement> = {
   success: <CheckCircle2 className="h-6 w-6" />,
   error: <X className="h-6 w-6" />,
   warning: <AlertTriangle className="h-6 w-6" />,

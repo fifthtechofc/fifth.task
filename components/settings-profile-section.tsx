@@ -3,13 +3,22 @@
 import { useCallback, useEffect, useId, useState } from "react"
 import { ChevronDown, Pencil, UserRound } from "lucide-react"
 
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails } from "@/lib/profile"
 import { supabase } from "@/lib/supabase"
 import { getAvatarPublicUrl, uploadAvatar } from "@/lib/storage"
+import { PREDEFINED_JOB_TITLES } from "@/lib/job-titles"
 import { cn } from "@/lib/utils"
 
 function pickString(...values: Array<unknown>) {
@@ -47,6 +56,7 @@ export function SettingsProfileSection({
   onDetailsSaved?: () => void
   showSummary?: boolean
 } = {}) {
+  const { setLoading: setDashboardLoading } = useDashboardLoading()
   const fileInputId = useId()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +94,6 @@ export function SettingsProfileSection({
 
       const name = pickString(
         profile.full_name,
-        profile.name,
         profile.display_name,
         user.email,
         'Sem nome',
@@ -123,10 +132,13 @@ export function SettingsProfileSection({
         parseDateMaybe(profile.last_seen_at) ??
         parseDateMaybe(profile.last_active_at) ??
         parseDateMaybe(profile.last_sign_in_at) ??
+        parseDateMaybe(user.last_sign_in_at) ??
         parseDateMaybe(profile.updated_at)
 
       let derived: "online" | "focus" | "offline" = "offline"
-      if (explicit === "online" || explicit === "focus" || explicit === "offline") {
+      // Só tratamos "online" e "focus" como estados explícitos fortes.
+      // "offline" não bloqueia o cálculo por atividade — isso permite voltar a ficar online após logar.
+      if (explicit === "online" || explicit === "focus") {
         derived = explicit as typeof derived
       } else if (activity) {
         const minutes = (Date.now() - activity.getTime()) / 60000
@@ -145,6 +157,11 @@ export function SettingsProfileSection({
   useEffect(() => {
     void load()
   }, [load])
+
+  // Loader global no dashboard enquanto carrega dados do perfil.
+  useEffect(() => {
+    setDashboardLoading(loading)
+  }, [loading, setDashboardLoading])
 
   async function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -333,12 +350,21 @@ export function SettingsProfileSection({
 
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-zinc-300">Cargo</p>
-                  <Input
-                    placeholder="Ex: CTO, Product Designer..."
+                  <Select
                     value={jobTitle === "—" ? "" : jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className="h-9 border-white/15 bg-black/40 text-xs"
-                  />
+                    onValueChange={(v) => setJobTitle(v)}
+                  >
+                    <SelectTrigger className="h-9 border-white/15 bg-black/80 text-xs text-white focus:ring-0 focus:ring-offset-0">
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent side="bottom" avoidCollisions={false} className="border-white/10 bg-black text-white">
+                      {PREDEFINED_JOB_TITLES.map((title) => (
+                        <SelectItem key={title} value={title} className="text-white focus:bg-white/10 focus:text-white">
+                          {title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">

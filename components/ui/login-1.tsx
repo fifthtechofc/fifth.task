@@ -6,11 +6,17 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 import NeuralBackground from '@/components/ui/flow-field-background'
 import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
+import { LoaderOne } from '@/components/ui/unique-loader-components'
 import PasswordInput from '@/components/ui/password-input-1'
-import { signInWithEmail, signUpWithEmail } from '@/lib/auth'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { httpSignInWithEmail, httpSignUpWithEmail } from '@/lib/auth-http'
+import { registerMyDeviceSession } from '@/lib/device-session'
+import { supabase } from '@/lib/supabase'
 import { PREDEFINED_JOB_TITLES } from '@/lib/job-titles'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +24,7 @@ const AUTH_EASE = [0.22, 1, 0.36, 1] as const
 const AUTH_IN_DURATION = 0.48
 
 const MIN_PASSWORD_LENGTH = 6
+const AUTH_NOTICE_KEY = 'ft:authNotice'
 
 type AuthEnterOpts = {
   delay?: number
@@ -34,13 +41,16 @@ function authEnterProps(
   if (reduceMotion) {
     return { initial: false as const }
   }
-  const initial: Record<string, number> = { opacity: 0 }
+  const initial: Record<string, number | string> = {
+    opacity: 0,
+    filter: 'blur(10px)',
+  }
   if (x) initial.x = x
   if (y) initial.y = y
   if (scale !== 1) initial.scale = scale
   return {
     initial,
-    animate: { opacity: 1, x: 0, y: 0, scale: 1 },
+    animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: 'blur(0px)' },
     transition: { duration: AUTH_IN_DURATION, delay, ease: AUTH_EASE },
   }
 }
@@ -168,12 +178,28 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [loginPasswordVisible, setLoginPasswordVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const [postAuthRedirect, setPostAuthRedirect] = useState<string | null>(null)
+  const [nextAfterAuth, setNextAfterAuth] = useState<string | null>(null)
+  const [showPostAuthSplash, setShowPostAuthSplash] = useState(false)
+  const [handoffToDashboard, setHandoffToDashboard] = useState(false)
+  const [portalReady, setPortalReady] = useState(false)
 
   const isRegister = mode === 'register'
+
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href)
+      const next = url.searchParams.get('next')
+      if (next && next.startsWith('/')) {
+        setNextAfterAuth(next)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -203,8 +229,23 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   }, [])
 
   useEffect(() => {
+    setPortalReady(true)
+  }, [])
+
+  useEffect(() => {
     setError(null)
     setInfo(null)
+    if (mode === 'login') {
+      try {
+        const msg = window.sessionStorage.getItem(AUTH_NOTICE_KEY)
+        if (msg) {
+          setInfo(msg)
+          window.sessionStorage.removeItem(AUTH_NOTICE_KEY)
+        }
+      } catch {
+        // ignore
+      }
+    }
   }, [mode])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -244,23 +285,35 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
     setLoading(true)
     try {
       if (isRegister) {
-        const data = await signUpWithEmail(
+        const result = await httpSignUpWithEmail(
           trimmedEmail,
           password,
           trimmedName,
           trimmedJobTitle,
         )
-        if (data.session) {
-          // Mostra a splash de carregamento antes do redirect (mesmo comportamento do login).
-          setPostAuthRedirect('/boards')
-        } else {
-          setInfo(
-            'Conta criada. Se o projeto exigir confirmação por e-mail, verifique sua caixa de entrada.',
-          )
+        if (!result.ok) throw new Error(result.error)
+
+        // Após cadastro, vai para a tela de "aguardando confirmação".
+        // Se o signup criou sessão automaticamente, encerra para evitar redirect de "já autenticado".
+        try {
+          await supabase.auth.signOut()
+        } catch {
+          // ignore
         }
+
+        router.replace(`/check-email?email=${encodeURIComponent(trimmedEmail)}`)
+        return
       } else {
-        await signInWithEmail(trimmedEmail, password)
-        setPostAuthRedirect('/boards')
+        const result = await httpSignInWithEmail(trimmedEmail, password)
+        if (!result.ok) throw new Error(result.error)
+        // best-effort device session registration (requires SQL to be applied in Supabase)
+        try {
+          await registerMyDeviceSession(3)
+        } catch {
+          // ignore
+        }
+        // Pós-login: mostra splash e faz handoff para loader contínuo do dashboard.
+        setShowPostAuthSplash(true)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível concluir.')
@@ -271,16 +324,32 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
 
   return (
     <>
-        {postAuthRedirect && (
+        {showPostAuthSplash && (
           <SimpleIntroSplash
             className="z-[250]"
             onSequenceComplete={() => {
-              router.push(postAuthRedirect)
-              router.refresh()
-              setPostAuthRedirect(null)
+              try {
+                window.sessionStorage.setItem('ft:postAuthLoader', '1')
+              } catch {
+                // ignore
+              }
+              // evita flash do form: overlay fica até o unmount da página
+              setHandoffToDashboard(true)
+              router.replace(nextAfterAuth ?? '/boards')
+              // some a splash e deixa só o loader contínuo
+              setShowPostAuthSplash(false)
             }}
           />
         )}
+        {handoffToDashboard &&
+          portalReady &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div className="pointer-events-none fixed inset-0 z-[260] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+              <LoaderOne />
+            </div>,
+            document.body,
+          )}
         <div
           className="relative isolate flex min-h-0 w-full flex-1 flex-col overflow-hidden px-5 py-5 sm:px-6 sm:py-6 lg:max-h-full lg:w-1/2 lg:min-h-0 lg:px-12 lg:py-8 xl:px-16"
           onMouseMove={handleMouseMove}
@@ -308,13 +377,21 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
           />
 
           <form
-            className="relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-2 overflow-y-auto text-center sm:gap-3 md:gap-4"
+            className={cn(
+              "relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 text-center sm:gap-3 md:gap-4",
+              isRegister
+                ? "justify-start overflow-y-auto overscroll-contain py-4 sm:py-6 ft-scrollbar"
+                : "justify-center overflow-hidden",
+            )}
             onSubmit={handleSubmit}
             noValidate
           >
             <motion.div
               key={isRegister ? 'register-fields' : 'login-fields'}
-              className="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden sm:gap-3 md:gap-4"
+              className={cn(
+                "flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 sm:gap-3 md:gap-4",
+                isRegister ? "justify-start pb-6" : "justify-center",
+              )}
               initial={false}
             >
               <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4 md:gap-5">
@@ -392,32 +469,21 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
                       delay: 0.16,
                     })}
                   >
-                    <div className="relative w-full min-w-[200px]">
-                      <label className="sr-only" htmlFor="register-job-title">
-                        Cargo
-                      </label>
-                      <select
-                        id="register-job-title"
-                        name="jobTitle"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        disabled={loading}
-                        className="peer relative z-10 h-12 w-full min-h-12 cursor-pointer appearance-none rounded-md border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 pr-10 text-center font-light text-[var(--color-text-primary)] outline-none transition-all duration-200 ease-in-out focus:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60"
+                    <Select value={jobTitle} onValueChange={setJobTitle} disabled={loading}>
+                      <SelectTrigger
+                        aria-label="Cargo"
+                        className="h-12 w-full min-w-[200px] cursor-pointer rounded-md border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-center font-light text-[var(--color-text-primary)] outline-none transition-all duration-200 ease-in-out focus:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60 [&>span]:w-full [&>span]:text-center"
                       >
-                        <option value="">Selecione o cargo</option>
+                        <SelectValue placeholder="Selecione o cargo" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" side="bottom" sideOffset={6} align="center">
                         {PREDEFINED_JOB_TITLES.map((title) => (
-                          <option key={title} value={title}>
+                          <SelectItem key={title} value={title}>
                             {title}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                      <span
-                        className="pointer-events-none absolute top-1/2 right-3 z-20 -translate-y-1/2 text-[var(--color-text-secondary)]"
-                        aria-hidden
-                      >
-                        ▾
-                      </span>
-                    </div>
+                      </SelectContent>
+                    </Select>
                   </motion.div>
                 )}
                 <motion.div
@@ -445,17 +511,38 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
                 >
                   {isRegister ? (
                     <div className="flex justify-center">
-                      <PasswordInput />
+                      <PasswordInput
+                        value={password}
+                        onChange={setPassword}
+                        disabled={loading}
+                        id="register-password"
+                        name="password"
+                        label=""
+                        placeholder="Senha"
+                        autoComplete="new-password"
+                        className="w-full"
+                      />
                     </div>
                   ) : (
                     <AppInput
                       name="password"
                       placeholder="Senha"
-                      type="password"
+                      type={loginPasswordVisible ? 'text' : 'password'}
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading}
+                      icon={
+                        <button
+                          type="button"
+                          onClick={() => setLoginPasswordVisible((v) => !v)}
+                          aria-label={loginPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/90 transition hover:text-white"
+                          tabIndex={-1}
+                        >
+                          {loginPasswordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      }
                     />
                   )}
                 </motion.div>
@@ -514,13 +601,17 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
                     ))}
                   </ul>
 
-                  <motion.a
-                    href="#"
+                  <motion.div
                     className="text-sm font-light text-[var(--color-text-primary)] md:text-base"
                     {...authEnterProps(reduceMotion, { y: 8, delay: 0.52 })}
                   >
-                    Esqueceu sua senha?
-                  </motion.a>
+                    <Link
+                      href="/forgot-password"
+                      className="transition hover:opacity-80"
+                    >
+                      Esqueceu sua senha?
+                    </Link>
+                  </motion.div>
                 </motion.div>
               )}
 

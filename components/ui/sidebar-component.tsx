@@ -22,6 +22,8 @@ import { supabase } from "@/lib/supabase"
 import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
 import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers, type TeamMember } from "@/lib/profile"
 import { signOutUser } from "@/lib/auth"
+import { AUTH_INTRO_STORAGE_KEY } from "@/lib/intro-storage"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -328,6 +330,7 @@ function RailNavLink({
 
 export default function SidebarComponent() {
   const pathname = usePathname()
+  const { setLoading: setDashboardLoading } = useDashboardLoading()
   const [isHovered, setIsHovered] = React.useState(false)
   const [previewSection, setPreviewSection] = React.useState<NavSectionId | null>(null)
   const [boards, setBoards] = React.useState<Array<{ id: string; title: string }>>([])
@@ -543,7 +546,7 @@ export default function SidebarComponent() {
         if (!user) return
 
         const name = String(
-          profile.full_name ?? profile.name ?? profile.display_name ?? user.email ?? "Usuário",
+          profile.full_name ?? profile.display_name ?? user.email ?? "Usuário",
         )
         const email = String(profile.email ?? user.email ?? "")
         const avatarUrl = String(profile.avatar_url ?? profile.avatarUrl ?? profile.avatar ?? "")
@@ -608,32 +611,43 @@ export default function SidebarComponent() {
 
           <div className="flex-1" />
 
-          <RailNavLink
-            href="/settings"
-            label="Configuracoes"
-            icon={<Settings className="h-4 w-4" />}
-            isActive={activeSection === "settings"}
-            onHover={() => {
-              setIsHovered(true)
-              setPreviewSection("settings")
-            }}
-          />
+          <div className="mt-auto flex flex-col items-center gap-2 pb-1">
+            <RailNavLink
+              href="/settings"
+              label="Configuracoes"
+              icon={<Settings className="h-4 w-4" />}
+              isActive={activeSection === "settings"}
+              onHover={() => {
+                setIsHovered(true)
+                setPreviewSection("settings")
+              }}
+            />
 
-          <RailNavLink
-            label="Sair"
-            icon={<LogOut className="h-4 w-4" />}
-            isActive={false}
-            onClick={async () => {
-              try {
-                await signOutUser()
-              } finally {
-                window.location.href = "/login"
-              }
-            }}
-          />
-
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-xs font-semibold text-white">
-            FT
+            <RailNavLink
+              label="Sair"
+              icon={<LogOut className="h-4 w-4" />}
+              isActive={false}
+              onClick={async () => {
+                try {
+                  // trava o loader até navegar para /login (evita piscada)
+                  window.sessionStorage.setItem("ft:forceDashboardLoader", "1")
+                } catch {
+                  // ignore
+                }
+                setDashboardLoading(true)
+                try {
+                  await signOutUser()
+                } finally {
+                  // força splash do auth na volta pro login
+                  try {
+                    window.sessionStorage.removeItem(AUTH_INTRO_STORAGE_KEY)
+                  } catch {
+                    // ignore
+                  }
+                  window.location.href = "/login"
+                }
+              }}
+            />
           </div>
         </aside>
 
@@ -684,6 +698,7 @@ export default function SidebarComponent() {
               {section.items.map((item) => {
                 const itemKey = `${section.title}-${item.label}`
                 const isExpanded = Boolean(expandedItems[itemKey])
+                const children = "children" in item ? item.children : undefined
 
                 if (item.href) {
                   return (
@@ -710,7 +725,7 @@ export default function SidebarComponent() {
                   <div key={itemKey} className="flex flex-col gap-1">
                     <button
                       type="button"
-                      onClick={() => item.children && toggleExpanded(itemKey)}
+                      onClick={() => children && toggleExpanded(itemKey)}
                       className={cn(
                         "flex items-center rounded-xl text-left transition-colors",
                         "text-zinc-300 hover:bg-white/6 hover:text-white",
@@ -723,16 +738,16 @@ export default function SidebarComponent() {
                       <span className={cn(isCollapsed && "text-xs font-semibold")}>
                         {isCollapsed ? item.label.slice(0, 1) : item.label}
                       </span>
-                      {!isCollapsed && item.children && (
+                      {!isCollapsed && children && (
                         <ChevronDown
                           className={cn("h-4 w-4 text-zinc-500 transition-transform", isExpanded && "rotate-180")}
                         />
                       )}
                     </button>
 
-                    {!isCollapsed && isExpanded && item.children && (
+                    {!isCollapsed && isExpanded && children && (
                       <div className="ml-3 flex flex-col gap-1 border-l border-white/10 pl-3">
-                        {item.children.map((child, idx) =>
+                        {children.map((child, idx) =>
                           child.href ? (
                             <Link
                               key={`${itemKey}-${child.href ?? child.label}-${idx}`}

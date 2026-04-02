@@ -28,6 +28,7 @@ import {
   createChecklistItem,
   inferColumnTypeFromTitle,
 } from "@/lib/kanban"
+import { httpNotifyTaskAssigned } from "@/lib/notifications-http"
 
 interface BoardProps {
   boardId: string
@@ -88,6 +89,8 @@ export function Board({
     Record<string, { id: string; title: string; position: number }[]>
   >({})
 
+  const scrollRef = React.useRef<HTMLDivElement | null>(null)
+
   const [draggedColumnId, setDraggedColumnId] = React.useState<string | null>(null)
   const [columnDropTargetId, setColumnDropTargetId] = React.useState<string | null>(
     null,
@@ -104,6 +107,7 @@ export function Board({
     columnId: string
     taskId: string
   } | null>(null)
+  const editingTaskOriginalAssigneesRef = React.useRef<string[]>([])
   const [taskTitleDraft, setTaskTitleDraft] = React.useState("")
   const [taskDescriptionDraft, setTaskDescriptionDraft] = React.useState("")
   const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
@@ -140,6 +144,97 @@ export function Board({
     setDraggedTask({ task, sourceColumnId: columnId })
   }
 
+  const dragClientXRef = React.useRef<number | null>(null)
+  const autoScrollVelocityRef = React.useRef(0) // px per ms
+  const autoScrollRafRef = React.useRef<number | null>(null)
+  const autoScrollLastTsRef = React.useRef<number | null>(null)
+
+  const handleBoardDragOver = React.useCallback(
+    (e: React.DragEvent) => {
+      if (!draggedColumnId && !draggedTask) return
+      dragClientXRef.current = e.clientX
+    },
+    [draggedColumnId, draggedTask],
+  )
+
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    if (!draggedColumnId && !draggedTask) return
+
+    const edge = 110
+    const maxSpeed = 1.15 // px/ms (~69px/frame at 60fps max)
+    const minSpeed = 0.12 // px/ms
+
+    const tick = (ts: number) => {
+      const last = autoScrollLastTsRef.current
+      autoScrollLastTsRef.current = ts
+      const dt = last ? ts - last : 16
+
+      const rect = el.getBoundingClientRect()
+      const x = dragClientXRef.current
+      if (x == null) {
+        autoScrollVelocityRef.current = 0
+      } else {
+        const leftDist = x - rect.left
+        const rightDist = rect.right - x
+
+        let v = 0
+        if (leftDist < edge) {
+          const t = Math.max(0, Math.min(1, (edge - leftDist) / edge))
+          v = -(minSpeed + (maxSpeed - minSpeed) * t)
+        } else if (rightDist < edge) {
+          const t = Math.max(0, Math.min(1, (edge - rightDist) / edge))
+          v = minSpeed + (maxSpeed - minSpeed) * t
+        }
+        autoScrollVelocityRef.current = v
+      }
+
+      const v = autoScrollVelocityRef.current
+      if (v !== 0) {
+        el.scrollLeft += v * dt
+      }
+
+      autoScrollRafRef.current = window.requestAnimationFrame(tick)
+    }
+
+    autoScrollLastTsRef.current = null
+    autoScrollRafRef.current = window.requestAnimationFrame(tick)
+    return () => {
+      if (autoScrollRafRef.current != null) {
+        window.cancelAnimationFrame(autoScrollRafRef.current)
+      }
+      autoScrollRafRef.current = null
+      autoScrollLastTsRef.current = null
+      autoScrollVelocityRef.current = 0
+      dragClientXRef.current = null
+    }
+  }, [draggedColumnId, draggedTask])
+
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    if (!draggedColumnId && !draggedTask) return
+
+    const isInside = (ev: DragEvent) => {
+      const r = el.getBoundingClientRect()
+      const x = ev.clientX
+      const y = ev.clientY
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+    }
+
+    const onWindowDrop = (ev: DragEvent) => {
+      if (isInside(ev)) return
+      ev.preventDefault()
+      ev.stopPropagation()
+    }
+
+    window.addEventListener("drop", onWindowDrop, { passive: false })
+    return () => {
+      window.removeEventListener("drop", onWindowDrop as any)
+    }
+  }, [draggedColumnId, draggedTask])
+
   const handleDragOver = (e: React.DragEvent, columnId: string) => {
     e.preventDefault()
     setDropTarget(columnId)
@@ -155,6 +250,7 @@ export function Board({
     const targetColumn = columns.find((c) => c.id === targetColumnId)
     const nextPosition =
       Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) + 1
+    const targetColor = targetColumn ? getColumnColor(targetColumn) : defaultColumnPalette.custom
 
     const updatedColumns = columns.map((column) => {
       if (column.id === draggedTask.sourceColumnId) {
@@ -172,6 +268,7 @@ export function Board({
             {
               ...draggedTask.task,
               position: nextPosition,
+              color: targetColor,
             },
           ],
         }
@@ -214,7 +311,11 @@ export function Board({
     setTaskTitleDraft(task.title)
     setTaskDescriptionDraft(task.description ?? "")
     setTaskColorDraft(task.color ?? columnColor)
-    setTaskAssigneeIdsDraft(task.assignees?.map((a) => a.id) ?? [])
+    {
+      const ids = task.assignees?.map((a) => a.id) ?? []
+      editingTaskOriginalAssigneesRef.current = ids
+      setTaskAssigneeIdsDraft(ids)
+    }
 
     if (!checklistsByCardId[task.id]) {
       try {
@@ -234,6 +335,8 @@ export function Board({
 
     if (editingTask?.columnId === columnId) {
       const cardId = editingTask.taskId
+      const prevAssigneeIds = editingTaskOriginalAssigneesRef.current ?? []
+      const nextAssigneeIds = taskAssigneeIdsDraft
       setColumns((prev) =>
         prev.map((column) =>
           column.id === columnId
@@ -305,6 +408,18 @@ export function Board({
         )
       } catch {
         // ignore
+      }
+
+      // Notify only newly added assignees.
+      const added = nextAssigneeIds.filter((id) => !prevAssigneeIds.includes(id))
+      if (added.length > 0) {
+        void httpNotifyTaskAssigned({
+          boardId,
+          cardId,
+          taskTitle: taskTitleDraft.trim(),
+          taskDescription: taskDescriptionDraft.trim() || null,
+          assignedUserIds: added,
+        })
       }
     } else {
       const col = columns.find((c) => c.id === columnId)
@@ -378,6 +493,16 @@ export function Board({
           }
         } catch {
           // ignore
+        }
+
+        if (taskAssigneeIdsDraft.length > 0) {
+          void httpNotifyTaskAssigned({
+            boardId,
+            cardId: created.id,
+            taskTitle: taskTitleDraft.trim(),
+            taskDescription: taskDescriptionDraft.trim() || null,
+            assignedUserIds: taskAssigneeIdsDraft,
+          })
         }
 
         showAlert({
@@ -627,7 +752,7 @@ export function Board({
     }
   }, [boardId])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     setDashboardLoading(loading)
   }, [loading, setDashboardLoading])
 
@@ -704,7 +829,7 @@ export function Board({
         customSize
         className="mx-auto flex h-[calc(100vh-3rem)] max-w-6xl flex-col border border-border/60 bg-background px-4 py-4"
       >
-        <HorizontalScroll className="mt-1 flex-1">
+        <HorizontalScroll ref={scrollRef} className="mt-1 flex-1" onDragOver={handleBoardDragOver}>
           <div className="flex h-full min-h-full w-full flex-1 items-stretch gap-4 pb-4">
             {columns.map((column) => {
               const isColumnDropActive =
@@ -749,7 +874,6 @@ export function Board({
                   onCancelTaskForm={resetTaskForm}
                   onTaskTitleChange={setTaskTitleDraft}
                   onTaskDescriptionChange={setTaskDescriptionDraft}
-                  onTaskColorChange={setTaskColorDraft}
                   onSubmitTask={(colId) => void handleSubmitTask(colId)}
                   onRemoveTask={(colId, taskId) => void handleRemoveTask(colId, taskId)}
                   onEditColumn={handleOpenEditColumn}

@@ -32,9 +32,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-function getColorAsHsva(color: `#${string}` | HsvaColor | HslaColor | RgbaColor): HsvaColor {
+function getColorAsHsva(color: string | HsvaColor | HslaColor | RgbaColor): HsvaColor {
   if (typeof color === 'string') {
-    return hexToHsva(color);
+    const c = color.trim();
+    const hex = c.startsWith('#') ? c : `#${c}`;
+    try {
+      return hexToHsva(hex);
+    } catch {
+      return { h: 0, s: 0, v: 0, a: 1 };
+    }
   } else if ('h' in color && 's' in color && 'v' in color) {
     return color;
   } else if ('r' in color) {
@@ -51,7 +57,7 @@ type ColorPickerValue = {
 };
 
 type ColorPickerProps = {
-  value?: `#${string}` | HsvaColor | HslaColor | RgbaColor;
+  value?: string | HsvaColor | HslaColor | RgbaColor;
   type?: 'hsl' | 'rgb' | 'hex';
   swatches?: HexColor[];
   hideContrastRatio?: boolean;
