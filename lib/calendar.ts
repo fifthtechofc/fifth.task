@@ -6,6 +6,9 @@ type WorkspaceMemberRow = Record<string, unknown>
 type CalendarEventDbRow = Record<string, unknown>
 type WorkspaceRow = Record<string, unknown>
 
+/** Só colunas que existem no seed mínimo (id, name, created_by). title/slug quebram o PostgREST se não existirem. */
+const WORKSPACES_LIST_COLUMNS = "id,name"
+
 export type WorkspaceOption = {
   id: string
   label: string
@@ -215,8 +218,16 @@ async function getAuthenticatedUserId() {
   return user.id
 }
 
+/**
+ * Busca linhas em workspace_members testando colunas de vínculo ao utilizador.
+ * Importante: não parar na primeira coluna que *existe* — antes parávamos com
+ * resultado vazio quando o ID do auth estava noutra coluna (ex.: user_id vs profile_id).
+ * Ordem: user_id (auth) primeiro, depois profile_id e member_id.
+ */
 async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMemberRow[]> {
-  const memberColumns = ["profile_id", "user_id", "member_id"]
+  const memberColumns = ["user_id", "profile_id", "member_id"]
+  const byWorkspaceId = new Map<string, WorkspaceMemberRow>()
+  let anyQuerySucceeded = false
   let lastError: Error | null = null
 
   for (const memberColumn of memberColumns) {
@@ -226,7 +237,12 @@ async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMember
       .eq(memberColumn, userId)
 
     if (!error) {
-      return (data ?? []) as WorkspaceMemberRow[]
+      anyQuerySucceeded = true
+      for (const row of (data ?? []) as WorkspaceMemberRow[]) {
+        const wid = pickString(row.workspace_id)
+        if (wid) byWorkspaceId.set(wid, row)
+      }
+      continue
     }
 
     if (!isMissingColumnError(error)) {
@@ -236,7 +252,41 @@ async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMember
     lastError = new Error(error.message)
   }
 
-  throw lastError ?? new Error("Nao foi possivel verificar os workspaces do usuario.")
+  if (!anyQuerySucceeded) {
+    throw lastError ?? new Error("Nao foi possivel verificar os workspaces do usuario.")
+  }
+
+  return [...byWorkspaceId.values()]
+}
+
+/** Workspaces criados pelo utilizador (ex.: conta sem linha em workspace_members). */
+async function fetchWorkspacesCreatedByUser(userId: string): Promise<WorkspaceRow[]> {
+  try {
+    const { data, error } = await supabase
+      .from("workspaces")
+      .select(WORKSPACES_LIST_COLUMNS)
+      .eq("created_by", userId)
+
+    if (error) return []
+    return (data ?? []) as WorkspaceRow[]
+  } catch {
+    return []
+  }
+}
+
+/** Linhas que as políticas RLS deixam ver (ex.: leitura ampla para authenticated), sem filtrar por coluna. */
+async function fetchWorkspacesVisibleUnderRls(): Promise<WorkspaceRow[]> {
+  try {
+    const { data, error } = await supabase
+      .from("workspaces")
+      .select(WORKSPACES_LIST_COLUMNS)
+      .limit(50)
+
+    if (error) return []
+    return (data ?? []) as WorkspaceRow[]
+  } catch {
+    return []
+  }
 }
 
 async function fetchWorkspaceLabels(workspaceIds: string[]) {
@@ -245,7 +295,7 @@ async function fetchWorkspaceLabels(workspaceIds: string[]) {
   try {
     const { data, error } = await supabase
       .from("workspaces")
-      .select("id,name,title,slug")
+      .select(WORKSPACES_LIST_COLUMNS)
       .in("id", workspaceIds)
 
     if (error) throw new Error(error.message)
@@ -317,31 +367,110 @@ function mapCalendarEventRow(row: CalendarEventDbRow, schema: CalendarSchemaConf
   }
 }
 
-export async function fetchCalendarAccess() {
-  const userId = await getAuthenticatedUserId()
-  const memberRows = await fetchWorkspaceMemberRows(userId)
-  const workspaceIds = Array.from(
-    new Set(
-      memberRows
-        .map((row) => pickString(row.workspace_id))
-        .filter(Boolean),
-    ),
-  )
+/**
+ * Workspaces via API Next + service role (ignora RLS). Requer SUPABASE_SERVICE_ROLE_KEY no .env do servidor.
+ */
+async function fetchWorkspacesFromServerRoute(): Promise<WorkspaceOption[] | null> {
+  if (typeof window === "undefined") return null
+
+  try {
+    let {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      await supabase.auth.refreshSession()
+      ;({
+        data: { session },
+      } = await supabase.auth.getSession())
+    }
+    const token = session?.access_token
+    if (!token) return null
+
+    const res = await fetch("/api/calendar/workspaces", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+    if (res.status === 503) return null
+    if (!res.ok) return null
+
+    const json = (await res.json()) as { workspaces?: WorkspaceOption[] }
+    if (!Array.isArray(json.workspaces)) return null
+    return json.workspaces
+  } catch {
+    return null
+  }
+}
+
+async function collectCalendarWorkspacesFromSupabaseClient(userId: string): Promise<WorkspaceOption[]> {
+  let memberRows: WorkspaceMemberRow[] = []
+  try {
+    memberRows = await fetchWorkspaceMemberRows(userId)
+  } catch {
+    /* Sem workspace_members ou RLS a bloquear */
+  }
+
+  const createdRows = await fetchWorkspacesCreatedByUser(userId)
+
+  const workspaceIdSet = new Set<string>()
+  for (const row of memberRows) {
+    const wid = pickString(row.workspace_id)
+    if (wid) workspaceIdSet.add(wid)
+  }
+  for (const row of createdRows) {
+    const id = pickString(row.id)
+    if (id) workspaceIdSet.add(id)
+  }
+
+  let rlsVisibleRows: WorkspaceRow[] = []
+  if (workspaceIdSet.size === 0) {
+    rlsVisibleRows = await fetchWorkspacesVisibleUnderRls()
+    for (const row of rlsVisibleRows) {
+      const id = pickString(row.id)
+      if (id) workspaceIdSet.add(id)
+    }
+  }
+
+  const workspaceIds = [...workspaceIdSet]
 
   const labelsByWorkspaceId = await fetchWorkspaceLabels(workspaceIds)
 
-  const workspaces: WorkspaceOption[] = workspaceIds.map((workspaceId, index) => ({
-    id: workspaceId,
-    label:
-      labelsByWorkspaceId.get(workspaceId) ||
-      pickString(
-        memberRows.find((row) => pickString(row.workspace_id) === workspaceId)?.workspace_name,
-        memberRows.find((row) => pickString(row.workspace_id) === workspaceId)?.workspace_title,
-        memberRows.find((row) => pickString(row.workspace_id) === workspaceId)?.name,
-        memberRows.find((row) => pickString(row.workspace_id) === workspaceId)?.title,
-      ) ||
-      (workspaceIds.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
-  }))
+  return workspaceIds.map((workspaceId, index) => {
+    const memberRow = memberRows.find((row) => pickString(row.workspace_id) === workspaceId)
+    const createdRow =
+      createdRows.find((row) => pickString(row.id) === workspaceId) ||
+      rlsVisibleRows.find((row) => pickString(row.id) === workspaceId)
+
+    return {
+      id: workspaceId,
+      label:
+        labelsByWorkspaceId.get(workspaceId) ||
+        pickString(createdRow?.name, createdRow?.title, createdRow?.slug) ||
+        pickString(
+          memberRow?.workspace_name,
+          memberRow?.workspace_title,
+          memberRow?.name,
+          memberRow?.title,
+        ) ||
+        (workspaceIds.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
+    }
+  })
+}
+
+export async function fetchCalendarAccess() {
+  const userId = await getAuthenticatedUserId()
+
+  const fromServer = await fetchWorkspacesFromServerRoute()
+  const fromClient = await collectCalendarWorkspacesFromSupabaseClient(userId)
+
+  const byId = new Map<string, WorkspaceOption>()
+  for (const w of fromServer ?? []) {
+    if (w.id) byId.set(w.id, w)
+  }
+  for (const w of fromClient) {
+    if (!byId.has(w.id)) byId.set(w.id, w)
+  }
+
+  const workspaces = [...byId.values()]
 
   return {
     userId,

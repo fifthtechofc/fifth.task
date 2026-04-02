@@ -385,7 +385,6 @@ export default function TeamsPage() {
                   imageSrc={member.imageSrc}
                   imageAlt={member.name}
                   name={member.name}
-                  username={member.username}
                   variant="glass"
                   size="lg"
                 />
@@ -511,10 +510,6 @@ export default function TeamsPage() {
                     </div>
                   )}
                 </div>
-              )}
-
-              {selectedMember.username && (
-                <p className="mt-3 text-xs text-zinc-500">@{selectedMember.username}</p>
               )}
 
             </>
