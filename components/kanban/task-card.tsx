@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { createCardComment, deleteCardComment, fetchCardComments, fetchUnreadCardCommentsCount, type CardComment } from "@/lib/card-comments"
 import { supabase } from "@/lib/supabase"
+import { useAppNotifications } from "@/lib/app-notifications-context"
 
 interface TaskCardProps {
   task: KanbanTask
@@ -188,7 +189,21 @@ export function TaskCard({
   const [comments, setComments] = React.useState<CardComment[]>([])
   const [commentDraft, setCommentDraft] = React.useState("")
   const [posting, setPosting] = React.useState(false)
+  const [meProfile, setMeProfile] = React.useState<{
+    full_name: string | null
+    display_name: string | null
+    email: string | null
+    avatar_url: string | null
+  } | null>(null)
+  const { pushNotification } = useAppNotifications()
   const cardColor = task.color ?? columnColor
+
+  const meDisplayName = React.useMemo(() => {
+    if (!meProfile) return ""
+    return (
+      (meProfile.full_name || meProfile.display_name || meProfile.email || "").trim()
+    )
+  }, [meProfile])
 
   // localStorage is shared across accounts, so "seen" must be per-user
   const seenKey = React.useMemo(
@@ -264,6 +279,30 @@ export function TaskCard({
       alive = false
     }
   }, [])
+
+  React.useEffect(() => {
+    if (!meId) {
+      setMeProfile(null)
+      return
+    }
+    let alive = true
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name, display_name, email, avatar_url")
+          .eq("id", meId)
+          .maybeSingle()
+        if (!alive) return
+        setMeProfile(data ?? null)
+      } catch {
+        if (alive) setMeProfile(null)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [meId])
 
   React.useEffect(() => {
     if (!meId) return
@@ -640,6 +679,18 @@ export function TaskCard({
                       setCommentDraft("")
                       await loadComments()
                       markCommentsSeenNow()
+                      const qs = new URLSearchParams(window.location.search)
+                      qs.set("card", task.id)
+                      const href = `${window.location.pathname}?${qs.toString()}`
+                      void pushNotification({
+                        notificationType: "own_comment",
+                        title: "Comentário",
+                        body: `«${task.title}»`,
+                        href,
+                        cardId: task.id,
+                        imageSrc: meProfile?.avatar_url ?? undefined,
+                        actorName: meDisplayName || undefined,
+                      })
                     } catch (e) {
                       setCommentsError(e instanceof Error ? e.message : "Não foi possível enviar comentário.")
                     } finally {

@@ -1,9 +1,104 @@
 import { NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { getClientIp, rateLimit } from '@/lib/server/rate-limit'
 import { getSupabaseAdmin } from '@/lib/server/supabase-admin'
 import { sendMail } from '@/lib/server/mailer'
 import { savePendingEmailConfirmation } from '@/lib/server/pending-email-confirmations'
+
+function signupProfileUsername(email: string, userId: string): string {
+  const raw = email.split('@')[0] ?? 'user'
+  const sanitized = raw.replace(/[^a-zA-Z0-9_]/g, '_') || 'user'
+  const suffix = userId.replace(/-/g, '').slice(0, 8)
+  const combined = `${sanitized}_${suffix}`
+  return combined.length > 64 ? combined.slice(0, 64) : combined
+}
+
+function isSchemaMissingColumnError(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    (m.includes('column') && m.includes('does not exist')) ||
+    m.includes('schema cache') ||
+    m.includes('could not find')
+  )
+}
+
+function isProfileRpcUnavailable(err: { message?: string; code?: string }): boolean {
+  const m = (err.message ?? '').toLowerCase()
+  const c = String((err as { code?: string }).code ?? '')
+  return (
+    c === 'PGRST202' ||
+    c === '42883' ||
+    (m.includes('signup_ensure_profile') && (m.includes('could not find') || m.includes('does not exist'))) ||
+    (m.includes('function') && m.includes('signup_ensure_profile') && m.includes('not find'))
+  )
+}
+
+function isWorkspaceFkFailure(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    m.includes('workspace_members') &&
+    m.includes('foreign key constraint') &&
+    (m.includes('workspace_id') || m.includes('workspaces'))
+  )
+}
+
+/** Preferência: RPC security definer em SQL (supabase/profiles.sql). Fallback: upsert REST. */
+async function ensureProfileAfterSignup(
+  admin: SupabaseClient,
+  params: { userId: string; email: string; name: string; jobTitle: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error: rpcError } = await admin.rpc('signup_ensure_profile', {
+    p_user_id: params.userId,
+    p_email: params.email,
+    p_full_name: params.name,
+    p_job_title: params.jobTitle,
+  })
+  if (!rpcError) return { ok: true }
+  if (isProfileRpcUnavailable(rpcError)) {
+    return upsertProfileAfterSignup(admin, params)
+  }
+  return { ok: false, error: rpcError.message ?? 'signup_ensure_profile falhou.' }
+}
+
+/** Cria/atualiza public.profiles com service role. Usado só se a RPC signup_ensure_profile não existir. */
+async function upsertProfileAfterSignup(
+  admin: SupabaseClient,
+  params: { userId: string; email: string; name: string; jobTitle: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { userId, email, name, jobTitle } = params
+  const username = signupProfileUsername(email, userId)
+  const attempts: Record<string, unknown>[] = [
+    {
+      id: userId,
+      email,
+      full_name: name,
+      job_title: jobTitle,
+      display_name: name,
+      username,
+    },
+    {
+      id: userId,
+      email,
+      full_name: name,
+      job_title: jobTitle,
+      display_name: name,
+    },
+    { id: userId, email, full_name: name, job_title: jobTitle },
+    { id: userId, email },
+  ]
+
+  let lastMessage = ''
+  for (const payload of attempts) {
+    const { error } = await admin.from('profiles').upsert(payload, { onConflict: 'id' })
+    if (!error) return { ok: true }
+    lastMessage = error.message ?? 'Erro ao gravar perfil.'
+    if (!isSchemaMissingColumnError(lastMessage)) {
+      return { ok: false, error: lastMessage }
+    }
+  }
+  return { ok: false, error: lastMessage }
+}
 
 function getBaseUrl(req: Request) {
   const h = req.headers
@@ -118,6 +213,11 @@ export async function POST(req: Request) {
 
     if (createErr) {
       const msg = String(createErr.message || '')
+      console.error('[auth/signup] createUser failed', {
+        message: msg,
+        status: (createErr as { status?: number }).status,
+        code: (createErr as { code?: string }).code,
+      })
       const already =
         msg.toLowerCase().includes('already') ||
         msg.toLowerCase().includes('exists') ||
@@ -126,6 +226,38 @@ export async function POST(req: Request) {
         { ok: false, error: already ? 'Este e-mail já está em uso.' : msg || 'Não foi possível criar a conta.' },
         { status: 400 },
       )
+    }
+
+    const userId = created.user?.id ?? null
+    if (userId) {
+      const profileResult = await ensureProfileAfterSignup(admin, {
+        userId,
+        email,
+        name,
+        jobTitle,
+      })
+      if (!profileResult.ok) {
+        console.error('[auth/signup] ensure profile failed', profileResult.error)
+        await admin.auth.admin.deleteUser(userId)
+      if (isWorkspaceFkFailure(profileResult.error)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'Falha ao criar o perfil porque o banco tentou inserir em workspace_members com workspace_id inválido (FK). Isso normalmente vem de um trigger em public.profiles ou de uma política/rotina de workspace. Ajuste/remova esse trigger ou crie um workspace default válido antes do insert.',
+          },
+          { status: 500 },
+        )
+      }
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'Não foi possível criar o perfil. No Supabase, abre o SQL Editor, executa o ficheiro supabase/profiles.sql do repositório (função signup_ensure_profile + colunas em falta) e tenta de novo.',
+          },
+          { status: 500 },
+        )
+      }
     }
 
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
@@ -150,10 +282,11 @@ export async function POST(req: Request) {
       ok: true,
       data: { userId: created.user?.id ?? null, needsEmailConfirmation: true },
     })
-  } catch {
+  } catch (err) {
+    console.error('[auth/signup] unexpected', err)
     return NextResponse.json(
-      { ok: true, data: { needsEmailConfirmation: true } },
-      { status: 200 },
+      { ok: false, error: 'Erro interno ao processar o cadastro.' },
+      { status: 500 },
     )
   }
 }

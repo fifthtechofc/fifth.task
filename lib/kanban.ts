@@ -17,7 +17,7 @@ type BoardRow = {
   logo_url: string | null
 }
 
-function slugifyBoardTitle(input: string) {
+export function slugifyBoardTitle(input: string) {
   return input
     .trim()
     .toLowerCase()

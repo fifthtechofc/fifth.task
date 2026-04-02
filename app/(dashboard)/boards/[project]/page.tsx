@@ -1,3 +1,5 @@
+import { Suspense } from "react"
+
 import { ProjectBoard } from "@/components/kanban/project-board"
 
 export default async function ProjectBoardPage({
@@ -10,7 +12,9 @@ export default async function ProjectBoardPage({
   return (
     <section className="min-h-full p-6">
       <div className="mx-auto max-w-7xl">
-        <ProjectBoard project={project} />
+        <Suspense fallback={null}>
+          <ProjectBoard project={project} />
+        </Suspense>
       </div>
     </section>
   )

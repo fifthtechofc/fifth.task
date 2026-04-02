@@ -6,6 +6,8 @@ import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { Toaster } from "sonner";
 import { LoaderOne } from "@/components/ui/unique-loader-components";
 import CustomAlert from "@/components/ui/custom-alert";
+import { AppNotificationsProvider } from "@/lib/app-notifications-context";
+import { NotificationsPopover } from "@/components/notifications/notifications-popover";
 
 type AlertVariant = "success" | "error" | "warning" | "info";
 
@@ -144,6 +146,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <DashboardUIContext.Provider value={ctxValue}>
+      <AppNotificationsProvider>
       <div className="relative h-screen overflow-hidden">
         {/* Alert global do dashboard, sempre acima do conteúdo e do loader */}
         {alert && (
@@ -168,11 +171,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="relative z-20 flex h-full gap-0 p-4">
           <PresenceHeartbeat />
           <SidebarComponent />
-          <main className="min-w-0 h-full flex-1 overflow-y-auto">{children}</main>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex shrink-0 justify-end pb-2">
+              <NotificationsPopover />
+            </div>
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
+          </div>
         </div>
 
         <Toaster richColors theme="dark" position="top-center" />
       </div>
+      </AppNotificationsProvider>
     </DashboardUIContext.Provider>
   );
 }
