@@ -141,6 +141,15 @@ export function FullScreenCalendar({
   const [saving, setSaving] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
 
+  const dayEventsRef = React.useRef<HTMLDivElement | null>(null)
+
+  function handleShowMoreEvents(day: Date) {
+    setSelectedDate(day)
+    if (dayEventsRef.current) {
+      dayEventsRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }
+
   const visibleMonth = startOfMonth(selectedDate)
   const monthValue = format(selectedDate, "yyyy-MM")
 
@@ -476,9 +485,16 @@ export function FullScreenCalendar({
                           </div>
                         ))}
                         {calendarDay.events.length > 1 && (
-                          <div className="text-xs text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={(clickEvent) => {
+                              clickEvent.stopPropagation()
+                              handleShowMoreEvents(day)
+                            }}
+                            className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-white"
+                          >
                             + {calendarDay.events.length - 1} mais
-                          </div>
+                          </button>
                         )}
                       </div>
                     ))}
@@ -521,7 +537,7 @@ export function FullScreenCalendar({
         </div>
       </div>
 
-      <div className="border-t border-white/10 bg-black/25 px-4 py-4">
+      <div ref={dayEventsRef} className="border-t border-white/10 bg-black/25 px-4 py-4">
         <p className="text-sm font-medium text-foreground">
           {dayContext} - {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
         </p>
