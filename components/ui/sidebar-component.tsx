@@ -19,8 +19,9 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
+import { fetchCalendarAccess, fetchCalendarEvents, formatEventTimeRange, type CalendarEventRecord } from "@/lib/calendar"
 import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
-import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers, type TeamMember } from "@/lib/profile"
+import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers } from "@/lib/profile"
 import { signOutUser } from "@/lib/auth"
 import { AUTH_INTRO_STORAGE_KEY } from "@/lib/intro-storage"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
@@ -59,6 +60,29 @@ type MenuItem = {
   label: string
   href?: string
   children?: MenuChild[]
+}
+
+type CalendarEventItem = {
+  id: string
+  workspaceId: string
+  createdBy: string
+  title: string
+  description: string | null
+  startAt: string
+  endAt: string | null
+}
+
+type TeamMember = {
+  id: string
+  name: string
+  username?: string
+  imageSrc: string
+  description?: string
+  role?: string
+  status?: 'online' | 'focus' | 'offline'
+  birthday?: string | null
+  workHours?: string | null
+  bio?: string | null
 }
 
 function slugify(input: string) {
@@ -135,7 +159,7 @@ const navItems: {
 
 const sidebarContent: Record<
   NavSectionId,
-  { title: string; sections: { title: string; items: MenuItem[] }[] }
+  { title: string; sections: { title: string; items: MenuItem[]; events?: CalendarEventItem[] }[] }
 > = {
   dashboard: {
     title: "Dashboard",
@@ -191,6 +215,11 @@ const sidebarContent: Record<
             ],
           },
         ],
+      },
+      {
+        title: "Próximos Eventos",
+        items: [],
+        events: [], // será preenchido dinamicamente
       },
     ],
   },
@@ -338,6 +367,7 @@ export default function SidebarComponent() {
   const [me, setMe] = React.useState<{ name: string; email: string; avatarUrl: string } | null>(
     null,
   )
+  const [calendarEvents, setCalendarEvents] = React.useState<CalendarEventRecord[]>([])
   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({
     "Kanban-Projetos": true,
   })
@@ -471,8 +501,29 @@ export default function SidebarComponent() {
       }
     }
 
+    if (visibleSection === "calendar") {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const upcomingEvents = calendarEvents
+        .filter((event) => {
+          const eventDate = new Date(event.startAt)
+          eventDate.setHours(0, 0, 0, 0)
+          return eventDate >= today
+        })
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+
+      return {
+        ...sidebarContent.calendar,
+        sections: sidebarContent.calendar.sections.map((section) => ({
+          ...section,
+          events: section.title === "Próximos Eventos" ? upcomingEvents : section.events,
+        })),
+      }
+    }
+
     return sidebarContent[visibleSection]
-  }, [boards, teams, visibleSection])
+  }, [boards, teams, calendarEvents, visibleSection])
 
   React.useEffect(() => {
     let alive = true
@@ -535,38 +586,48 @@ export default function SidebarComponent() {
     }
   }, [])
 
-  React.useEffect(() => {
-    let alive = true
-    async function loadMe() {
-      try {
-        const profile = (await getMyProfile()) as Record<string, unknown>
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
-
-        const name = String(
-          profile.full_name ?? profile.display_name ?? user.email ?? "Usuário",
-        )
-        const email = String(profile.email ?? user.email ?? "")
-        const avatarUrl = String(profile.avatar_url ?? profile.avatarUrl ?? profile.avatar ?? "")
-
-        if (!alive) return
-        const safeName = name.trim() || "Usuário"
-        setMe({
-          name: safeName,
-          email: email.trim(),
-          avatarUrl: avatarUrl.trim(),
-        })
-      } catch {
-        // ignore
-      }
-    }
-    void loadMe()
-    return () => {
-      alive = false
+  const refreshCalendarEvents = React.useCallback(async () => {
+    try {
+      const access = await fetchCalendarAccess()
+      const workspaceIds = access.workspaces.map((w) => w.id)
+      if (workspaceIds.length === 0) return
+      const events = await fetchCalendarEvents(workspaceIds)
+      setCalendarEvents(events)
+    } catch {
+      // ignore menu load errors
     }
   }, [])
+
+  React.useEffect(() => {
+    let alive = true
+
+    const handleWindowFocus = () => {
+      if (!alive) return
+      void refreshCalendarEvents()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!alive) return
+      if (document.visibilityState === "visible") {
+        void refreshCalendarEvents()
+      }
+    }
+
+    void refreshCalendarEvents()
+    window.addEventListener("focus", handleWindowFocus)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    const intervalId = window.setInterval(() => {
+      if (!alive) return
+      void refreshCalendarEvents()
+    }, 20000)
+
+    return () => {
+      alive = false
+      window.removeEventListener("focus", handleWindowFocus)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.clearInterval(intervalId)
+    }
+  }, [refreshCalendarEvents])
 
   const toggleExpanded = (key: string) => {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -775,6 +836,28 @@ export default function SidebarComponent() {
                   </div>
                 )
               })}
+
+              {!isCollapsed && section.events && section.events.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {section.events.map((event) => (
+                    <Link
+                      key={event.id}
+                      href={`/calendar?eventId=${encodeURIComponent(event.id)}`}
+                      className="rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="text-sm font-medium text-white">{event.title}</p>
+                        <span className="text-xs text-zinc-400">
+                          {new Date(event.startAt).toLocaleDateString("pt-BR")} • {formatEventTimeRange(event.startAt, event.endAt)}
+                        </span>
+                      </div>
+                      {event.description && (
+                        <p className="mt-2 text-xs text-zinc-500 line-clamp-2">{event.description}</p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
