@@ -1,0 +1,332 @@
+"use client"
+
+import * as React from "react"
+import { useSearchParams } from "next/navigation"
+import {
+  Bell,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from "lucide-react"
+
+import { SettingsProfileSection } from "@/components/settings-profile-section"
+import { LoginInfoCard } from "@/components/settings/login-info-card"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import {
+  getMyNotificationSettings,
+  updateMyNotificationSettings,
+  type MyNotificationSettings,
+} from "@/lib/profile"
+import { cn } from "@/lib/utils"
+
+type SettingsSectionId = "profile" | "notifications" | "security"
+
+type NotificationSetting = {
+  id: string
+  title: string
+  description: string
+  enabled: boolean
+}
+
+const settingsSections = [
+  {
+    id: "profile" as const,
+    title: "Perfil",
+    description: "Foto, dados pessoais e apresentacao interna.",
+    icon: UserRound,
+    eyebrow: "Conta",
+  },
+  {
+    id: "notifications" as const,
+    title: "Notificacoes",
+    description: "O que voce quer receber no fluxo do dia.",
+    icon: Bell,
+    eyebrow: "Preferencias",
+  },
+  {
+    id: "security" as const,
+    title: "Seguranca",
+    description: "Senha e protecao adicional da conta.",
+    icon: ShieldCheck,
+    eyebrow: "Acesso",
+  },
+]
+
+const initialNotifications: NotificationSetting[] = [
+  {
+    id: "daily-summary",
+    title: "Resumo diario",
+    description: "Receba um consolidado com tarefas, entregas e eventos do dia.",
+    enabled: true,
+  },
+  {
+    id: "deadline-alerts",
+    title: "Alertas de prazo",
+    description: "Avise quando um projeto ou card estiver perto do vencimento.",
+    enabled: true,
+  },
+  {
+    id: "team-updates",
+    title: "Atualizacoes de equipe",
+    description: "Notifique quando houver nova atividade relevante no workspace.",
+    enabled: false,
+  },
+]
+
+const notificationKeyById: Record<string, keyof MyNotificationSettings> = {
+  "daily-summary": "dailySummary",
+  "deadline-alerts": "deadlineAlerts",
+  "team-updates": "teamUpdates",
+}
+
+function SettingToggle({
+  description,
+  enabled,
+  onToggle,
+  title,
+}: {
+  description: string
+  enabled: boolean
+  onToggle: () => void
+  title: string
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4">
+      <div className="max-w-xl">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+
+      <button
+        type="button"
+        aria-pressed={enabled}
+        onClick={onToggle}
+        className={cn(
+          "relative mt-1 inline-flex h-7 w-12 shrink-0 rounded-full border transition-colors",
+          enabled ? "border-emerald-300/30 bg-emerald-200/90" : "border-white/10 bg-white/10",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full transition-all",
+            enabled ? "right-1 bg-black" : "left-1 bg-zinc-300",
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
+function NotificationsSection() {
+  const { showAlert } = useDashboardLoading()
+  const [settings, setSettings] = React.useState(initialNotifications)
+  const [loading, setLoading] = React.useState(true)
+  const [savingId, setSavingId] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    let alive = true
+
+    ;(async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const notificationSettings = await getMyNotificationSettings()
+        if (!alive) return
+
+        setSettings((current) =>
+          current.map((item) => ({
+            ...item,
+            enabled: notificationSettings[notificationKeyById[item.id]],
+          })),
+        )
+      } catch (loadError) {
+        if (!alive) return
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Nao foi possivel carregar as notificacoes.",
+        )
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function toggleSetting(id: string) {
+    const currentItem = settings.find((item) => item.id === id)
+    if (!currentItem) return
+
+    const nextValue = !currentItem.enabled
+    const profileKey = notificationKeyById[id]
+
+    setError(null)
+    setSavingId(id)
+    setSettings((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, enabled: nextValue } : item,
+      ),
+    )
+
+    try {
+      await updateMyNotificationSettings({ [profileKey]: nextValue })
+    } catch (saveError) {
+      setSettings((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, enabled: currentItem.enabled } : item,
+        ),
+      )
+
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : "Nao foi possivel salvar as notificacoes."
+
+      setError(message)
+      showAlert({
+        variant: "error",
+        title: "Falha ao salvar notificacoes",
+        description: message,
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const enabledCount = settings.filter((item) => item.enabled).length
+
+  return (
+    <section className="rounded-[30px] border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <Bell className="h-5 w-5 text-foreground" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Notificacoes</h2>
+            <p className="text-sm text-muted-foreground">
+              Controle o que chega para voce sem poluir a rotina.
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-300">
+          {enabledCount}/{settings.length} ativas
+        </div>
+      </div>
+
+      {error && (
+        <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          {error}
+        </p>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-4">
+          {loading ? (
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4 text-sm text-zinc-400">
+              Carregando preferencias de notificacao...
+            </div>
+          ) : (
+            settings.map((item) => (
+              <div key={item.id} className="relative">
+                <SettingToggle
+                  title={item.title}
+                  description={item.description}
+                  enabled={item.enabled}
+                  onToggle={() => void toggleSetting(item.id)}
+                />
+                {savingId === item.id && (
+                  <span className="pointer-events-none absolute right-16 top-4 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                    Salvando
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_58%,_transparent_100%)] p-5">
+          <div className="flex items-center gap-2 text-zinc-200">
+            <Sparkles className="h-4 w-4" />
+            <p className="text-sm font-semibold">Resumo da configuracao</p>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Nesta etapa a tela fica funcional no front-end: as preferencias
+            respondem ao clique e cada categoria abre seu proprio contexto.
+          </p>
+          <div className="mt-5 space-y-3">
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Canal principal</p>
+              <p className="mt-2 text-sm font-medium text-foreground">Aplicacao</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Persistencia</p>
+              <p className="mt-2 text-sm font-medium text-foreground">Local nesta etapa</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SecuritySection() {
+  return <LoginInfoCard />
+}
+
+export function SettingsWorkspaceShell() {
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams.get("section")
+  const activeSection: SettingsSectionId =
+    sectionParam === "notifications" || sectionParam === "security"
+      ? sectionParam
+      : "profile"
+
+  const activeMeta =
+    settingsSections.find((section) => section.id === activeSection) ??
+    settingsSections[0]
+
+  return (
+    <section className="relative min-h-full p-6 md:p-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <div className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
+            Configuracoes
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-foreground md:text-4xl">
+            Preferencias da sua conta
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground md:text-base">
+            Cada area de configuracao agora fica organizada por secao, com
+            navegacao lateral e edicao mais focada.
+          </p>
+        </div>
+
+        <div className="min-w-0 space-y-6">
+            <section className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_55%,_transparent_100%)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+                {activeMeta.eyebrow}
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-foreground">
+                {activeMeta.title}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {activeMeta.description}
+              </p>
+            </section>
+
+            {activeSection === "profile" && (
+              <SettingsProfileSection showSummary={false} />
+            )}
+            {activeSection === "notifications" && <NotificationsSection />}
+            {activeSection === "security" && <SecuritySection />}
+        </div>
+      </div>
+    </section>
+  )
+}
