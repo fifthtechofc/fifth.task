@@ -117,6 +117,13 @@ export function CalendarWorkspaceView() {
   const [events, setEvents] = React.useState<CalendarEventRecord[]>([])
   const [membersByWorkspaceId, setMembersByWorkspaceId] = React.useState<Record<string, MemberOption[]>>({})
 
+  React.useLayoutEffect(() => {
+    setDashboardLoading(loading)
+    return () => {
+      setDashboardLoading(false)
+    }
+  }, [loading, setDashboardLoading])
+
   const workspaceLabelById = React.useMemo(
     () => new Map(workspaces.map((workspace) => [workspace.id, workspace.label])),
     [workspaces],

@@ -56,12 +56,17 @@ export function BoardsHome() {
         }
       } catch {
         // ignore errors
+      } finally {
+        // Essa página só redireciona; não pode deixar o loader global preso.
+        if (!alive) return
+        setDashboardLoading(false)
       }
     }
 
     void decideStartBoard()
     return () => {
       alive = false
+      setDashboardLoading(false)
     }
   }, [router, setDashboardLoading])
 

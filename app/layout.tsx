@@ -5,7 +5,7 @@ export const metadata = {
   title: "FifthTask",
   description: "Sistema de gestão da empresa",
   icons: {
-    icon: "/icon.png",
+    icon: "/favicon.ico",
   },
 }
 

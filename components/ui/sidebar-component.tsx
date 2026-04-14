@@ -601,15 +601,28 @@ export default function SidebarComponent() {
     }
   }, [])
 
+  const calendarWorkspaceIdsRef = React.useRef<string[] | null>(null)
+  const calendarRefreshInFlightRef = React.useRef(false)
+
   const refreshCalendarEvents = React.useCallback(async () => {
+    if (calendarRefreshInFlightRef.current) return
+    calendarRefreshInFlightRef.current = true
     try {
-      const access = await fetchCalendarAccess()
-      const workspaceIds = access.workspaces.map((w) => w.id)
+      let workspaceIds = calendarWorkspaceIdsRef.current
+      if (!workspaceIds) {
+        const access = await fetchCalendarAccess()
+        workspaceIds = access.workspaces.map((w) => w.id)
+        calendarWorkspaceIdsRef.current = workspaceIds
+      }
       if (workspaceIds.length === 0) return
       const events = await fetchCalendarEvents(workspaceIds)
       setCalendarEvents(events)
     } catch {
       // ignore menu load errors
+      // If access lookup failed, allow retrying next time.
+      calendarWorkspaceIdsRef.current = null
+    } finally {
+      calendarRefreshInFlightRef.current = false
     }
   }, [])
 
