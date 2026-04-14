@@ -122,6 +122,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  React.useEffect(() => {
+    // Handoff pós-login: `ft:postAuthLoader` é setado na tela de login para evitar flash,
+    // mas algumas páginas do dashboard não chamam `setLoading(false)`.
+    // Ao montar o dashboard, liberamos esse handoff automaticamente (sem mexer no lock de logout).
+    try {
+      if (
+        window.sessionStorage.getItem(POST_AUTH_LOADER_KEY) === "1" &&
+        window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) !== "1"
+      ) {
+        setLoading(false);
+      }
+    } catch {
+      // ignore
+    }
+  }, [setLoading]);
+
   const showAlert: DashboardUIContextValue["showAlert"] = React.useCallback((params) => {
     setAlert({
       id: Date.now(),
