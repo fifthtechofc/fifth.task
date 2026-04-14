@@ -38,6 +38,7 @@ export async function updateMyProfileAvatar(avatarUrl: string) {
 }
 
 export async function updateMyProfileDetails(params: {
+  fullName?: string | null
   birthday?: string | null
   jobTitle?: string | null
   bio?: string | null
@@ -49,6 +50,7 @@ export async function updateMyProfileDetails(params: {
   }
 
   const payload: Record<string, unknown> = {}
+  if (params.fullName !== undefined) payload.full_name = params.fullName
   if (params.birthday !== undefined) payload.birthday = params.birthday
   if (params.jobTitle !== undefined) payload.job_title = params.jobTitle
   if (params.bio !== undefined) payload.bio = params.bio
@@ -59,6 +61,81 @@ export async function updateMyProfileDetails(params: {
   const { error } = await supabase.from('profiles').update(payload).eq('id', userId)
   if (error) {
     throw new Error(error.message)
+  }
+}
+
+export type MyNotificationSettings = {
+  dailySummary: boolean
+  deadlineAlerts: boolean
+  teamUpdates: boolean
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS: MyNotificationSettings = {
+  dailySummary: true,
+  deadlineAlerts: true,
+  teamUpdates: false,
+}
+
+function parseNotificationBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback
+}
+
+export async function getMyNotificationSettings(): Promise<MyNotificationSettings> {
+  const profile = (await getMyProfile()) as Record<string, unknown>
+
+  return {
+    dailySummary: parseNotificationBoolean(
+      profile.notify_daily_summary,
+      DEFAULT_NOTIFICATION_SETTINGS.dailySummary,
+    ),
+    deadlineAlerts: parseNotificationBoolean(
+      profile.notify_deadline_alerts,
+      DEFAULT_NOTIFICATION_SETTINGS.deadlineAlerts,
+    ),
+    teamUpdates: parseNotificationBoolean(
+      profile.notify_team_updates,
+      DEFAULT_NOTIFICATION_SETTINGS.teamUpdates,
+    ),
+  }
+}
+
+export async function updateMyNotificationSettings(
+  params: Partial<MyNotificationSettings>,
+) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
+    throw new Error("Usuário não autenticado.")
+  }
+
+  const payload: Record<string, unknown> = {}
+  if (params.dailySummary !== undefined) {
+    payload.notify_daily_summary = params.dailySummary
+  }
+  if (params.deadlineAlerts !== undefined) {
+    payload.notify_deadline_alerts = params.deadlineAlerts
+  }
+  if (params.teamUpdates !== undefined) {
+    payload.notify_team_updates = params.teamUpdates
+  }
+
+  if (Object.keys(payload).length === 0) return
+
+  const { error } = await supabase.from("profiles").update(payload).eq("id", userId)
+  if (error) {
+    const message = error.message ?? ""
+    const missingColumn =
+      (message.includes("notify_daily_summary") ||
+        message.includes("notify_deadline_alerts") ||
+        message.includes("notify_team_updates")) &&
+      (message.toLowerCase().includes("column") || message.toLowerCase().includes("schema"))
+
+    if (missingColumn) {
+      throw new Error(
+        "As colunas de notificacao ainda nao existem no Supabase. Execute o arquivo supabase/profile_notification_settings.sql.",
+      )
+    }
+
+    throw new Error(message)
   }
 }
 

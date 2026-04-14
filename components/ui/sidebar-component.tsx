@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   BarChart3,
   Calendar,
@@ -249,9 +249,9 @@ const sidebarContent: Record<
       {
         title: "Workspace",
         items: [
-          { label: "Preferencias", href: "/settings" },
-          { label: "Notificacoes", href: "/settings" },
-          { label: "Seguranca", href: "/settings" },
+          { label: "Perfil", href: "/settings?section=profile" },
+          { label: "Notificacoes", href: "/settings?section=notifications" },
+          { label: "Seguranca", href: "/settings?section=security" },
         ],
       },
     ],
@@ -358,6 +358,7 @@ function RailNavLink({
 
 export default function SidebarComponent() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { setLoading: setDashboardLoading } = useDashboardLoading()
   const [isHovered, setIsHovered] = React.useState(false)
   const [previewSection, setPreviewSection] = React.useState<NavSectionId | null>(null)
@@ -381,6 +382,7 @@ export default function SidebarComponent() {
   const activeSection = getActiveSection(pathname)
   const visibleSection = previewSection ?? activeSection
   const isCollapsed = !isHovered
+  const activeSettingsSection = searchParams.get("section") ?? "profile"
 
   React.useEffect(() => {
     if (!createTeamOpen) return
@@ -775,13 +777,22 @@ export default function SidebarComponent() {
                 const children = "children" in item ? item.children : undefined
 
                 if (item.href) {
+                  const itemSection =
+                    visibleSection === "settings"
+                      ? new URL(item.href, "http://localhost").searchParams.get("section") ?? "profile"
+                      : null
+                  const isItemActive =
+                    visibleSection === "settings"
+                      ? activeSection === "settings" && activeSettingsSection === itemSection
+                      : pathname === item.href
+
                   return (
                     <Link
                       key={itemKey}
                       href={item.href}
                       className={cn(
                         "rounded-xl transition-colors",
-                        pathname === item.href
+                        isItemActive
                           ? "bg-white/10 text-white"
                           : "text-zinc-300 hover:bg-white/6 hover:text-white",
                         isCollapsed
