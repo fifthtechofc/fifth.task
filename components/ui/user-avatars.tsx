@@ -9,6 +9,15 @@ interface User {
   image: string
 }
 
+function userInitials(name?: string) {
+  return (name || "User")
+    .split(/\s+/)
+    .map((part) => part[0] || "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
 interface UserAvatarsProps {
   users: User[]
   size?: number | string
@@ -99,11 +108,17 @@ export function UserAvatars({
                   +{users.length - maxVisible}
                 </div>
               ) : (
-                <img
-                  src={user.image}
-                  alt={user.name || "User"}
-                  className="h-full w-full object-cover"
-                />
+                user.image ? (
+                  <img
+                    src={user.image}
+                    alt={user.name || "User"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-background text-xs font-semibold text-foreground">
+                    {userInitials(user.name)}
+                  </div>
+                )
               )}
             </div>
 

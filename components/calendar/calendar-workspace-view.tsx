@@ -1,18 +1,22 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 
+import { type MemberOption } from "@/components/ui/members-select"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import {
   FullScreenCalendar,
   type CalendarData,
   type CalendarEventItem,
 } from "@/components/ui/fullscreen-calendar"
+import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
   createCalendarEvent,
   deleteCalendarEvent,
   fetchCalendarAccess,
   fetchCalendarEvents,
+  fetchCalendarWorkspaceMembers,
   formatEventTimeRange,
   updateCalendarEvent,
   type CalendarEventRecord,
@@ -34,8 +38,15 @@ function buildCalendarData(events: CalendarEventRecord[]): CalendarData[] {
       time: formatEventTimeRange(event.startAt, event.endAt),
       datetime: event.startAt,
       description: event.description ?? undefined,
+      isMeeting: event.isMeeting,
+      meetingLink: event.meetingLink ?? undefined,
       workspaceId: event.workspaceId,
       endDatetime: event.endAt ?? undefined,
+      assignees: event.assignees.map((assignee) => ({
+        id: assignee.id,
+        name: assignee.name,
+        imageSrc: assignee.imageSrc,
+      })),
     })
     grouped.set(key, list)
   }
@@ -56,8 +67,8 @@ function CalendarLoadingSkeleton() {
       aria-label="Carregando calendario"
     >
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 lg:flex-row lg:items-center">
-        <div className="h-10 flex-1 max-w-md rounded-md bg-white/10" />
-        <div className="h-10 flex-1 max-w-[220px] rounded-md bg-white/10" />
+        <div className="h-10 max-w-md flex-1 rounded-md bg-white/10" />
+        <div className="h-10 max-w-[220px] flex-1 rounded-md bg-white/10" />
         <div className="h-10 w-40 rounded-md bg-white/10" />
       </div>
       <div className="grid grid-cols-7 gap-px border-b border-white/10 bg-white/6 p-px">
@@ -74,14 +85,43 @@ function CalendarLoadingSkeleton() {
   )
 }
 
+function formatAssigneeNames(assignees: MemberOption[]) {
+  const names = assignees.map((assignee) => assignee.name.trim()).filter(Boolean)
+  if (names.length === 0) return ""
+  return names.slice(0, 5).join(", ")
+}
+
+function formatCalendarNotificationBody(
+  eventTitle: string,
+  workspaceLabel: string,
+  assigneeNames?: string,
+) {
+  const safeTitle = (eventTitle || "Evento").trim()
+  const safeWorkspace = (workspaceLabel || "Workspace").trim()
+  const safeAssignees = (assigneeNames || "").trim()
+
+  return safeAssignees
+    ? `${safeTitle.slice(0, 140)} | ${safeWorkspace.slice(0, 120)} | ${safeAssignees.slice(0, 220)}`
+    : `${safeTitle.slice(0, 140)} | ${safeWorkspace.slice(0, 120)}`
+}
+
 export function CalendarWorkspaceView() {
+  const searchParams = useSearchParams()
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
+  const { pushNotification } = useAppNotifications()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [eventsLoadError, setEventsLoadError] = React.useState<string | null>(null)
   const [workspaces, setWorkspaces] = React.useState<WorkspaceOption[]>([])
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<string>("")
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState("")
   const [events, setEvents] = React.useState<CalendarEventRecord[]>([])
+  const [membersByWorkspaceId, setMembersByWorkspaceId] = React.useState<Record<string, MemberOption[]>>({})
+
+  const workspaceLabelById = React.useMemo(
+    () => new Map(workspaces.map((workspace) => [workspace.id, workspace.label])),
+    [workspaces],
+  )
+  const focusEventId = searchParams.get("eventId")
 
   const loadCalendar = React.useCallback(async () => {
     setLoading(true)
@@ -93,24 +133,27 @@ export function CalendarWorkspaceView() {
       const workspaceIds = access.workspaces.map((workspace) => workspace.id)
 
       setWorkspaces(access.workspaces)
-      setSelectedWorkspaceId((current) => {
-        const next = current || access.defaultWorkspaceId || access.workspaces[0]?.id || ""
-        return next
-      })
+      setSelectedWorkspaceId((current) => current || access.defaultWorkspaceId || access.workspaces[0]?.id || "")
 
       try {
-        const rows = await fetchCalendarEvents(workspaceIds)
+        const [rows, membersByWorkspace] = await Promise.all([
+          fetchCalendarEvents(workspaceIds),
+          fetchCalendarWorkspaceMembers(workspaceIds),
+        ])
         setEvents(rows)
-      } catch (evErr) {
+        setMembersByWorkspaceId(membersByWorkspace)
+      } catch (eventError) {
         setEvents([])
+        setMembersByWorkspaceId({})
         setEventsLoadError(
-          evErr instanceof Error ? evErr.message : "Nao foi possivel carregar os eventos.",
+          eventError instanceof Error ? eventError.message : "Nao foi possivel carregar os eventos.",
         )
       }
-    } catch (e) {
+    } catch (loadError) {
       setWorkspaces([])
       setEvents([])
-      setError(e instanceof Error ? e.message : "Nao foi possivel carregar o calendario.")
+      setMembersByWorkspaceId({})
+      setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar o calendario.")
     } finally {
       setLoading(false)
     }
@@ -131,8 +174,11 @@ export function CalendarWorkspaceView() {
     workspaceId: string
     title: string
     description?: string
+    isMeeting?: boolean
+    meetingLink?: string
     startAt: string
     endAt?: string
+    assigneeIds: string[]
   }) => {
     setDashboardLoading(true)
 
@@ -141,14 +187,28 @@ export function CalendarWorkspaceView() {
         workspaceId: input.workspaceId,
         title: input.title,
         description: input.description,
+        isMeeting: input.isMeeting,
+        meetingLink: input.meetingLink,
         startAt: input.startAt,
         endAt: input.endAt || null,
+        assigneeIds: input.assigneeIds,
       })
 
-      setEvents((current) =>
-        [...current, created].sort((a, b) => a.startAt.localeCompare(b.startAt)),
-      )
+      setEvents((current) => [...current, created].sort((a, b) => a.startAt.localeCompare(b.startAt)))
       setSelectedWorkspaceId(created.workspaceId)
+
+      await pushNotification({
+        notificationType:
+          created.assignees.length > 0 ? "calendar_event_created_with_assignees" : "calendar_event_created",
+        title: "Novo evento",
+        body: formatCalendarNotificationBody(
+          created.title,
+          workspaceLabelById.get(created.workspaceId) ?? "Workspace",
+          formatAssigneeNames(created.assignees),
+        ),
+        href: `/calendar?eventId=${encodeURIComponent(created.id)}`,
+      })
+
       showAlert({
         variant: "success",
         title: "Evento criado",
@@ -165,19 +225,26 @@ export function CalendarWorkspaceView() {
       workspaceId: string
       title: string
       description?: string
+      isMeeting?: boolean
+      meetingLink?: string
       startAt: string
       endAt?: string
+      assigneeIds: string[]
     },
   ) => {
     setDashboardLoading(true)
 
     try {
+      const previousEvent = events.find((event) => event.id === eventId) ?? null
       const updated = await updateCalendarEvent(eventId, {
         workspaceId: input.workspaceId,
         title: input.title,
         description: input.description,
+        isMeeting: input.isMeeting,
+        meetingLink: input.meetingLink,
         startAt: input.startAt,
         endAt: input.endAt || null,
+        assigneeIds: input.assigneeIds,
       })
 
       setEvents((current) =>
@@ -186,6 +253,28 @@ export function CalendarWorkspaceView() {
           .sort((a, b) => a.startAt.localeCompare(b.startAt)),
       )
       setSelectedWorkspaceId(updated.workspaceId)
+
+      const previousAssigneeIds = previousEvent?.assignees.map((assignee) => assignee.id) ?? []
+      const addedAssigneeIds = updated.assignees
+        .map((assignee) => assignee.id)
+        .filter((assigneeId) => !previousAssigneeIds.includes(assigneeId))
+
+      await pushNotification({
+        notificationType:
+          updated.assignees.length > 0 ? "calendar_event_updated_with_assignees" : "calendar_event_updated",
+        title: "Evento atualizado",
+        body: formatCalendarNotificationBody(
+          updated.title,
+          workspaceLabelById.get(updated.workspaceId) ?? "Workspace",
+          formatAssigneeNames(
+            addedAssigneeIds.length > 0
+              ? updated.assignees.filter((assignee) => addedAssigneeIds.includes(assignee.id))
+              : updated.assignees,
+          ),
+        ),
+        href: `/calendar?eventId=${encodeURIComponent(updated.id)}`,
+      })
+
       showAlert({
         variant: "success",
         title: "Evento atualizado",
@@ -200,8 +289,22 @@ export function CalendarWorkspaceView() {
     setDashboardLoading(true)
 
     try {
+      const eventToDelete = events.find((event) => event.id === eventId) ?? null
       await deleteCalendarEvent(eventId)
       setEvents((current) => current.filter((event) => event.id !== eventId))
+
+      if (eventToDelete) {
+        await pushNotification({
+          notificationType: "calendar_event_deleted",
+          title: "Evento removido",
+          body: formatCalendarNotificationBody(
+            eventToDelete.title,
+            workspaceLabelById.get(eventToDelete.workspaceId) ?? "Workspace",
+          ),
+          href: "/calendar",
+        })
+      }
+
       showAlert({
         variant: "success",
         title: "Evento excluido",
@@ -224,18 +327,6 @@ export function CalendarWorkspaceView() {
     return (
       <div className="max-w-xl space-y-2 text-sm text-muted-foreground">
         <p>Nenhum workspace disponivel para este usuario.</p>
-        <p className="text-xs leading-relaxed text-zinc-500">
-          <span className="font-medium text-zinc-400">Opção A (recomendado, equipa interna):</span> corre{" "}
-          <code className="rounded bg-white/5 px-1">supabase/workspaces_rls_single_tenant_open.sql</code> no
-          SQL Editor.{" "}
-          <span className="font-medium text-zinc-400">Opção B:</span>{" "}
-          <code className="rounded bg-white/5 px-1">workspaces_rls_authenticated_select.sql</code> (mais
-          restritivo).{" "}
-          <span className="font-medium text-zinc-400">Opção C:</span>{" "}
-          <code className="rounded bg-white/5 px-1">SUPABASE_SERVICE_ROLE_KEY</code> no servidor; opcional{" "}
-          <code className="rounded bg-white/5 px-1">CALENDAR_FALLBACK_ALL_WORKSPACES=1</code> se não houver
-          linha em <code className="rounded bg-white/5 px-1">workspace_members</code>.
-        </p>
       </div>
     )
   }
@@ -250,7 +341,9 @@ export function CalendarWorkspaceView() {
       <FullScreenCalendar
         data={calendarData}
         workspaces={workspaces}
+        availableMembersByWorkspaceId={membersByWorkspaceId}
         selectedWorkspaceId={selectedWorkspaceId}
+        focusEventId={focusEventId}
         onWorkspaceChange={setSelectedWorkspaceId}
         onCreateEvent={handleCreateEvent}
         onUpdateEvent={handleUpdateEvent}

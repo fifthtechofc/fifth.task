@@ -1,18 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
 import { AUTH_INTRO_STORAGE_KEY } from '@/lib/intro-storage'
 
+function subscribeToIntroStorage(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+  return () => window.removeEventListener('storage', onStoreChange)
+}
+
+function getClientIntroPhase() {
+  try {
+    return sessionStorage.getItem(AUTH_INTRO_STORAGE_KEY) === '1' ? 'done' : 'splash'
+  } catch {
+    return 'splash'
+  }
+}
+
 export function AuthIntroGate({ children }: { children: React.ReactNode }) {
-  const [phase, setPhase] = useState<'splash' | 'done'>(() => {
-    try {
-      return sessionStorage.getItem(AUTH_INTRO_STORAGE_KEY) === '1' ? 'done' : 'splash'
-    } catch {
-      return 'splash'
-    }
-  })
+  const [dismissedSplash, setDismissedSplash] = useState(false)
+  const persistedPhase = useSyncExternalStore(subscribeToIntroStorage, getClientIntroPhase, () => 'splash')
+  const phase = dismissedSplash || persistedPhase === 'done' ? 'done' : 'splash'
 
   useEffect(() => {
     // cleanup: a tela do dashboard pode travar o loader no logout
@@ -32,7 +41,7 @@ export function AuthIntroGate({ children }: { children: React.ReactNode }) {
           } catch {
             /* private mode / blocked storage */
           }
-          setPhase('done')
+          setDismissedSplash(true)
         }}
       />
     )

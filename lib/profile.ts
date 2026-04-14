@@ -1,21 +1,17 @@
-import { supabase } from './supabase'
+import { getSupabaseUserId, supabase } from './supabase'
 import { getAvatarPublicUrl } from './storage'
 import { getJobTitleDescription } from './job-titles'
 
 export async function getMyProfile() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
     throw new Error('Usuário não autenticado.')
   }
 
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', userId)
     .single()
 
   if (error) {
@@ -26,19 +22,15 @@ export async function getMyProfile() {
 }
 
 export async function updateMyProfileAvatar(avatarUrl: string) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
     throw new Error('Usuário não autenticado.')
   }
 
   const { error } = await supabase
     .from('profiles')
     .update({ avatar_url: avatarUrl })
-    .eq('id', user.id)
+    .eq('id', userId)
 
   if (error) {
     throw new Error(error.message)
@@ -51,12 +43,8 @@ export async function updateMyProfileDetails(params: {
   bio?: string | null
   workHours?: string | null
 }) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
     throw new Error('Usuário não autenticado.')
   }
 
@@ -68,19 +56,15 @@ export async function updateMyProfileDetails(params: {
 
   if (Object.keys(payload).length === 0) return
 
-  const { error } = await supabase.from('profiles').update(payload).eq('id', user.id)
+  const { error } = await supabase.from('profiles').update(payload).eq('id', userId)
   if (error) {
     throw new Error(error.message)
   }
 }
 
 export async function touchMyPresence() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
     return
   }
 
@@ -92,7 +76,7 @@ export async function touchMyPresence() {
       .from('profiles')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update({ last_seen_at: now } as any)
-      .eq('id', user.id)
+      .eq('id', userId)
 
     if (!error) return
 
@@ -111,16 +95,12 @@ export async function touchMyPresence() {
     .from('profiles')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ status: 'online' } as any)
-    .eq('id', user.id)
+    .eq('id', userId)
 }
 
 export async function setMyStatusOffline() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  const userId = await getSupabaseUserId()
+  if (!userId) {
     return
   }
 
@@ -129,7 +109,7 @@ export async function setMyStatusOffline() {
     .from('profiles')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ status: 'offline' } as any)
-    .eq('id', user.id)
+    .eq('id', userId)
 }
 
 export type TeamMember = {
