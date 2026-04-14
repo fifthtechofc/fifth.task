@@ -1,5 +1,6 @@
 import { format } from "date-fns"
 
+import { getTeamMembers } from "@/lib/profile"
 import { supabase } from "@/lib/supabase"
 
 type WorkspaceMemberRow = Record<string, unknown>
@@ -20,16 +21,28 @@ export type CalendarEventRecord = {
   createdBy: string
   title: string
   description: string | null
+  isMeeting: boolean
+  meetingLink: string | null
   startAt: string
   endAt: string | null
+  assignees: CalendarEventAssignee[]
 }
 
 export type CalendarEventInput = {
   workspaceId: string
   title: string
   description?: string
+  isMeeting?: boolean
+  meetingLink?: string | null
   startAt: string
   endAt?: string | null
+  assigneeIds?: string[]
+}
+
+export type CalendarEventAssignee = {
+  id: string
+  name: string
+  imageSrc: string
 }
 
 type CalendarSchemaConfig = {
@@ -42,6 +55,11 @@ type CalendarSchemaConfig = {
   readEndAt: (row: CalendarEventDbRow) => string | null
 }
 
+type CalendarEventAssigneeRow = {
+  event_id: string
+  user_id?: string | null
+}
+
 const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
   {
     name: "event_date/start_time/end_time",
@@ -51,7 +69,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       workspace_id: input.workspaceId,
       created_by: userId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       event_date: toDateOnly(input.startAt),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
@@ -59,7 +77,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
     buildUpdatePayload: (input) => ({
       workspace_id: input.workspaceId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       event_date: toDateOnly(input.startAt),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
@@ -75,7 +93,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       workspace_id: input.workspaceId,
       created_by: userId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       date: toDateOnly(input.startAt),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
@@ -83,7 +101,7 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
     buildUpdatePayload: (input) => ({
       workspace_id: input.workspaceId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       date: toDateOnly(input.startAt),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
@@ -99,14 +117,14 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       workspace_id: input.workspaceId,
       created_by: userId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       start_at: input.startAt,
       end_at: input.endAt || null,
     }),
     buildUpdatePayload: (input) => ({
       workspace_id: input.workspaceId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       start_at: input.startAt,
       end_at: input.endAt || null,
     }),
@@ -121,14 +139,14 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       workspace_id: input.workspaceId,
       created_by: userId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       datetime: input.startAt,
       end_datetime: input.endAt || null,
     }),
     buildUpdatePayload: (input) => ({
       workspace_id: input.workspaceId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       datetime: input.startAt,
       end_datetime: input.endAt || null,
     }),
@@ -143,14 +161,14 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       workspace_id: input.workspaceId,
       created_by: userId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
     buildUpdatePayload: (input) => ({
       workspace_id: input.workspaceId,
       title: input.title.trim(),
-      description: input.description?.trim() || null,
+      description: buildCalendarDescription(input),
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
@@ -161,12 +179,17 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
 ]
 
 let cachedCalendarSchema: CalendarSchemaConfig | null = null
+const CALENDAR_META_PREFIX = "FTMETA:"
 
 function pickString(...values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim()
   }
   return ""
+}
+
+function uniqueIds(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)))
 }
 
 function toDateOnly(value: string) {
@@ -193,6 +216,60 @@ function normalizeLocalDateTime(value: string) {
   return `${match[1]}T${match[2]}:00`
 }
 
+type CalendarDescriptionMeta = {
+  description: string | null
+  isMeeting: boolean
+  meetingLink: string | null
+}
+
+export function parseCalendarDescription(raw: string | null | undefined): CalendarDescriptionMeta {
+  const value = pickString(raw)
+  if (!value) {
+    return { description: null, isMeeting: false, meetingLink: null }
+  }
+
+  const [firstLine, ...rest] = value.split(/\r?\n/)
+  if (!firstLine.startsWith(CALENDAR_META_PREFIX)) {
+    return { description: value, isMeeting: false, meetingLink: null }
+  }
+
+  try {
+    const meta = JSON.parse(firstLine.slice(CALENDAR_META_PREFIX.length)) as {
+      isMeeting?: boolean
+      meetingLink?: string | null
+    }
+    const description = rest.join("\n").trim() || null
+    return {
+      description,
+      isMeeting: Boolean(meta.isMeeting),
+      meetingLink: pickString(meta.meetingLink) || null,
+    }
+  } catch {
+    return { description: value, isMeeting: false, meetingLink: null }
+  }
+}
+
+export function buildCalendarDescription(input: {
+  description?: string | null
+  isMeeting?: boolean
+  meetingLink?: string | null
+}) {
+  const description = pickString(input.description) || null
+  const isMeeting = Boolean(input.isMeeting)
+  const meetingLink = pickString(input.meetingLink) || null
+
+  if (!isMeeting && !meetingLink) {
+    return description
+  }
+
+  const meta = `${CALENDAR_META_PREFIX}${JSON.stringify({
+    isMeeting,
+    meetingLink,
+  })}`
+
+  return description ? `${meta}\n${description}` : meta
+}
+
 function isMissingColumnError(error: unknown) {
   const message =
     error instanceof Error
@@ -205,17 +282,141 @@ function isMissingColumnError(error: unknown) {
   return lower.includes("column") || lower.includes("schema cache")
 }
 
-async function getAuthenticatedUserId() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
+function isMissingTableError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : ""
 
-  if (error || !user) {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes("does not exist") ||
+    lower.includes("not found") ||
+    lower.includes("schema cache") ||
+    lower.includes("could not find the table")
+  )
+}
+
+function isAuthLockAbort(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error ?? "")
+  return message.includes("AbortError") || message.includes("steal")
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function getSessionSnapshot() {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) throw error
+      return data.session ?? null
+    } catch (error) {
+      lastError = error
+      if (!isAuthLockAbort(error) || attempt === 1) break
+      await sleep(120)
+    }
+  }
+
+  if (lastError) {
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
+  }
+
+  return null
+}
+
+async function getAuthenticatedUserId() {
+  const session = await getSessionSnapshot()
+  const userId = session?.user?.id?.trim()
+
+  if (!userId) {
     throw new Error("Usuario nao autenticado.")
   }
 
-  return user.id
+  return userId
+}
+
+async function fetchProfilesMap(profileIds: string[]) {
+  const ids = uniqueIds(profileIds)
+  if (ids.length === 0) return new Map<string, CalendarEventAssignee>()
+
+  const profilesById = new Map<string, CalendarEventAssignee>()
+
+  try {
+    const teamMembers = await getTeamMembers()
+    for (const member of teamMembers) {
+      if (!ids.includes(member.id)) continue
+      profilesById.set(member.id, {
+        id: member.id,
+        name: member.name,
+        imageSrc: member.imageSrc || "",
+      })
+    }
+  } catch {
+    // ignore and fallback to plain profiles below
+  }
+
+  const missingIds = ids.filter((id) => !profilesById.has(id))
+  if (missingIds.length === 0) return profilesById
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,full_name,display_name,email,avatar_url")
+    .in("id", missingIds)
+
+  if (error) return profilesById
+
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const id = pickString(row.id)
+    if (!id) continue
+    profilesById.set(id, {
+      id,
+      name: pickString(row.full_name, row.display_name, row.email, "Sem nome"),
+      imageSrc: pickString(row.avatar_url),
+    })
+  }
+
+  return profilesById
+}
+
+async function fetchCalendarEventAssigneeIds(eventIds: string[]) {
+  const ids = uniqueIds(eventIds)
+  const result: Record<string, string[]> = {}
+  if (ids.length === 0) return result
+
+  try {
+    const { data, error } = await supabase
+      .from("calendar_event_assignees")
+      .select("event_id,user_id")
+      .in("event_id", ids)
+
+    if (error) {
+      if (isMissingColumnError(error) || isMissingTableError(error)) return result
+      return result
+    }
+
+    for (const row of (data ?? []) as CalendarEventAssigneeRow[]) {
+      const eventId = pickString(row.event_id)
+      const assigneeId = pickString(row.user_id)
+      if (!eventId || !assigneeId) continue
+      if (!result[eventId]) result[eventId] = []
+      result[eventId].push(assigneeId)
+    }
+  } catch {
+    // ignore
+  }
+
+  return result
 }
 
 /**
@@ -348,7 +549,7 @@ function mapCalendarEventRow(row: CalendarEventDbRow, schema: CalendarSchemaConf
   const workspaceId = pickString(row.workspace_id)
   const createdBy = pickString(row.created_by)
   const title = pickString(row.title, row.name)
-  const description = pickString(row.description, row.details) || null
+  const parsedDescription = parseCalendarDescription(pickString(row.description, row.details) || null)
   const startAt = schema.readStartAt(row)
   const endAt = schema.readEndAt(row)
 
@@ -361,9 +562,12 @@ function mapCalendarEventRow(row: CalendarEventDbRow, schema: CalendarSchemaConf
     workspaceId,
     createdBy,
     title,
-    description,
+    description: parsedDescription.description,
+    isMeeting: parsedDescription.isMeeting,
+    meetingLink: parsedDescription.meetingLink,
     startAt,
     endAt,
+    assignees: [],
   }
 }
 
@@ -374,15 +578,7 @@ async function fetchWorkspacesFromServerRoute(): Promise<WorkspaceOption[] | nul
   if (typeof window === "undefined") return null
 
   try {
-    let {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session?.access_token) {
-      await supabase.auth.refreshSession()
-      ;({
-        data: { session },
-      } = await supabase.auth.getSession())
-    }
+    const session = await getSessionSnapshot()
     const token = session?.access_token
     if (!token) return null
 
@@ -479,6 +675,25 @@ export async function fetchCalendarAccess() {
   }
 }
 
+export async function fetchCalendarWorkspaceMembers(workspaceIds: string[]) {
+  const ids = uniqueIds(workspaceIds)
+  const membersByWorkspaceId: Record<string, CalendarEventAssignee[]> = {}
+  if (ids.length === 0) return membersByWorkspaceId
+
+  const teamMembers = await getTeamMembers()
+  const teamAssignees = teamMembers.map((member) => ({
+    id: member.id,
+    name: member.name,
+    imageSrc: member.imageSrc || "",
+  }))
+
+  for (const workspaceId of ids) {
+    membersByWorkspaceId[workspaceId] = teamAssignees
+  }
+
+  return membersByWorkspaceId
+}
+
 export async function fetchCalendarEvents(workspaceIds: string[]) {
   if (workspaceIds.length === 0) return []
 
@@ -494,7 +709,17 @@ export async function fetchCalendarEvents(workspaceIds: string[]) {
   }
 
   const rows = (data ?? []) as unknown as CalendarEventDbRow[]
-  return rows.map((row) => mapCalendarEventRow(row, schema))
+  const events = rows.map((row) => mapCalendarEventRow(row, schema))
+  const assigneeIdsByEventId = await fetchCalendarEventAssigneeIds(events.map((event) => event.id))
+  const allAssigneeIds = uniqueIds(Object.values(assigneeIdsByEventId).flat())
+  const profilesById = await fetchProfilesMap(allAssigneeIds)
+
+  return events.map((event) => ({
+    ...event,
+    assignees: (assigneeIdsByEventId[event.id] ?? [])
+      .map((assigneeId) => profilesById.get(assigneeId))
+      .filter(Boolean) as CalendarEventAssignee[],
+  }))
 }
 
 export async function createCalendarEvent(input: CalendarEventInput) {
@@ -511,7 +736,19 @@ export async function createCalendarEvent(input: CalendarEventInput) {
     throw new Error(error.message)
   }
 
-  return mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  const created = mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  await setCalendarEventAssignees({
+    eventId: created.id,
+    userIds: input.assigneeIds ?? [],
+  })
+
+  const profilesById = await fetchProfilesMap(input.assigneeIds ?? [])
+  return {
+    ...created,
+    assignees: uniqueIds(input.assigneeIds ?? [])
+      .map((assigneeId) => profilesById.get(assigneeId))
+      .filter(Boolean) as CalendarEventAssignee[],
+  }
 }
 
 export async function updateCalendarEvent(eventId: string, input: CalendarEventInput) {
@@ -527,7 +764,19 @@ export async function updateCalendarEvent(eventId: string, input: CalendarEventI
     throw new Error(error.message)
   }
 
-  return mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  const updated = mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  await setCalendarEventAssignees({
+    eventId,
+    userIds: input.assigneeIds ?? [],
+  })
+
+  const profilesById = await fetchProfilesMap(input.assigneeIds ?? [])
+  return {
+    ...updated,
+    assignees: uniqueIds(input.assigneeIds ?? [])
+      .map((assigneeId) => profilesById.get(assigneeId))
+      .filter(Boolean) as CalendarEventAssignee[],
+  }
 }
 
 export async function deleteCalendarEvent(eventId: string) {
@@ -549,4 +798,37 @@ export function formatEventTimeRange(startAt: string, endAt: string | null) {
   if (!Number.isFinite(end.getTime())) return startLabel
 
   return `${startLabel} - ${format(end, "HH:mm")}`
+}
+
+export async function setCalendarEventAssignees(params: { eventId: string; userIds: string[] }) {
+  const uniqueUserIds = uniqueIds(params.userIds)
+
+  try {
+    const { error: deleteError } = await supabase
+      .from("calendar_event_assignees")
+      .delete()
+      .eq("event_id", params.eventId)
+
+    if (deleteError && !isMissingTableError(deleteError)) {
+      throw new Error(deleteError.message)
+    }
+
+    if (uniqueUserIds.length === 0) return
+
+    const payload = uniqueUserIds.map((userId) => ({
+      event_id: params.eventId,
+      user_id: userId,
+    }))
+
+    const { error } = await supabase.from("calendar_event_assignees").insert(payload)
+    if (error) {
+      throw new Error(error.message)
+    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Falha ao salvar participantes do evento."
+    throw new Error(
+      `${message}\n\nVerifique se a tabela 'calendar_event_assignees' usa as colunas event_id e user_id e se as policies/RLS permitem insert/delete.`,
+    )
+  }
 }

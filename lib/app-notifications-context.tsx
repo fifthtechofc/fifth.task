@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseSessionSnapshot, supabase } from "@/lib/supabase"
 import {
   fetchAppNotifications,
   fetchAppNotificationWithActor,
@@ -85,9 +85,13 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
 
   React.useEffect(() => {
     let cancelled = false
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setUserId(data.session?.user?.id ?? null)
-    })
+    void getSupabaseSessionSnapshot()
+      .then((session) => {
+        if (!cancelled) setUserId(session?.user?.id ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setUserId(null)
+      })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id ?? null)
     })

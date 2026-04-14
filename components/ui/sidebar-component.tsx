@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseUserId, supabase } from "@/lib/supabase"
 import { fetchCalendarAccess, fetchCalendarEvents, formatEventTimeRange, type CalendarEventRecord } from "@/lib/calendar"
 import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
 import { getMyProfile, updateMyProfileAvatar, updateMyProfileDetails, getTeamMembers } from "@/lib/profile"
@@ -68,6 +68,8 @@ type CalendarEventItem = {
   createdBy: string
   title: string
   description: string | null
+  isMeeting?: boolean
+  meetingLink?: string | null
   startAt: string
   endAt: string | null
 }
@@ -204,22 +206,19 @@ const sidebarContent: Record<
     title: "Calendario",
     sections: [
       {
-        title: "Agenda",
-        items: [
-          { label: "Hoje", href: "/calendar" },
-          {
-            label: "Semana",
-            children: [
-              { label: "Dailies", href: "/calendar" },
-              { label: "Reviews", href: "/calendar" },
-            ],
-          },
-        ],
+        title: "Eventos passados",
+        items: [],
+        events: [],
       },
       {
-        title: "Próximos Eventos",
+        title: "Eventos de hoje",
         items: [],
-        events: [], // será preenchido dinamicamente
+        events: [],
+      },
+      {
+        title: "Eventos futuros",
+        items: [],
+        events: [],
       },
     ],
   },
@@ -295,7 +294,7 @@ function RailNavLink({
       {...(href && !disabled ? { href } : { type: "button" })}
       className="relative flex h-10 w-10 items-center justify-center rounded-xl"
       aria-label={label}
-      title={disabled ? `${label} • Em breve` : label}
+      title={disabled ? `${label} - Em breve` : label}
       onMouseEnter={disabled ? undefined : onHover}
       onMouseOver={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -404,18 +403,15 @@ export default function SidebarComponent() {
     if (!teamName.trim()) return
     setCreatingTeam(true)
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-      if (userError || !user) throw userError ?? new Error("Usuário não autenticado.")
+      const userId = await getSupabaseUserId()
+      if (!userId) throw new Error("Usuario nao autenticado.")
 
       const { data: team, error: teamError } = await supabase
         .from("teams")
         .insert({
           name: teamName.trim(),
           description: teamDescription.trim() || null,
-          created_by: user.id,
+          created_by: userId,
         })
         .select("id")
         .single()
@@ -425,13 +421,13 @@ export default function SidebarComponent() {
       }
 
       const memberIds = new Set(selectedMemberIds)
-      memberIds.add(user.id)
+      memberIds.add(userId)
 
       if (memberIds.size > 0) {
         const payload = Array.from(memberIds).map((profileId) => ({
           team_id: team.id,
           profile_id: profileId,
-          role: profileId === user.id ? "Líder" : "Membro",
+          role: profileId === userId ? "Lider" : "Membro",
         }))
 
         const { error: memberError } = await supabase.from("team_members").insert(payload)
@@ -446,7 +442,7 @@ export default function SidebarComponent() {
       setTeamDescription("")
       setSelectedMemberIds(new Set())
 
-      // adiciona o time recém-criado na lista local do sidebar
+      // adiciona o time recem-criado na lista local do sidebar
       setTeams((prev) => [...prev, { id: team.id, name: teamName.trim() }])
     } catch (error) {
       console.error("Erro em handleCreateTeam:", error)
@@ -505,11 +501,27 @@ export default function SidebarComponent() {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
-      const upcomingEvents = calendarEvents
+      const endOfToday = new Date(today)
+      endOfToday.setHours(23, 59, 59, 999)
+
+      const pastEvents = calendarEvents
         .filter((event) => {
           const eventDate = new Date(event.startAt)
-          eventDate.setHours(0, 0, 0, 0)
-          return eventDate >= today
+          return Number.isFinite(eventDate.getTime()) ? eventDate < today : false
+        })
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+
+      const todayEvents = calendarEvents
+        .filter((event) => {
+          const eventDate = new Date(event.startAt)
+          return Number.isFinite(eventDate.getTime()) ? eventDate >= today && eventDate <= endOfToday : false
+        })
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+
+      const futureEvents = calendarEvents
+        .filter((event) => {
+          const eventDate = new Date(event.startAt)
+          return Number.isFinite(eventDate.getTime()) ? eventDate > endOfToday : false
         })
         .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
 
@@ -517,7 +529,12 @@ export default function SidebarComponent() {
         ...sidebarContent.calendar,
         sections: sidebarContent.calendar.sections.map((section) => ({
           ...section,
-          events: section.title === "Próximos Eventos" ? upcomingEvents : section.events,
+          events:
+            section.title === "Eventos passados"
+              ? pastEvents
+              : section.title === "Eventos de hoje"
+                ? todayEvents
+                : futureEvents,
         })),
       }
     }
@@ -529,10 +546,8 @@ export default function SidebarComponent() {
     let alive = true
     async function loadBoards() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+        const userId = await getSupabaseUserId()
+        if (!userId) return
         const rows = await fetchBoards()
         if (!alive) return
         const withLast = rows.map((r) => {
@@ -558,20 +573,18 @@ export default function SidebarComponent() {
     }
   }, [])
 
-  // carrega times que o usuário criou para mostrar no sidebar
+  // carrega times que o usuario criou para mostrar no sidebar
   React.useEffect(() => {
     let alive = true
     async function loadTeams() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+        const userId = await getSupabaseUserId()
+        if (!userId) return
 
         const { data, error } = await supabase
           .from("teams")
           .select("id, name")
-          .eq("created_by", user.id)
+          .eq("created_by", userId)
           .order("created_at", { ascending: true })
 
         if (error || !data || !alive) return
@@ -690,7 +703,7 @@ export default function SidebarComponent() {
               isActive={false}
               onClick={async () => {
                 try {
-                  // trava o loader até navegar para /login (evita piscada)
+                  // trava o loader ate navegar para /login (evita piscada)
                   window.sessionStorage.setItem("ft:forceDashboardLoader", "1")
                 } catch {
                   // ignore
@@ -699,7 +712,7 @@ export default function SidebarComponent() {
                 try {
                   await signOutUser()
                 } finally {
-                  // força splash do auth na volta pro login
+                  // forca splash do auth na volta pro login
                   try {
                     window.sessionStorage.removeItem(AUTH_INTRO_STORAGE_KEY)
                   } catch {
@@ -750,7 +763,7 @@ export default function SidebarComponent() {
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
           {content.sections.map((section) => (
             <div key={section.title} className="flex flex-col gap-2">
-              {!isCollapsed && (
+              {!isCollapsed && visibleSection !== "calendar" && (
                 <p className="px-2 text-xs uppercase tracking-[0.2em] text-zinc-500">
                   {section.title}
                 </p>
@@ -837,27 +850,65 @@ export default function SidebarComponent() {
                 )
               })}
 
-              {!isCollapsed && section.events && section.events.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {section.events.map((event) => (
-                    <Link
-                      key={event.id}
-                      href={`/calendar?eventId=${encodeURIComponent(event.id)}`}
-                      className="rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+              {!isCollapsed && visibleSection === "calendar" && section.events && (() => {
+                const sectionKey = `calendar-section-${section.title}`
+                const isExpanded = expandedItems[sectionKey] ?? section.title === "Eventos de hoje"
+
+                return (
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(sectionKey)}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/8"
                     >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="text-sm font-medium text-white">{event.title}</p>
-                        <span className="text-xs text-zinc-400">
-                          {new Date(event.startAt).toLocaleDateString("pt-BR")} • {formatEventTimeRange(event.startAt, event.endAt)}
-                        </span>
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{section.title}</p>
+                        <p className="mt-1 text-xs text-zinc-400">
+                          {section.events.length > 0
+                            ? `${section.events.length} evento${section.events.length > 1 ? "s" : ""}`
+                            : "Nenhum evento"}
+                        </p>
                       </div>
-                      {event.description && (
-                        <p className="mt-2 text-xs text-zinc-500 line-clamp-2">{event.description}</p>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
+                      <ChevronDown
+                        className={cn("h-4 w-4 text-zinc-500 transition-transform", isExpanded && "rotate-180")}
+                      />
+                    </button>
+
+                    {isExpanded ? (
+                      section.events.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {section.events.map((event) => (
+                            <Link
+                              key={event.id}
+                              href={`/calendar?eventId=${encodeURIComponent(event.id)}`}
+                              className="rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                            >
+                              <div className="flex items-baseline justify-between gap-3">
+                                <p className="text-sm font-medium text-white">{event.title}</p>
+                                <span className="text-xs text-zinc-400">
+                                  {new Date(event.startAt).toLocaleDateString("pt-BR")} - {formatEventTimeRange(event.startAt, event.endAt)}
+                                </span>
+                              </div>
+                              {event.isMeeting && event.meetingLink ? (
+                                <span className="mt-2 inline-flex text-[11px] font-medium text-emerald-300">
+                                  Link da reuniao salvo
+                                </span>
+                              ) : null}
+                              {event.description ? (
+                                <p className="mt-2 line-clamp-2 text-xs text-zinc-500">{event.description}</p>
+                              ) : null}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-xs text-zinc-500">
+                          Nenhum evento nesta secao.
+                        </div>
+                      )
+                    ) : null}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -889,7 +940,7 @@ export default function SidebarComponent() {
                 <SheetHeader>
                   <SheetTitle>Novo time</SheetTitle>
                   <SheetDescription>
-                    Defina o nome e uma breve descrição para o time.
+                    Defina o nome e uma breve descricao para o time.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -903,7 +954,7 @@ export default function SidebarComponent() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-zinc-300">Descrição (opcional)</p>
+                    <p className="text-xs font-medium text-zinc-300">Descricao (opcional)</p>
                     <Textarea
                       rows={3}
                       value={teamDescription}
@@ -924,7 +975,7 @@ export default function SidebarComponent() {
                       onChange={(ids) => setSelectedMemberIds(new Set(ids))}
                     />
                     <p className="mt-8 text-center text-[10px] text-zinc-500">
-                      * Você será adicionado automaticamente como líder do time.
+                      * Voce sera adicionado automaticamente como lider do time.
                     </p>
                   </div>
                 </div>
@@ -987,14 +1038,14 @@ export default function SidebarComponent() {
             className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/10"
           >
             <Avatar className="h-9 w-9 border border-white/10">
-              <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuário"} />
+              <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuario"} />
               <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
-                {initials(me.name || "Usuário")}
+                {initials(me.name || "Usuario")}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{me.name || "Usuário"}</p>
-              <p className="truncate text-xs text-zinc-500">{me.email || "—"}</p>
+              <p className="truncate text-sm font-medium">{me.name || "Usuario"}</p>
+              <p className="truncate text-xs text-zinc-500">{me.email || "-"}</p>
             </div>
           </button>
         )}
@@ -1016,3 +1067,15 @@ export default function SidebarComponent() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+

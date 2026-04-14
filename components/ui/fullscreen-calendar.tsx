@@ -22,10 +22,19 @@ import {
   subDays,
 } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pencil, PlusCircle, Trash2 } from "lucide-react"
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pencil, PlusCircle, RotateCcw, Trash2 } from "lucide-react"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { MembersSelect, type MemberOption } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -44,7 +53,10 @@ export interface CalendarEventItem {
   datetime: string
   endDatetime?: string
   description?: string
+  isMeeting?: boolean
+  meetingLink?: string
   workspaceId: string
+  assignees: MemberOption[]
 }
 
 export interface CalendarData {
@@ -60,14 +72,19 @@ type WorkspaceOption = {
 interface FullScreenCalendarProps {
   data: CalendarData[]
   workspaces: WorkspaceOption[]
+  availableMembersByWorkspaceId: Record<string, MemberOption[]>
   selectedWorkspaceId: string
+  focusEventId?: string | null
   onWorkspaceChange: (workspaceId: string) => void
   onCreateEvent: (input: {
     workspaceId: string
     title: string
     description?: string
+    isMeeting?: boolean
+    meetingLink?: string
     startAt: string
     endAt?: string
+    assigneeIds: string[]
   }) => Promise<void>
   onUpdateEvent: (
     eventId: string,
@@ -75,8 +92,11 @@ interface FullScreenCalendarProps {
       workspaceId: string
       title: string
       description?: string
+      isMeeting?: boolean
+      meetingLink?: string
       startAt: string
       endAt?: string
+      assigneeIds: string[]
     },
   ) => Promise<void>
   onDeleteEvent: (eventId: string) => Promise<void>
@@ -120,7 +140,9 @@ function shiftDateByMonths(current: Date, amount: number) {
 export function FullScreenCalendar({
   data,
   workspaces,
+  availableMembersByWorkspaceId,
   selectedWorkspaceId,
+  focusEventId,
   onWorkspaceChange,
   onCreateEvent,
   onUpdateEvent,
@@ -132,22 +154,25 @@ export function FullScreenCalendar({
   const [editingEventId, setEditingEventId] = React.useState<string | null>(null)
   const [eventTitle, setEventTitle] = React.useState("")
   const [eventDescription, setEventDescription] = React.useState("")
+  const [eventIsMeeting, setEventIsMeeting] = React.useState(false)
+  const [eventMeetingLink, setEventMeetingLink] = React.useState("")
   const [eventDate, setEventDate] = React.useState(toLocalDateValue(today))
   const [eventStartTime, setEventStartTime] = React.useState("09:00")
   const [eventEndTime, setEventEndTime] = React.useState("")
   const [eventWorkspaceId, setEventWorkspaceId] = React.useState("")
+  const [eventAssigneeIds, setEventAssigneeIds] = React.useState<string[]>([])
   const [currentStep, setCurrentStep] = React.useState(0)
   const [formError, setFormError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
+  const [eventsDialogOpen, setEventsDialogOpen] = React.useState(false)
 
-  const dayEventsRef = React.useRef<HTMLDivElement | null>(null)
+  const handledFocusEventIdRef = React.useRef<string | null>(null)
+  const openEditEventRef = React.useRef<((event: CalendarEventItem) => void) | null>(null)
 
   function handleShowMoreEvents(day: Date) {
     setSelectedDate(day)
-    if (dayEventsRef.current) {
-      dayEventsRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
+    setEventsDialogOpen(true)
   }
 
   const visibleMonth = startOfMonth(selectedDate)
@@ -158,10 +183,31 @@ export function FullScreenCalendar({
     end: endOfWeek(endOfMonth(visibleMonth), { weekStartsOn: 1 }),
   })
 
-  const selectedDayEvents = React.useMemo(
-    () => data.find((entry) => isSameDay(entry.day, selectedDate))?.events ?? [],
-    [data, selectedDate],
+  const allEvents = React.useMemo(
+    () => data.flatMap((entry) => entry.events).sort((a, b) => a.datetime.localeCompare(b.datetime)),
+    [data],
   )
+  const groupedEvents = React.useMemo(() => {
+    const startOfRealToday = startOfToday()
+
+    const endOfRealToday = new Date(startOfRealToday)
+    endOfRealToday.setHours(23, 59, 59, 999)
+
+    return {
+      past: allEvents.filter((event) => {
+        const date = safeParseDateTime(event.datetime)
+        return date ? date < startOfRealToday : false
+      }),
+      today: allEvents.filter((event) => {
+        const date = safeParseDateTime(event.datetime)
+        return date ? date >= startOfRealToday && date <= endOfRealToday : false
+      }),
+      future: allEvents.filter((event) => {
+        const date = safeParseDateTime(event.datetime)
+        return date ? date > endOfRealToday : false
+      }),
+    }
+  }, [allEvents])
 
   const dayContext = React.useMemo(() => {
     if (isToday(selectedDate)) return "Hoje"
@@ -183,34 +229,43 @@ export function FullScreenCalendar({
     setEditingEventId(null)
     setEventTitle("")
     setEventDescription("")
+    setEventIsMeeting(false)
+    setEventMeetingLink("")
     setEventDate(initialDate)
     setEventStartTime(initialTime)
     setEventEndTime("")
     setEventWorkspaceId(selectedWorkspaceId)
+    setEventAssigneeIds([])
     setCurrentStep(0)
     setFormError(null)
     setSheetOpen(true)
   }
 
-  function openEditEvent(event: CalendarEventItem) {
+  const openEditEvent = React.useCallback((event: CalendarEventItem) => {
     const startDate = safeParseDateTime(event.datetime)
     const endDate = event.endDatetime ? safeParseDateTime(event.endDatetime) : null
     setEditingEventId(event.id)
     setEventTitle(event.name)
     setEventDescription(event.description ?? "")
+    setEventIsMeeting(Boolean(event.isMeeting))
+    setEventMeetingLink(event.meetingLink ?? "")
     setEventDate(startDate ? toLocalDateValue(startDate) : toLocalDateValue(selectedDate))
     setEventStartTime(startDate ? toLocalTimeValue(startDate) : "09:00")
     setEventEndTime(endDate ? toLocalTimeValue(endDate) : "")
     setEventWorkspaceId(event.workspaceId)
+    setEventAssigneeIds(event.assignees.map((assignee) => assignee.id))
     setCurrentStep(0)
     setFormError(null)
     setSheetOpen(true)
-  }
+  }, [selectedDate])
+
+  openEditEventRef.current = openEditEvent
 
   function validateStep(step: number) {
     if (step === 0) {
       if (!eventTitle.trim()) return "Informe um titulo para o evento."
       if (!eventWorkspaceId) return "Selecione um workspace."
+      if (eventIsMeeting && !eventMeetingLink.trim()) return "Informe o link da reuniao."
     }
 
     if (step === 1) {
@@ -253,7 +308,6 @@ export function FullScreenCalendar({
   }
 
   async function submitEvent() {
-
     const error = validateStep(0) ?? validateStep(1)
     if (error) {
       setFormError(error)
@@ -272,8 +326,11 @@ export function FullScreenCalendar({
         workspaceId: eventWorkspaceId,
         title: eventTitle.trim(),
         description: eventDescription,
+        isMeeting: eventIsMeeting,
+        meetingLink: eventMeetingLink.trim() || undefined,
         startAt,
         endAt,
+        assigneeIds: eventAssigneeIds,
       }
 
       if (editingEventId) {
@@ -310,19 +367,88 @@ export function FullScreenCalendar({
       })
     : "--"
 
+  const availableMembers = React.useMemo(
+    () => availableMembersByWorkspaceId[eventWorkspaceId] ?? availableMembersByWorkspaceId[selectedWorkspaceId] ?? [],
+    [availableMembersByWorkspaceId, eventWorkspaceId, selectedWorkspaceId],
+  )
+
+  React.useEffect(() => {
+    if (!focusEventId || handledFocusEventIdRef.current === focusEventId) return
+    const targetEvent = data.flatMap((entry) => entry.events).find((event) => event.id === focusEventId)
+    if (!targetEvent) return
+
+    const targetDate = safeParseDateTime(targetEvent.datetime)
+    if (targetDate) {
+      setSelectedDate(targetDate)
+    }
+    openEditEventRef.current?.(targetEvent)
+    handledFocusEventIdRef.current = focusEventId
+  }, [data, focusEventId])
+
+  function renderAssigneeSummary(assignees: MemberOption[], maxVisible = 4) {
+    if (assignees.length === 0) return null
+
+    return (
+      <div className="mt-2 flex items-center justify-end">
+        {assignees.slice(0, maxVisible).map((assignee, index) => (
+          <Avatar
+            key={assignee.id}
+            title={assignee.name}
+            className={cn("h-6 w-6 border border-white/10 bg-black/60", index > 0 && "-ml-2")}
+          >
+            {assignee.imageSrc ? (
+              <AvatarImage src={assignee.imageSrc} alt={assignee.name} />
+            ) : null}
+            <AvatarFallback className="text-[10px]">
+              {assignee.name
+                .split(/\s+/)
+                .map((part) => part[0] || "")
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+        {assignees.length > maxVisible ? (
+          <div
+            className="ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 px-1 text-[10px] font-semibold text-muted-foreground"
+            title={assignees.slice(maxVisible).map((assignee) => assignee.name).join(", ")}
+          >
+            +{assignees.length - maxVisible}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <div className="relative pt-5">
-      {!isToday(selectedDate) && (
-        <div className="pointer-events-none absolute right-6 top-0 z-30 -translate-y-1/2">
+      <div className="mb-3 flex items-center justify-end gap-2">
+        {!isToday(selectedDate) ? (
           <Button
-            onClick={() => setSelectedDate(today)}
-            className="pointer-events-auto rounded-full border border-white/15 bg-black/90 shadow-lg shadow-black/30 backdrop-blur-sm"
+            type="button"
             variant="outline"
+            onClick={() => setSelectedDate(today)}
+            aria-label="Voltar para hoje"
+            title="Voltar para hoje"
+            className="border-white/15 bg-black/40 text-zinc-100 hover:bg-white/10 hover:text-white"
           >
-            Voltar para hoje
+            <RotateCcw size={16} strokeWidth={2} aria-hidden="true" />
+            <span className="ml-2 hidden sm:inline">Hoje</span>
           </Button>
-        </div>
-      )}
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setEventsDialogOpen(true)}
+          aria-label="Abrir eventos do dia"
+          title="Listar eventos"
+          className="border-white/15 bg-black/40 text-zinc-100 hover:bg-white/10 hover:text-white"
+        >
+          <CalendarDays size={16} strokeWidth={2} aria-hidden="true" />
+          <span className="ml-2 hidden sm:inline">Eventos</span>
+        </Button>
+      </div>
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-black/35 backdrop-blur-sm">
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -482,6 +608,18 @@ export function FullScreenCalendar({
                           >
                             <p className="font-medium leading-none">{event.name}</p>
                             <p className="mt-1 leading-none text-muted-foreground">{event.time}</p>
+                            {event.isMeeting && event.meetingLink ? (
+                              <a
+                                href={event.meetingLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                className="mt-2 inline-flex text-[11px] font-medium text-emerald-300 underline underline-offset-2"
+                              >
+                                Abrir reuniao
+                              </a>
+                            ) : null}
+                            {renderAssigneeSummary(event.assignees, 3)}
                           </div>
                         ))}
                         {calendarDay.events.length > 1 && (
@@ -537,30 +675,74 @@ export function FullScreenCalendar({
         </div>
       </div>
 
-      <div ref={dayEventsRef} className="border-t border-white/10 bg-black/25 px-4 py-4">
-        <p className="text-sm font-medium text-foreground">
-          {dayContext} - {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
-        </p>
-        <div className="mt-2 flex flex-col gap-2">
-          {selectedDayEvents.length > 0 ? (
-            selectedDayEvents.map((event) => (
-              <div
-                key={event.id}
-                onClick={() => openEditEvent(event)}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
-              >
-                <p className="text-sm font-medium text-foreground">{event.name}</p>
-                <p className="text-xs text-muted-foreground">{event.time}</p>
-                {event.description && (
-                  <p className="mt-1 text-xs text-muted-foreground">{event.description}</p>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum evento cadastrado para este dia.</p>
-          )}
-        </div>
-      </div>
+      <Dialog open={eventsDialogOpen} onOpenChange={setEventsDialogOpen}>
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-white/10 bg-zinc-950/95 text-foreground backdrop-blur-xl sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Eventos do calendario
+            </DialogTitle>
+            <DialogDescription>
+              Lista de eventos passados, de hoje e futuros.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-2">
+            <div className="space-y-5 pb-2">
+              {([
+                { key: "past", title: "Eventos passados", items: groupedEvents.past },
+                { key: "today", title: "Eventos de hoje", items: groupedEvents.today },
+                { key: "future", title: "Eventos futuros", items: groupedEvents.future },
+              ] as const).map((section) => (
+                <div key={section.key} className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {section.title}
+                  </p>
+                  {section.items.length > 0 ? (
+                    section.items.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => {
+                          const date = safeParseDateTime(event.datetime)
+                          if (date) setSelectedDate(date)
+                          setEventsDialogOpen(false)
+                          openEditEvent(event)
+                        }}
+                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:bg-white/10"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{event.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(event.datetime), "dd/MM/yyyy", { locale: ptBR })} · {event.time}
+                            </p>
+                          </div>
+                        </div>
+                        {event.isMeeting && event.meetingLink ? (
+                          <a
+                            href={event.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(clickEvent) => clickEvent.stopPropagation()}
+                            className="mt-2 inline-flex text-xs font-medium text-emerald-300 underline underline-offset-2"
+                          >
+                            Abrir link da reuniao
+                          </a>
+                        ) : null}
+                        {event.description ? (
+                          <p className="mt-1 text-xs text-muted-foreground">{event.description}</p>
+                        ) : null}
+                        {renderAssigneeSummary(event.assignees, 4)}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum evento nesta seção.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Sheet
         open={sheetOpen}
@@ -659,6 +841,60 @@ export function FullScreenCalendar({
                         ))}
                       </select>
                     </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Este evento e uma reuniao?</p>
+                          <p className="text-xs text-muted-foreground">
+                            Se for, adicione o link para acesso direto depois.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={eventIsMeeting}
+                          onClick={() => setEventIsMeeting((current) => !current)}
+                          className={cn(
+                            "relative inline-flex h-7 w-12 items-center rounded-full border transition-colors",
+                            eventIsMeeting
+                              ? "border-emerald-400/40 bg-emerald-500/20"
+                              : "border-white/10 bg-black/30",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "ml-1 inline-block h-5 w-5 rounded-full bg-white transition-transform",
+                              eventIsMeeting ? "translate-x-5" : "translate-x-0",
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      {eventIsMeeting ? (
+                        <div className="mt-3 space-y-2">
+                          <label className="text-xs font-medium text-muted-foreground" htmlFor="calendar-meeting-link">
+                            Link da reuniao
+                          </label>
+                          <Input
+                            id="calendar-meeting-link"
+                            type="url"
+                            value={eventMeetingLink}
+                            onChange={(event) => setEventMeetingLink(event.target.value)}
+                            placeholder="https://meet.google.com/..."
+                            className="border-white/15 bg-black/40"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <MembersSelect
+                      label="Participantes"
+                      buttonLabel="Selecionar participantes"
+                      members={availableMembers}
+                      selectedIds={eventAssigneeIds}
+                      onChange={setEventAssigneeIds}
+                    />
                   </>
                 )}
 
@@ -735,6 +971,17 @@ export function FullScreenCalendar({
                         {eventStartTime || "--:--"}
                         {eventEndTime ? ` ate ${eventEndTime}` : ""}
                       </p>
+                      {eventIsMeeting ? (
+                        <p className="mt-1 text-xs text-emerald-300">
+                          Reuniao {eventMeetingLink.trim() ? "com link salvo" : "sem link"}
+                        </p>
+                      ) : null}
+                      {eventAssigneeIds.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {eventAssigneeIds.length} participante{eventAssigneeIds.length > 1 ? "s" : ""} atribuido
+                          {eventAssigneeIds.length > 1 ? "s" : ""}
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
