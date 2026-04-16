@@ -102,7 +102,7 @@ interface FullScreenCalendarProps {
   onDeleteEvent: (eventId: string) => Promise<void>
 }
 
-const FORM_STEPS = ["Titulo", "Agenda", "Detalhes"] as const
+const FORM_STEPS = ["Título", "Agenda", "Detalhes"] as const
 
 function toLocalDateValue(date: Date) {
   return format(date, "yyyy-MM-dd")
@@ -211,14 +211,14 @@ export function FullScreenCalendar({
 
   const dayContext = React.useMemo(() => {
     if (isToday(selectedDate)) return "Hoje"
-    if (isTomorrow(selectedDate)) return "Amanha"
+    if (isTomorrow(selectedDate)) return "Amanhã"
     if (isYesterday(selectedDate)) return "Ontem"
     return format(selectedDate, "EEEE", { locale: ptBR })
   }, [selectedDate])
 
   const centerButtonLabel = React.useMemo(() => {
     if (isToday(selectedDate)) return "Hoje"
-    if (isTomorrow(selectedDate)) return "Amanha"
+    if (isTomorrow(selectedDate)) return "Amanhã"
     if (isYesterday(selectedDate)) return "Ontem"
     return format(selectedDate, "dd/MM", { locale: ptBR })
   }, [selectedDate])
@@ -263,24 +263,24 @@ export function FullScreenCalendar({
 
   function validateStep(step: number) {
     if (step === 0) {
-      if (!eventTitle.trim()) return "Informe um titulo para o evento."
+      if (!eventTitle.trim()) return "Informe um título para o evento."
       if (!eventWorkspaceId) return "Selecione um workspace."
-      if (eventIsMeeting && !eventMeetingLink.trim()) return "Informe o link da reuniao."
+      if (eventIsMeeting && !eventMeetingLink.trim()) return "Informe o link da reunião."
     }
 
     if (step === 1) {
       if (!eventDate) return "Informe a data do evento."
-      if (!eventStartTime) return "Informe o horario de inicio."
+      if (!eventStartTime) return "Informe o horário de início."
 
       const startParsed = safeParseDateTime(buildLocalDateTime(eventDate, eventStartTime))
       const endParsed = eventEndTime
         ? safeParseDateTime(buildLocalDateTime(eventDate, eventEndTime))
         : null
 
-      if (!startParsed) return "Informe uma data e horario de inicio validos."
-      if (eventEndTime && !endParsed) return "Informe um horario final valido."
+      if (!startParsed) return "Informe uma data e um horário de início válidos."
+      if (eventEndTime && !endParsed) return "Informe um horário final válido."
       if (startParsed && endParsed && isAfter(startParsed, endParsed)) {
-        return "O horario final precisa ser maior ou igual ao inicial."
+        return "O horário final precisa ser maior ou igual ao inicial."
       }
     }
 
@@ -311,7 +311,7 @@ export function FullScreenCalendar({
     const error = validateStep(0) ?? validateStep(1)
     if (error) {
       setFormError(error)
-      setCurrentStep(error.includes("titulo") || error.includes("workspace") ? 0 : 1)
+      setCurrentStep(error.includes("título") || error.includes("workspace") ? 0 : 1)
       return
     }
 
@@ -498,7 +498,7 @@ export function FullScreenCalendar({
                 type="button"
                 onClick={() => setSelectedDate((current) => shiftDateByMonths(current, 1))}
                 className="rounded border border-white/10 bg-white/5 p-1 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-                aria-label="Proximo mes"
+                aria-label="Próximo mês"
               >
                 <ChevronUp className="h-3.5 w-3.5" />
               </button>
@@ -537,7 +537,7 @@ export function FullScreenCalendar({
                 className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg"
                 variant="outline"
                 size="icon"
-                aria-label="Proximo dia"
+                aria-label="Próximo dia"
               >
                 <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
               </Button>
@@ -616,7 +616,7 @@ export function FullScreenCalendar({
                                 onClick={(clickEvent) => clickEvent.stopPropagation()}
                                 className="mt-2 inline-flex text-[11px] font-medium text-emerald-300 underline underline-offset-2"
                               >
-                                Abrir reuniao
+                                Abrir reunião
                               </a>
                             ) : null}
                             {renderAssigneeSummary(event.assignees, 3)}
@@ -678,9 +678,7 @@ export function FullScreenCalendar({
       <Dialog open={eventsDialogOpen} onOpenChange={setEventsDialogOpen}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-white/10 bg-zinc-950/95 text-foreground backdrop-blur-xl sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>
-              Eventos do calendario
-            </DialogTitle>
+            <DialogTitle>Eventos do calendário</DialogTitle>
             <DialogDescription>
               Lista de eventos passados, de hoje e futuros.
             </DialogDescription>
@@ -713,7 +711,7 @@ export function FullScreenCalendar({
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-foreground">{event.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {format(new Date(event.datetime), "dd/MM/yyyy", { locale: ptBR })} · {event.time}
+                              {format(new Date(event.datetime), "dd/MM/yyyy", { locale: ptBR })} • {event.time}
                             </p>
                           </div>
                         </div>
@@ -725,7 +723,7 @@ export function FullScreenCalendar({
                             onClick={(clickEvent) => clickEvent.stopPropagation()}
                             className="mt-2 inline-flex text-xs font-medium text-emerald-300 underline underline-offset-2"
                           >
-                            Abrir link da reuniao
+                            Abrir link da reunião
                           </a>
                         ) : null}
                         {event.description ? (
@@ -765,7 +763,7 @@ export function FullScreenCalendar({
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <SheetTitle>{editingEventId ? "Editar evento" : "Novo evento"}</SheetTitle>
-                <SheetDescription>Preencha por etapas ate chegar ao salvar.</SheetDescription>
+                <SheetDescription>Preencha por etapas até concluir o salvamento.</SheetDescription>
               </div>
 
               {editingEventId && (
@@ -813,13 +811,13 @@ export function FullScreenCalendar({
                   <>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground" htmlFor="calendar-title">
-                        Titulo
+                        Título
                       </label>
                       <Input
                         id="calendar-title"
                         value={eventTitle}
                         onChange={(event) => setEventTitle(event.target.value)}
-                        placeholder="Ex.: Reuniao Enfermeiro"
+                        placeholder="Ex.: Reunião com a equipe"
                         className="border-white/15 bg-black/40"
                       />
                     </div>
@@ -845,7 +843,7 @@ export function FullScreenCalendar({
                     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-foreground">Este evento e uma reuniao?</p>
+                          <p className="text-sm font-medium text-foreground">Este evento é uma reunião?</p>
                           <p className="text-xs text-muted-foreground">
                             Se for, adicione o link para acesso direto depois.
                           </p>
@@ -874,7 +872,7 @@ export function FullScreenCalendar({
                       {eventIsMeeting ? (
                         <div className="mt-3 space-y-2">
                           <label className="text-xs font-medium text-muted-foreground" htmlFor="calendar-meeting-link">
-                            Link da reuniao
+                            Link da reunião
                           </label>
                           <Input
                             id="calendar-meeting-link"
@@ -921,7 +919,7 @@ export function FullScreenCalendar({
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-muted-foreground" htmlFor="calendar-start-time">
-                          Inicio
+                          Início
                         </label>
                         <Input
                           id="calendar-start-time"
@@ -952,7 +950,7 @@ export function FullScreenCalendar({
                   <>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground" htmlFor="calendar-description">
-                        Descricao
+                        Descrição
                       </label>
                       <Textarea
                         id="calendar-description"
@@ -965,20 +963,20 @@ export function FullScreenCalendar({
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-foreground">
-                      <p>{eventTitle || "Sem titulo"}</p>
+                      <p>{eventTitle || "Sem título"}</p>
                       <p className="mt-1">{datePreview}</p>
                       <p className="mt-1">
                         {eventStartTime || "--:--"}
-                        {eventEndTime ? ` ate ${eventEndTime}` : ""}
+                        {eventEndTime ? ` até ${eventEndTime}` : ""}
                       </p>
                       {eventIsMeeting ? (
                         <p className="mt-1 text-xs text-emerald-300">
-                          Reuniao {eventMeetingLink.trim() ? "com link salvo" : "sem link"}
+                          Reunião {eventMeetingLink.trim() ? "com link salvo" : "sem link"}
                         </p>
                       ) : null}
                       {eventAssigneeIds.length > 0 && (
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {eventAssigneeIds.length} participante{eventAssigneeIds.length > 1 ? "s" : ""} atribuido
+                          {eventAssigneeIds.length} participante{eventAssigneeIds.length > 1 ? "s" : ""} atribuído
                           {eventAssigneeIds.length > 1 ? "s" : ""}
                         </p>
                       )}
@@ -1009,7 +1007,7 @@ export function FullScreenCalendar({
 
                 {currentStep < 2 ? (
                   <Button type="button" onClick={goToNextStep} disabled={!!validateStep(currentStep) || saving || deleting}>
-                    Proximo
+                    Próximo
                   </Button>
                 ) : (
                   <Button type="button" onClick={() => { void submitEvent() }} disabled={saving || deleting}>

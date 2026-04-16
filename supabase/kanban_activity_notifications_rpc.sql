@@ -102,7 +102,7 @@ begin
     creator,
     'board_created',
     'Quadro criado',
-    '«' || left(coalesce(board_title_val, 'Quadro'), 160) || '»',
+    left(coalesce(board_title_val, 'Quadro'), 160),
     href,
     actor_id,
     actor_avatar,
@@ -186,7 +186,7 @@ begin
     creator,
     'task_created',
     'Nova tarefa',
-    '«' || left(coalesce(card_title_val, 'Tarefa'), 120) || '» na coluna «' || col_title || '» · ' || coalesce(board_title_val, 'Quadro'),
+    left(coalesce(card_title_val, 'Tarefa'), 120) || ' | ' || col_title || ' | ' || coalesce(board_title_val, 'Quadro'),
     href,
     actor_id,
     actor_avatar,
@@ -278,7 +278,7 @@ begin
   limit 1;
 
   body_text :=
-    '«' || left(coalesce(card_title_val, 'Tarefa'), 120) || '» → «' || col_title || '» · '
+    left(coalesce(card_title_val, 'Tarefa'), 120) || ' | ' || col_title || ' | '
     || coalesce(board_title_val, 'Quadro');
 
   insert into public.app_notifications (

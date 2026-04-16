@@ -145,7 +145,7 @@ begin
       uid,
       'calendar_event_assigned',
       'Novo evento atribuido',
-      '«' || left(coalesce(nullif(trim(p_event_title), ''), 'Evento'), 140) || '» · '
+      left(coalesce(nullif(trim(p_event_title), ''), 'Evento'), 140) || ' | '
         || left(coalesce(nullif(trim(p_workspace_label), ''), 'Workspace'), 120),
       href,
       actor_id,

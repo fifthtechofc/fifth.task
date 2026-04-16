@@ -108,7 +108,7 @@ export function SettingsProfileSection({
       } = await supabase.auth.getUser()
 
       if (userError || !user) {
-        throw new Error("Usuario nao autenticado.")
+        throw new Error("Usuário não autenticado.")
       }
 
       const name = pickString(
@@ -167,7 +167,7 @@ export function SettingsProfileSection({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar o perfil.",
+          : "Não foi possível carregar o perfil.",
       )
     } finally {
       setLoading(false)
@@ -224,14 +224,14 @@ export function SettingsProfileSection({
       showAlert({
         variant: "success",
         title: "Perfil atualizado",
-        description: "Suas informacoes foram salvas com sucesso.",
+        description: "Suas informações foram salvas com sucesso.",
       })
       onDetailsSaved?.()
     } catch (saveError) {
       setDetailsError(
         saveError instanceof Error
           ? saveError.message
-          : "Nao foi possivel salvar os dados do perfil.",
+          : "Não foi possível salvar os dados do perfil.",
       )
     } finally {
       setSavingDetails(false)
@@ -347,9 +347,9 @@ export function SettingsProfileSection({
           <section className="mt-6 rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)_42%,rgba(0,0,0,0.15)_100%)] p-5 backdrop-blur-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Visao geral do perfil</h3>
+                <h3 className="text-sm font-semibold text-foreground">Visão geral do perfil</h3>
                 <p className="text-xs text-muted-foreground">
-                  As alteracoes agora abrem em um painel lateral, sem tirar voce do contexto.
+                  As alterações agora abrem em um painel lateral, sem tirar você do contexto.
                 </p>
               </div>
               <Button
@@ -369,7 +369,7 @@ export function SettingsProfileSection({
                   <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Nascimento</p>
                 </div>
                 <p className="mt-3 text-sm font-medium text-foreground">
-                  {birthday || "Nao informado"}
+                  {birthday || "Não informado"}
                 </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-black/25 px-4 py-4">
@@ -378,7 +378,7 @@ export function SettingsProfileSection({
                   <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Jornada</p>
                 </div>
                 <p className="mt-3 text-sm font-medium text-foreground">
-                  {workHours || "Nao informado"}
+                  {workHours || "Não informado"}
                 </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-black/25 px-4 py-4">
@@ -387,7 +387,7 @@ export function SettingsProfileSection({
                   <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Contato</p>
                 </div>
                 <p className="mt-3 truncate text-sm font-medium text-foreground">
-                  {email || "Nao informado"}
+                  {email || "Não informado"}
                 </p>
               </div>
             </div>
@@ -405,7 +405,7 @@ export function SettingsProfileSection({
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-foreground">Resumo rapido</h3>
                 <p className="text-xs text-muted-foreground">
-                  Algumas informacoes uteis do seu workspace.
+                  Algumas informações úteis do seu workspace.
                 </p>
               </div>
 
@@ -437,7 +437,7 @@ export function SettingsProfileSection({
               <SheetHeader>
                 <SheetTitle>Editar perfil</SheetTitle>
                 <SheetDescription>
-                  Atualize seus dados sem sair da pagina de configuracoes.
+                  Atualize seus dados sem sair da página de configurações.
                 </SheetDescription>
               </SheetHeader>
 
@@ -463,7 +463,7 @@ export function SettingsProfileSection({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">Foto do perfil</p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      O painel lateral segue o mesmo padrao de edicao usado em outras areas.
+                      O painel lateral segue o mesmo padrão de edição usado em outras áreas.
                     </p>
                     {uploadError && <p className="mt-2 text-xs text-red-400">{uploadError}</p>}
                   </div>
@@ -505,7 +505,7 @@ export function SettingsProfileSection({
                     />
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-zinc-300">Horario de trabalho</p>
+                    <p className="text-xs font-medium text-zinc-300">Horário de trabalho</p>
                     <Input
                       placeholder="Ex: 09h as 18h"
                       value={workHours}
@@ -543,10 +543,10 @@ export function SettingsProfileSection({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-zinc-300">Descricao</p>
+                  <p className="text-xs font-medium text-zinc-300">Descrição</p>
                   <Textarea
                     rows={5}
-                    placeholder="Uma breve bio sobre voce, seu papel no time, interesses..."
+                    placeholder="Uma breve bio sobre você, seu papel no time e seus interesses..."
                     value={bio}
                     onChange={(event) => setBio(event.target.value)}
                     className="border-white/15 bg-black/40"
@@ -568,7 +568,7 @@ export function SettingsProfileSection({
                   onClick={() => void handleSaveDetails()}
                   disabled={savingDetails}
                 >
-                  {savingDetails ? "Salvando..." : "Salvar alteracoes"}
+                  {savingDetails ? "Salvando..." : "Salvar alterações"}
                 </Button>
               </SheetFooter>
             </SheetContent>

@@ -127,9 +127,9 @@ begin
       uid,
       'task_assigned',
       'Nova tarefa atribuída',
-      '«' || left(coalesce(nullif(trim(p_task_title), ''), 'Tarefa'), 120) || '» · «'
-        || left(coalesce(board_title_val, 'Quadro'), 160) || '» · «'
-        || left(coalesce(assignee_label, 'Utilizador'), 120) || '»',
+      left(coalesce(nullif(trim(p_task_title), ''), 'Tarefa'), 120) || ' | '
+        || left(coalesce(board_title_val, 'Quadro'), 160) || ' | '
+        || left(coalesce(assignee_label, 'Utilizador'), 120),
       href,
       actor_id,
       actor_avatar,

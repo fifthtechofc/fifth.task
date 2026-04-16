@@ -134,7 +134,7 @@ const navItems: {
   },
   {
     id: "calendar",
-    label: "Calendario",
+    label: "Calendário",
     href: "/calendar",
     icon: <Calendar className="h-4 w-4" />,
   },
@@ -153,7 +153,7 @@ const navItems: {
   },
   {
     id: "settings",
-    label: "Configuracoes",
+    label: "Configurações",
     href: "/settings",
     icon: <Settings className="h-4 w-4" />,
   },
@@ -203,7 +203,7 @@ const sidebarContent: Record<
     ],
   },
   calendar: {
-    title: "Calendario",
+    title: "Calendário",
     sections: [
       {
         title: "Eventos passados",
@@ -244,14 +244,14 @@ const sidebarContent: Record<
     ],
   },
   settings: {
-    title: "Configuracoes",
+    title: "Configurações",
     sections: [
       {
         title: "Workspace",
         items: [
           { label: "Perfil", href: "/settings?section=profile" },
-          { label: "Notificacoes", href: "/settings?section=notifications" },
-          { label: "Seguranca", href: "/settings?section=security" },
+          { label: "Notificações", href: "/settings?section=notifications" },
+          { label: "Segurança", href: "/settings?section=security" },
         ],
       },
     ],
@@ -406,7 +406,7 @@ export default function SidebarComponent() {
     setCreatingTeam(true)
     try {
       const userId = await getSupabaseUserId()
-      if (!userId) throw new Error("Usuario nao autenticado.")
+      if (!userId) throw new Error("Usuário não autenticado.")
 
       const { data: team, error: teamError } = await supabase
         .from("teams")
@@ -703,7 +703,7 @@ export default function SidebarComponent() {
           <div className="mt-auto flex flex-col items-center gap-2 pb-1">
             <RailNavLink
               href="/settings"
-              label="Configuracoes"
+              label="Configurações"
               icon={<Settings className="h-4 w-4" />}
               isActive={activeSection === "settings"}
               onHover={() => {
@@ -915,7 +915,7 @@ export default function SidebarComponent() {
                               </div>
                               {event.isMeeting && event.meetingLink ? (
                                 <span className="mt-2 inline-flex text-[11px] font-medium text-emerald-300">
-                                  Link da reuniao salvo
+                                  Link da reunião salvo
                                 </span>
                               ) : null}
                               {event.description ? (
@@ -926,7 +926,7 @@ export default function SidebarComponent() {
                         </div>
                       ) : (
                         <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-xs text-zinc-500">
-                          Nenhum evento nesta secao.
+                          Nenhum evento nesta seção.
                         </div>
                       )
                     ) : null}
@@ -964,7 +964,7 @@ export default function SidebarComponent() {
                 <SheetHeader>
                   <SheetTitle>Novo time</SheetTitle>
                   <SheetDescription>
-                    Defina o nome e uma breve descricao para o time.
+                    Defina o nome e uma breve descrição para o time.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -978,7 +978,7 @@ export default function SidebarComponent() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-zinc-300">Descricao (opcional)</p>
+                    <p className="text-xs font-medium text-zinc-300">Descrição (opcional)</p>
                     <Textarea
                       rows={3}
                       value={teamDescription}
@@ -999,7 +999,7 @@ export default function SidebarComponent() {
                       onChange={(ids) => setSelectedMemberIds(new Set(ids))}
                     />
                     <p className="mt-8 text-center text-[10px] text-zinc-500">
-                      * Voce sera adicionado automaticamente como lider do time.
+                      * Você será adicionado automaticamente como líder do time.
                     </p>
                   </div>
                 </div>
@@ -1062,13 +1062,13 @@ export default function SidebarComponent() {
             className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/10"
           >
             <Avatar className="h-9 w-9 border border-white/10">
-              <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuario"} />
+              <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuário"} />
               <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
-                {initials(me.name || "Usuario")}
+                {initials(me.name || "Usuário")}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{me.name || "Usuario"}</p>
+              <p className="truncate text-sm font-medium">{me.name || "Usuário"}</p>
               <p className="truncate text-xs text-zinc-500">{me.email || "-"}</p>
             </div>
           </button>

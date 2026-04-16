@@ -1,17 +1,25 @@
 import type { AppNotification } from "@/lib/in-app-notifications"
 
 export function stripGuillemets(value: string) {
-  return value.replaceAll("Â«", "").replaceAll("Â»", "").replace(/\s+/g, " ").trim()
+  return value
+    .replaceAll("Ã‚Â«", "")
+    .replaceAll("Ã‚Â»", "")
+    .replaceAll("«", "")
+    .replaceAll("»", "")
+    .replaceAll("<<", "")
+    .replaceAll(">>", "")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 function pickActorName(n: AppNotification): string {
   const fromJoin = n.actorName?.trim()
   if (fromJoin) return fromJoin
   if (n.notificationType === "card_comment" && n.body) {
-    const m = n.body.match(/^(.+?)\s+em\s+[Â«]/u)
+    const m = n.body.match(/^(.+?)\s+em\s+[Ã‚Â««<]/u)
     if (m) return m[1].trim()
   }
-  return "Alguem"
+  return "Alguém"
 }
 
 export type NotificationLineSegment = { text: string; emphasis: boolean }
@@ -22,6 +30,18 @@ function parsePipeParts(value: string) {
     .map((part) => stripGuillemets(part))
     .map((part) => part.trim())
     .filter(Boolean)
+}
+
+function parseLegacyWrappedParts(value: string) {
+  return Array.from(value.matchAll(/(?:Ã‚Â«|«|<<)\s*([^<>«»]+?)\s*(?:Ã‚Â»|»|>>)/g), (match) =>
+    stripGuillemets(match[1] ?? ""),
+  ).filter(Boolean)
+}
+
+function parseNotificationParts(value: string) {
+  const pipeParts = parsePipeParts(value)
+  if (pipeParts.length > 0) return pipeParts
+  return parseLegacyWrappedParts(value)
 }
 
 export function getNotificationLineSegments(n: AppNotification): NotificationLineSegment[] | null {
@@ -38,12 +58,9 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
   }
 
   if (type === "task_created") {
-    const raw = n.body || ""
-    const m = raw.match(/Â«([^Â»]+)Â»\s*na coluna\s*Â«([^Â»]+)Â»\s*Â·\s*(.+)/)
-    if (m) {
-      const task = stripGuillemets(m[1])
-      const col = stripGuillemets(m[2])
-      const board = stripGuillemets(m[3]) || "Quadro"
+    const parts = parseNotificationParts(n.body || "")
+    if (parts.length >= 3) {
+      const [task, col, board] = parts
       return [
         { text: actor, emphasis: true },
         { text: " criou a tarefa ", emphasis: false },
@@ -51,7 +68,7 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
         { text: " na coluna ", emphasis: false },
         { text: col || "Coluna", emphasis: false },
         { text: " no quadro ", emphasis: false },
-        { text: board, emphasis: true },
+        { text: board || "Quadro", emphasis: true },
       ]
     }
     return [
@@ -62,12 +79,9 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
   }
 
   if (type === "task_column_changed") {
-    const raw = n.body || ""
-    const mWithBoard = raw.match(/Â«([^Â»]+)Â»\s*â†’\s*Â«([^Â»]+)Â»\s*Â·\s*(.+)/)
-    if (mWithBoard) {
-      const task = stripGuillemets(mWithBoard[1])
-      const col = stripGuillemets(mWithBoard[2])
-      const board = stripGuillemets(mWithBoard[3]) || "Quadro"
+    const parts = parseNotificationParts(n.body || "")
+    if (parts.length >= 3) {
+      const [task, col, board] = parts
       return [
         { text: actor, emphasis: true },
         { text: " moveu a tarefa ", emphasis: false },
@@ -75,13 +89,11 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
         { text: " para a coluna ", emphasis: false },
         { text: col || "Coluna", emphasis: true },
         { text: " no quadro ", emphasis: false },
-        { text: board, emphasis: true },
+        { text: board || "Quadro", emphasis: true },
       ]
     }
-    const m = raw.match(/Â«([^Â»]+)Â»\s*â†’\s*Â«([^Â»]+)Â»/)
-    if (m) {
-      const task = stripGuillemets(m[1])
-      const col = stripGuillemets(m[2])
+    if (parts.length >= 2) {
+      const [task, col] = parts
       return [
         { text: actor, emphasis: true },
         { text: " moveu a tarefa ", emphasis: false },
@@ -101,19 +113,16 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
     type === "assignment_actor_confirm" ||
     type === "actor_assignment_notice"
   ) {
-    const raw = n.body || ""
-    const m3 = raw.match(/Â«([^Â»]+)Â»\s*Â·\s*Â«([^Â»]+)Â»\s*Â·\s*Â«([^Â»]+)Â»/)
-    if (m3) {
-      const taskName = stripGuillemets(m3[1])
-      const boardName = stripGuillemets(m3[2])
-      const assigneeName = stripGuillemets(m3[3])
+    const parts = parseNotificationParts(n.body || "")
+    if (parts.length >= 3) {
+      const [taskName, boardName, assigneeName] = parts
       return [
         { text: actor, emphasis: true },
         { text: " atribuiu ", emphasis: false },
-        { text: assigneeName || "Utilizador", emphasis: true },
-        { text: " na ", emphasis: false },
+        { text: assigneeName || "Usuário", emphasis: true },
+        { text: " na tarefa ", emphasis: false },
         { text: taskName || "Tarefa", emphasis: true },
-        { text: " no quadro ", emphasis: false },
+        { text: " do quadro ", emphasis: false },
         { text: boardName || "Quadro", emphasis: true },
       ]
     }
@@ -127,7 +136,7 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
     type === "calendar_event_deleted" ||
     type === "calendar_event_assigned"
   ) {
-    const parts = parsePipeParts(n.body || "")
+    const parts = parseNotificationParts(n.body || "")
     const eventName = parts[0] || stripGuillemets(n.title) || "Evento"
     const workspaceName = parts[1] || ""
     const assigneeNames = parts[2] || ""
@@ -139,7 +148,7 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
           ? " atualizou o evento "
           : type === "calendar_event_deleted"
             ? " removeu o evento "
-            : " atribuiu voce ao evento "
+            : " atribuiu você ao evento "
 
     const segments: NotificationLineSegment[] = [
       { text: actor, emphasis: true },
@@ -154,7 +163,11 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
       )
     }
 
-    if (assigneeNames && (type === "calendar_event_created_with_assignees" || type === "calendar_event_updated_with_assignees")) {
+    if (
+      assigneeNames &&
+      (type === "calendar_event_created_with_assignees" ||
+        type === "calendar_event_updated_with_assignees")
+    ) {
       segments.push(
         { text: " e atribuiu ", emphasis: false },
         { text: assigneeNames, emphasis: true },
@@ -168,14 +181,14 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
     const card = stripGuillemets(n.body || "") || "Tarefa"
     return [
       { text: actor, emphasis: true },
-      { text: " publicou um comentario na tarefa ", emphasis: false },
+      { text: " publicou um comentário na tarefa ", emphasis: false },
       { text: card, emphasis: true },
     ]
   }
 
   if (type === "card_comment") {
     const raw = n.body || ""
-    const m = raw.match(/^(.+?)\s+em\s+Â«([^Â»]+)Â»/)
+    const m = raw.match(/^(.+?)\s+em\s+(?:Ã‚Â«|«|<<)([^<>«»]+)(?:Ã‚Â»|»|>>)/)
     if (m) {
       const name = m[1].trim()
       const card = stripGuillemets(m[2])
@@ -187,7 +200,7 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
     }
     return [
       { text: actor, emphasis: true },
-      { text: " deixou um comentario", emphasis: false },
+      { text: " deixou um comentário", emphasis: false },
     ]
   }
 

@@ -480,7 +480,7 @@ export function Board({
             await pushNotification({
               notificationType: "assignment_actor_confirm",
               title: "Atribuição",
-              body: `«${taskTitleDraft.trim()}» · «${boardLabel}» · «${assigneeLabel}»`,
+              body: `${taskTitleDraft.trim()} | ${boardLabel} | ${assigneeLabel}`,
               href: boardHref,
               cardId,
               actorName: selfMember?.name?.trim(),
@@ -586,7 +586,7 @@ export function Board({
               await pushNotification({
                 notificationType: "assignment_actor_confirm",
                 title: "Atribuição",
-                body: `«${taskTitleDraft.trim()}» · «${boardLabel}» · «${assigneeLabel}»`,
+                body: `${taskTitleDraft.trim()} | ${boardLabel} | ${assigneeLabel}`,
                 href: boardHref,
                 cardId: created.id,
                 actorName: selfMember?.name?.trim(),

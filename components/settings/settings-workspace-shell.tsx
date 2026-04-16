@@ -38,15 +38,15 @@ const settingsSections = [
   },
   {
     id: "notifications" as const,
-    title: "Notificacoes",
-    description: "O que voce quer receber no fluxo do dia.",
+    title: "Notificações",
+    description: "O que você quer receber no fluxo do dia.",
     icon: Bell,
-    eyebrow: "Preferencias",
+    eyebrow: "Preferências",
   },
   {
     id: "security" as const,
-    title: "Seguranca",
-    description: "Senha e protecao adicional da conta.",
+    title: "Segurança",
+    description: "Senha e proteção adicional da conta.",
     icon: ShieldCheck,
     eyebrow: "Acesso",
   },
@@ -55,7 +55,7 @@ const settingsSections = [
 const initialNotifications: NotificationSetting[] = [
   {
     id: "daily-summary",
-    title: "Resumo diario",
+    title: "Resumo diário",
     description: "Receba um consolidado com tarefas, entregas e eventos do dia.",
     enabled: true,
   },
@@ -67,7 +67,7 @@ const initialNotifications: NotificationSetting[] = [
   },
   {
     id: "team-updates",
-    title: "Atualizacoes de equipe",
+    title: "Atualizações da equipe",
     description: "Notifique quando houver nova atividade relevante no workspace.",
     enabled: false,
   },
@@ -145,7 +145,7 @@ function NotificationsSection() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Nao foi possivel carregar as notificacoes.",
+            : "Não foi possível carregar as notificações.",
         )
       } finally {
         if (alive) setLoading(false)
@@ -184,7 +184,7 @@ function NotificationsSection() {
       const message =
         saveError instanceof Error
           ? saveError.message
-          : "Nao foi possivel salvar as notificacoes."
+          : "Não foi possível salvar as notificações."
 
       setError(message)
       showAlert({
@@ -207,9 +207,9 @@ function NotificationsSection() {
             <Bell className="h-5 w-5 text-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Notificacoes</h2>
+            <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
             <p className="text-sm text-muted-foreground">
-              Controle o que chega para voce sem poluir a rotina.
+              Controle o que chega para você sem poluir a rotina.
             </p>
           </div>
         </div>
@@ -229,7 +229,7 @@ function NotificationsSection() {
         <div className="space-y-4">
           {loading ? (
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4 text-sm text-zinc-400">
-              Carregando preferencias de notificacao...
+              Carregando preferências de notificação...
             </div>
           ) : (
             settings.map((item) => (
@@ -253,19 +253,19 @@ function NotificationsSection() {
         <div className="rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_58%,_transparent_100%)] p-5">
           <div className="flex items-center gap-2 text-zinc-200">
             <Sparkles className="h-4 w-4" />
-            <p className="text-sm font-semibold">Resumo da configuracao</p>
+            <p className="text-sm font-semibold">Resumo da configuração</p>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Nesta etapa a tela fica funcional no front-end: as preferencias
-            respondem ao clique e cada categoria abre seu proprio contexto.
+            Nesta etapa, a tela fica funcional no front-end: as preferências
+            respondem ao clique e cada categoria abre seu próprio contexto.
           </p>
           <div className="mt-5 space-y-3">
             <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Canal principal</p>
-              <p className="mt-2 text-sm font-medium text-foreground">Aplicacao</p>
+              <p className="mt-2 text-sm font-medium text-foreground">Aplicação</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Persistencia</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Persistência</p>
               <p className="mt-2 text-sm font-medium text-foreground">Local nesta etapa</p>
             </div>
           </div>
@@ -296,14 +296,14 @@ export function SettingsWorkspaceShell() {
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
-            Configuracoes
+            Configurações
           </p>
           <h1 className="mt-2 text-3xl font-bold text-foreground md:text-4xl">
-            Preferencias da sua conta
+            Preferências da sua conta
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">
-            Cada area de configuracao agora fica organizada por secao, com
-            navegacao lateral e edicao mais focada.
+            Cada área de configuração agora fica organizada por seção, com
+            navegação lateral e edição mais focada.
           </p>
         </div>
 
