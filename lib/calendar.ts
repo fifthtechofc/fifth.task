@@ -340,7 +340,7 @@ async function getAuthenticatedUserId() {
   const userId = session?.user?.id?.trim()
 
   if (!userId) {
-    throw new Error("Usuario nao autenticado.")
+    throw new Error("Usuário não autenticado.")
   }
 
   return userId
@@ -454,7 +454,7 @@ async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMember
   }
 
   if (!anyQuerySucceeded) {
-    throw lastError ?? new Error("Nao foi possivel verificar os workspaces do usuario.")
+    throw lastError ?? new Error("Não foi possível verificar os workspaces do usuário.")
   }
 
   return [...byWorkspaceId.values()]
@@ -539,7 +539,7 @@ async function detectCalendarSchema() {
   throw (
     lastError ??
     new Error(
-      "Nao foi possivel identificar as colunas de data em calendar_events. Ajuste o schema esperado no frontend.",
+      "Não foi possível identificar as colunas de data em calendar_events. Ajuste o schema esperado no frontend.",
     )
   )
 }

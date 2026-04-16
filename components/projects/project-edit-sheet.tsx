@@ -73,14 +73,14 @@ export function ProjectEditSheet({
         <SheetHeader>
           <SheetTitle>Editar projeto</SheetTitle>
           <SheetDescription>
-            Atualize o titulo, a descricao e os membros que atuam neste projeto.
+            Atualize o título, a descrição e os membros que atuam neste projeto.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 px-4 py-3">
           <div className="space-y-2">
             <label htmlFor="project-title-edit" className="text-xs font-medium text-muted-foreground">
-              Titulo
+              Título
             </label>
             <Input
               id="project-title-edit"
@@ -93,20 +93,20 @@ export function ProjectEditSheet({
 
           <div className="space-y-2">
             <label htmlFor="project-desc-edit" className="text-xs font-medium text-muted-foreground">
-              Descricao
+              Descrição
             </label>
             <Textarea
               id="project-desc-edit"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descricao do projeto"
+              placeholder="Descrição do projeto"
               rows={4}
               className="border-white/15 bg-black/40"
             />
           </div>
 
           <MembersSelect
-            label="Quem esta atuando"
+            label="Quem está atuando"
             buttonLabel="Selecionar membros do time"
             members={memberOptions}
             selectedIds={memberIds}
@@ -147,7 +147,7 @@ export function ProjectEditSheet({
             Cancelar
           </Button>
           <Button type="button" onClick={handleSave} disabled={saving}>
-            {saving ? "Salvando..." : "Salvar alteracoes"}
+            {saving ? "Salvando..." : "Salvar alterações"}
           </Button>
         </SheetFooter>
       </SheetContent>

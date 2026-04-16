@@ -64,7 +64,7 @@ function CalendarLoadingSkeleton() {
     <div
       className="min-h-[520px] animate-pulse rounded-[28px] border border-white/10 bg-black/20"
       aria-busy="true"
-      aria-label="Carregando calendario"
+      aria-label="Carregando calendário"
     >
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 lg:flex-row lg:items-center">
         <div className="h-10 max-w-md flex-1 rounded-md bg-white/10" />
@@ -153,14 +153,14 @@ export function CalendarWorkspaceView() {
         setEvents([])
         setMembersByWorkspaceId({})
         setEventsLoadError(
-          eventError instanceof Error ? eventError.message : "Nao foi possivel carregar os eventos.",
+          eventError instanceof Error ? eventError.message : "Não foi possível carregar os eventos.",
         )
       }
     } catch (loadError) {
       setWorkspaces([])
       setEvents([])
       setMembersByWorkspaceId({})
-      setError(loadError instanceof Error ? loadError.message : "Nao foi possivel carregar o calendario.")
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar o calendário.")
     } finally {
       setLoading(false)
     }
@@ -285,7 +285,7 @@ export function CalendarWorkspaceView() {
       showAlert({
         variant: "success",
         title: "Evento atualizado",
-        description: "As alteracoes do evento foram salvas.",
+        description: "As alterações do evento foram salvas.",
       })
     } finally {
       setDashboardLoading(false)
@@ -314,8 +314,8 @@ export function CalendarWorkspaceView() {
 
       showAlert({
         variant: "success",
-        title: "Evento excluido",
-        description: "O evento foi removido do calendario.",
+        title: "Evento excluído",
+        description: "O evento foi removido do calendário.",
       })
     } finally {
       setDashboardLoading(false)
@@ -333,7 +333,7 @@ export function CalendarWorkspaceView() {
   if (workspaces.length === 0) {
     return (
       <div className="max-w-xl space-y-2 text-sm text-muted-foreground">
-        <p>Nenhum workspace disponivel para este usuario.</p>
+        <p>Nenhum workspace disponível para este usuário.</p>
       </div>
     )
   }
@@ -342,7 +342,7 @@ export function CalendarWorkspaceView() {
     <div className="flex flex-col gap-3">
       {eventsLoadError ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Eventos nao carregaram (o grid do mes continua disponivel): {eventsLoadError}
+          Os eventos não foram carregados, mas a grade do mês continua disponível: {eventsLoadError}
         </p>
       ) : null}
       <FullScreenCalendar

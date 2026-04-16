@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const auth = req.headers.get("authorization") ?? ""
   const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : ""
   if (!token) {
-    return NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
 
   let admin: ReturnType<typeof getSupabaseAdmin>
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     admin = getSupabaseAdmin()
   } catch {
     return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY nao configurada no servidor." },
+      { error: "SUPABASE_SERVICE_ROLE_KEY não configurada no servidor." },
       { status: 503 },
     )
   }
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   const anon = getSupabaseAnon()
   const { data: userData, error: userErr } = await anon.auth.getUser(token)
   if (userErr || !userData.user) {
-    return NextResponse.json({ error: "Sessao invalida." }, { status: 401 })
+    return NextResponse.json({ error: "Sessão inválida." }, { status: 401 })
   }
   const userId = userData.user.id
 
