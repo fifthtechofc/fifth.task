@@ -10,8 +10,8 @@ export default async function ProjectBoardPage({
   const { project } = await params
 
   return (
-    <section className="min-h-full p-6">
-      <div className="mx-auto max-w-7xl">
+    <section className="min-h-full p-3 sm:p-4 md:p-6">
+      <div className="w-full">
         <Suspense fallback={null}>
           <ProjectBoard project={project} />
         </Suspense>

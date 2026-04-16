@@ -244,19 +244,19 @@ export function ProjectBoard({ project }: { project: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="w-full space-y-3 sm:space-y-4">
       <GlowCard
         glowColor="blue"
         customSize
-        className="w-full max-w-6xl border border-zinc-600/70 bg-background/80 px-5 py-4"
+        className="w-full border border-zinc-600/70 bg-background/80 px-4 py-4 sm:px-5"
       >
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-start gap-4 sm:items-center sm:gap-6">
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            <h1 className="text-pretty text-xl font-semibold tracking-tight text-foreground sm:text-2xl md:text-3xl">
               {heading}
             </h1>
             {boardDescription && (
-              <p className="mt-1 max-w-2xl truncate text-sm text-muted-foreground">
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:truncate">
                 {boardDescription}
               </p>
             )}
@@ -272,7 +272,7 @@ export function ProjectBoard({ project }: { project: string }) {
             </div>
           </div>
 
-          <div className="flex flex-1 shrink-0 items-center justify-end gap-3">
+          <div className="flex w-full items-center justify-end gap-3 sm:w-auto sm:flex-1 sm:shrink-0">
             <button
               type="button"
               onClick={handleOpenEditBoard}

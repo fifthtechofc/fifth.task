@@ -125,7 +125,7 @@ export function Column({
       }}
       onDragLeave={onDragLeave}
       className={cn(
-        "flex h-full min-h-full min-w-[360px] max-w-[360px] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200",
+        "flex h-full min-h-full min-w-[280px] max-w-[280px] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200 sm:min-w-[320px] sm:max-w-[320px] xl:min-w-[360px] xl:max-w-[360px]",
         isDropActive
           ? "border-primary/50 border-dashed bg-primary/5"
           : "border-transparent"
