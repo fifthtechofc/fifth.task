@@ -292,13 +292,13 @@ export function SettingsWorkspaceShell() {
     settingsSections[0]
 
   return (
-    <section className="relative min-h-full p-6 md:p-8">
+    <section className="relative min-h-full p-3 sm:p-4 md:p-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">
             Configurações
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-foreground md:text-4xl">
+          <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">
             Preferências da sua conta
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">
@@ -308,11 +308,11 @@ export function SettingsWorkspaceShell() {
         </div>
 
         <div className="min-w-0 space-y-6">
-            <section className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_55%,_transparent_100%)] p-6">
+            <section className="rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_55%,_transparent_100%)] p-4 sm:rounded-[30px] sm:p-6">
               <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
                 {activeMeta.eyebrow}
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-foreground">
+              <h2 className="mt-2 text-xl font-semibold text-foreground sm:text-2xl">
                 {activeMeta.title}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">

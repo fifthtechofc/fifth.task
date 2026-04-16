@@ -184,11 +184,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <div className="relative z-20 flex h-full gap-0 p-4">
+        <div className="relative z-20 flex h-full flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:gap-0">
           <PresenceHeartbeat />
           <SidebarComponent />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex shrink-0 justify-end pb-2">
+            <div className="hidden shrink-0 justify-end px-1 pb-2 lg:flex">
               <NotificationsPopover />
             </div>
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>

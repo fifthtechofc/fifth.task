@@ -267,7 +267,7 @@ export function Board({
 
     window.addEventListener("drop", onWindowDrop, { passive: false })
     return () => {
-      window.removeEventListener("drop", onWindowDrop as any)
+      window.removeEventListener("drop", onWindowDrop)
     }
   }, [draggedColumnId, draggedTask])
 
@@ -899,8 +899,8 @@ export function Board({
 
   if (columns.length === 0) {
     return (
-      <div className={cn("min-h-screen w-full px-6 py-4", className)}>
-        <div className="mx-auto flex h-[calc(100vh-3rem)] max-w-6xl flex-col rounded-3xl border border-border/40 bg-background px-4 py-6 shadow-sm">
+      <div className={cn("min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4", className)}>
+        <div className="flex min-h-[calc(100dvh-11rem)] w-full flex-col rounded-2xl border border-border/40 bg-background px-3 py-4 shadow-sm sm:px-4 sm:py-6 lg:h-[calc(100vh-3rem)] lg:rounded-3xl">
           <EditColumnModal
             open={editingColumnId !== null}
             onOpenChange={handleCloseEditColumnModal}
@@ -932,7 +932,7 @@ export function Board({
   }
 
   return (
-    <div className={cn("min-h-screen w-full px-6 py-4", className)}>
+    <div className={cn("min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4", className)}>
       <EditColumnModal
         open={editingColumnId !== null}
         onOpenChange={handleCloseEditColumnModal}
@@ -963,7 +963,7 @@ export function Board({
       <GlowCard
         glowColor="blue"
         customSize
-        className="mx-auto flex h-[calc(100vh-3rem)] max-w-6xl flex-col border border-border/60 bg-background px-4 py-4"
+        className="flex min-h-[calc(100dvh-11rem)] w-full flex-col border border-border/60 bg-background px-3 py-3 sm:px-4 sm:py-4 lg:h-[calc(100vh-3rem)]"
       >
         <HorizontalScroll ref={scrollRef} className="mt-1 flex-1" onDragOver={handleBoardDragOver}>
           <div className="flex h-full min-h-full w-full flex-1 items-stretch gap-4 pb-4">
