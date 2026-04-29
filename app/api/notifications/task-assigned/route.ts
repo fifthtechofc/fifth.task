@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-
-import { rateLimit, getClientIp } from "@/lib/server/rate-limit"
-import { getSupabaseAnon } from "@/lib/server/supabase-auth"
-import { getSupabaseAdmin } from "@/lib/server/supabase-admin"
-import { sendMail } from "@/lib/server/mailer"
 import { slugifyBoardTitle } from "@/lib/kanban"
+import { sendMail } from "@/lib/server/mailer"
+import { getClientIp, rateLimit } from "@/lib/server/rate-limit"
+import { getSupabaseAdmin } from "@/lib/server/supabase-admin"
+import { getSupabaseAnon } from "@/lib/server/supabase-auth"
 
 type Body = {
   boardId: string
@@ -36,7 +35,14 @@ function buildEmailHtml(args: {
   boardTitle: string
   boardUrl: string
 }) {
-  const { recipientName, taskTitle, taskDescription, assignedByName, boardTitle, boardUrl } = args
+  const {
+    recipientName,
+    taskTitle,
+    taskDescription,
+    assignedByName,
+    boardTitle,
+    boardUrl,
+  } = args
   const logoUrl =
     "https://ryovcwvpeekcequwbpqn.supabase.co/storage/v1/object/public/Logo.fft/logo.png"
   const safeUrl = escapeHtml(boardUrl)
@@ -110,7 +116,10 @@ function buildEmailHtml(args: {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req.headers)
-  const limit = rateLimit(`notify:task-assigned:${ip}`, { limit: 20, windowMs: 60_000 })
+  const limit = rateLimit(`notify:task-assigned:${ip}`, {
+    limit: 20,
+    windowMs: 60_000,
+  })
   if (!limit.ok) {
     return NextResponse.json(
       { error: "Muitas solicitações. Tente novamente em instantes." },
@@ -119,7 +128,9 @@ export async function POST(req: Request) {
   }
 
   const auth = req.headers.get("authorization") ?? ""
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : ""
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : ""
   if (!token) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
@@ -140,7 +151,10 @@ export async function POST(req: Request) {
     : []
 
   if (!boardId || !cardId || !taskTitle || assignedUserIds.length === 0) {
-    return NextResponse.json({ error: "Campos obrigatórios ausentes." }, { status: 400 })
+    return NextResponse.json(
+      { error: "Campos obrigatórios ausentes." },
+      { status: 400 },
+    )
   }
 
   const supabase = getSupabaseAnon()
@@ -185,7 +199,10 @@ export async function POST(req: Request) {
     .in("id", assignedUserIds)
 
   if (recipientsErr) {
-    return NextResponse.json({ error: "Não foi possível resolver destinatários." }, { status: 500 })
+    return NextResponse.json(
+      { error: "Não foi possível resolver destinatários." },
+      { status: 500 },
+    )
   }
 
   const recipients = (recipientRows ?? [])
@@ -220,8 +237,12 @@ export async function POST(req: Request) {
       ok: true,
       sent: 0,
       attempted: 0,
-      resolvedRecipients: recipientsResolved.map((r) => ({ id: r.id, email: r.email || null })),
-      reason: "Nenhum destinatário com email (profiles.email vazio e fallback Auth sem email).",
+      resolvedRecipients: recipientsResolved.map((r) => ({
+        id: r.id,
+        email: r.email || null,
+      })),
+      reason:
+        "Nenhum destinatário com email (profiles.email vazio e fallback Auth sem email).",
     })
   }
 
@@ -262,8 +283,10 @@ export async function POST(req: Request) {
     ok: true,
     sent,
     attempted: recipientsWithEmail.length,
-    resolvedRecipients: recipientsResolved.map((r) => ({ id: r.id, email: r.email || null })),
+    resolvedRecipients: recipientsResolved.map((r) => ({
+      id: r.id,
+      email: r.email || null,
+    })),
     failed,
   })
 }
-

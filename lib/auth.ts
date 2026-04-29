@@ -1,6 +1,6 @@
-import { supabase } from './supabase'
-import { setMyStatusOffline } from './profile'
-import { logAuditEvent } from './audit'
+import { logAuditEvent } from "./audit"
+import { setMyStatusOffline } from "./profile"
+import { supabase } from "./supabase"
 
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -12,7 +12,7 @@ export async function signInWithEmail(email: string, password: string) {
     throw new Error(error.message)
   }
 
-  void logAuditEvent({ action: 'auth.login', metadata: { method: 'password' } })
+  void logAuditEvent({ action: "auth.login", metadata: { method: "password" } })
   return data
 }
 
@@ -75,11 +75,13 @@ export async function setSessionFromTokens(params: {
 }
 
 export async function updateMyPassword(newPassword: string) {
-  const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
   if (error) {
     throw new Error(error.message)
   }
-  void logAuditEvent({ action: 'auth.password_change' })
+  void logAuditEvent({ action: "auth.password_change" })
   return data
 }
 
@@ -97,5 +99,5 @@ export async function signOutUser() {
     throw new Error(error.message)
   }
 
-  void logAuditEvent({ action: 'auth.logout' })
+  void logAuditEvent({ action: "auth.logout" })
 }

@@ -67,7 +67,10 @@ function readStoredProgressMap() {
 function writeStoredProgressMap(map: Record<string, number>) {
   if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(PROJECT_PROGRESS_STORAGE_KEY, JSON.stringify(map))
+    window.localStorage.setItem(
+      PROJECT_PROGRESS_STORAGE_KEY,
+      JSON.stringify(map),
+    )
   } catch {
     // ignore storage errors
   }
@@ -85,7 +88,10 @@ function setStoredProjectProgress(projectId: string, progress: number) {
   writeStoredProgressMap(map)
 }
 
-function coalesceProjectTitle(title: string | null | undefined, fallbackId: string) {
+function coalesceProjectTitle(
+  title: string | null | undefined,
+  fallbackId: string,
+) {
   const normalized = title?.trim()
   if (normalized) return normalized
   return `Projeto ${fallbackId.slice(0, 8)}`
@@ -104,13 +110,23 @@ function normalizeMember(profile: ProfileRow): ProjectMember {
   }
 }
 
-async function fetchBoardMemberIds(boardIds: string[]): Promise<Map<string, string[]>> {
+async function fetchBoardMemberIds(
+  boardIds: string[],
+): Promise<Map<string, string[]>> {
   const memberIdsByBoardId = new Map<string, string[]>()
   if (!boardIds.length) return memberIdsByBoardId
 
   const queries = [
-    () => supabase.from("board_members").select("board_id,user_id").in("board_id", boardIds),
-    () => supabase.from("board_members").select("board_id,profile_id").in("board_id", boardIds),
+    () =>
+      supabase
+        .from("board_members")
+        .select("board_id,user_id")
+        .in("board_id", boardIds),
+    () =>
+      supabase
+        .from("board_members")
+        .select("board_id,profile_id")
+        .in("board_id", boardIds),
   ]
 
   for (const runQuery of queries) {
@@ -189,8 +205,14 @@ export async function fetchProjects(): Promise<Project[]> {
     const memberIdsByBoardId = await fetchBoardMemberIds(boardIds)
 
     const [{ data: cardsData }, { data: columnsData }] = await Promise.all([
-      supabase.from("board_cards").select("board_id,column_id,assigned_to").in("board_id", boardIds),
-      supabase.from("board_columns").select("id,board_id,title").in("board_id", boardIds),
+      supabase
+        .from("board_cards")
+        .select("board_id,column_id,assigned_to")
+        .in("board_id", boardIds),
+      supabase
+        .from("board_columns")
+        .select("id,board_id,title")
+        .in("board_id", boardIds),
     ])
 
     const cards = (cardsData ?? []) as BoardCardRow[]
@@ -225,7 +247,8 @@ export async function fetchProjects(): Promise<Project[]> {
           profilesById.set(member.id, {
             id: member.id,
             name: member.name,
-            avatarUrl: member.imageSrc || profilesById.get(member.id)?.avatarUrl || null,
+            avatarUrl:
+              member.imageSrc || profilesById.get(member.id)?.avatarUrl || null,
           })
         }
       } catch {
@@ -235,7 +258,9 @@ export async function fetchProjects(): Promise<Project[]> {
 
     return boards.map((board) => {
       const boardCards = cards.filter((card) => card.board_id === board.id)
-      const boardColumns = columns.filter((column) => column.board_id === board.id)
+      const boardColumns = columns.filter(
+        (column) => column.board_id === board.id,
+      )
 
       let progress = 0
       if (boardCards.length > 0) {
@@ -247,7 +272,9 @@ export async function fetchProjects(): Promise<Project[]> {
         )
 
         if (boardDoneColumnIds.size > 0) {
-          const doneCards = boardCards.filter((card) => boardDoneColumnIds.has(card.column_id)).length
+          const doneCards = boardCards.filter((card) =>
+            boardDoneColumnIds.has(card.column_id),
+          ).length
           progress = Math.round((doneCards / boardCards.length) * 100)
         }
       }
@@ -262,11 +289,15 @@ export async function fetchProjects(): Promise<Project[]> {
           [
             ...(memberIdsByBoardId.get(board.id) ?? []),
             board.created_by,
-            ...((boardCards.map((card) => card.assigned_to).filter(Boolean) as string[]) ?? []),
+            ...((boardCards
+              .map((card) => card.assigned_to)
+              .filter(Boolean) as string[]) ?? []),
           ].filter(Boolean),
         ),
       )
-      const members = memberIds.map((id) => profilesById.get(id)).filter(Boolean) as ProjectMember[]
+      const members = memberIds
+        .map((id) => profilesById.get(id))
+        .filter(Boolean) as ProjectMember[]
 
       return buildProjectFromBoard({
         board,
@@ -300,7 +331,10 @@ export async function updateProject(params: {
   setStoredProjectProgress(params.id, params.progress)
 
   try {
-    const { error: deleteError } = await supabase.from("board_members").delete().eq("board_id", params.id)
+    const { error: deleteError } = await supabase
+      .from("board_members")
+      .delete()
+      .eq("board_id", params.id)
     if (deleteError) throw deleteError
 
     const uniqueIds = Array.from(new Set(params.memberIds.filter(Boolean)))
@@ -319,7 +353,9 @@ export async function updateProject(params: {
 
     let saved = false
     for (const payload of payloads) {
-      const { error: insertError } = await supabase.from("board_members").insert(payload)
+      const { error: insertError } = await supabase
+        .from("board_members")
+        .insert(payload)
       if (!insertError) {
         saved = true
         break
@@ -330,7 +366,8 @@ export async function updateProject(params: {
       throw new Error("Falha ao salvar membros do projeto.")
     }
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Falha ao salvar membros do projeto."
+    const message =
+      e instanceof Error ? e.message : "Falha ao salvar membros do projeto."
     throw new Error(
       `${message}\n\nVerifique se a tabela 'board_members' usa a coluna user_id ou profile_id e se a FK com profiles foi criada corretamente.`,
     )

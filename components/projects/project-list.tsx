@@ -2,12 +2,15 @@
 
 import * as React from "react"
 
-import { ProjectCard, ProjectCardSkeleton } from "@/components/projects/project-card"
+import {
+  ProjectCard,
+  ProjectCardSkeleton,
+} from "@/components/projects/project-card"
 import { ProjectEditSheet } from "@/components/projects/project-edit-sheet"
+import type { MemberOption } from "@/components/ui/members-select"
 import { getTeamMembers } from "@/lib/profile"
 import { fetchProjects, type Project, updateProject } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
-import type { MemberOption } from "@/components/ui/members-select"
 
 function getProjectOrderStorageKey(userId: string) {
   return `projects:order:${userId}`
@@ -31,7 +34,9 @@ function sortProjectsByStoredOrder(projects: Project[], storedOrder: string[]) {
 export function ProjectList() {
   const [projects, setProjects] = React.useState<Project[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [editingProject, setEditingProject] = React.useState<Project | null>(null)
+  const [editingProject, setEditingProject] = React.useState<Project | null>(
+    null,
+  )
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [memberOptions, setMemberOptions] = React.useState<MemberOption[]>([])
   const [userId, setUserId] = React.useState<string | null>(null)
@@ -68,7 +73,9 @@ export function ProjectList() {
 
         let storedOrder: string[] = []
         try {
-          const raw = window.localStorage.getItem(getProjectOrderStorageKey(userId))
+          const raw = window.localStorage.getItem(
+            getProjectOrderStorageKey(userId),
+          )
           storedOrder = raw ? (JSON.parse(raw) as string[]) : []
         } catch {
           storedOrder = []
@@ -79,8 +86,9 @@ export function ProjectList() {
         if (!alive) return
         setProjects([])
       } finally {
-        if (!alive) return
-        setLoading(false)
+        if (alive) {
+          setLoading(false)
+        }
       }
     }
 
@@ -155,9 +163,17 @@ export function ProjectList() {
 
   function moveProject(draggedId: string, targetId: string) {
     setProjects((current) => {
-      const draggedIndex = current.findIndex((project) => project.id === draggedId)
-      const targetIndex = current.findIndex((project) => project.id === targetId)
-      if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+      const draggedIndex = current.findIndex(
+        (project) => project.id === draggedId,
+      )
+      const targetIndex = current.findIndex(
+        (project) => project.id === targetId,
+      )
+      if (
+        draggedIndex === -1 ||
+        targetIndex === -1 ||
+        draggedIndex === targetIndex
+      ) {
         return current
       }
 
@@ -182,9 +198,12 @@ export function ProjectList() {
   if (!projects.length) {
     return (
       <div className="rounded-[28px] border border-dashed border-white/10 bg-black/25 px-6 py-14 text-center">
-        <p className="text-base font-medium text-foreground">Nenhum projeto encontrado</p>
+        <p className="text-base font-medium text-foreground">
+          Nenhum projeto encontrado
+        </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Quando houver projetos cadastrados, eles vao aparecer aqui automaticamente.
+          Quando houver projetos cadastrados, eles vao aparecer aqui
+          automaticamente.
         </p>
       </div>
     )

@@ -1,15 +1,17 @@
 "use client"
 
-import * as React from "react"
-import Link from "next/link"
-import { Bell } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
-
-import { useAppNotifications } from "@/lib/app-notifications-context"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Bell } from "lucide-react"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
   appNotificationClickHref,
   getNotificationLineSegments,
@@ -63,7 +65,9 @@ export function NotificationsPopover() {
         className="w-80 max-h-[min(420px,var(--radix-popover-content-available-height))] overflow-hidden border border-white/10 bg-zinc-950/95 p-0 text-zinc-100 shadow-2xl shadow-black/40 backdrop-blur-xl"
       >
         <div className="flex items-baseline justify-between gap-4 px-3 py-2.5">
-          <div className="text-sm font-semibold tracking-tight">Notificações</div>
+          <div className="text-sm font-semibold tracking-tight">
+            Notificações
+          </div>
           {unreadCount > 0 && (
             <button
               type="button"
@@ -74,10 +78,16 @@ export function NotificationsPopover() {
             </button>
           )}
         </div>
-        <div role="separator" aria-orientation="horizontal" className="h-px bg-white/10" />
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          className="h-px bg-white/10"
+        />
         <div className="max-h-[min(340px,calc(var(--radix-popover-content-available-height)-4rem))] overflow-y-auto overflow-x-hidden p-1">
           {items.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-zinc-500">Nada por aqui ainda.</div>
+            <div className="px-3 py-8 text-center text-sm text-zinc-500">
+              Nada por aqui ainda.
+            </div>
           ) : (
             items.map((notification) => {
               const segments = getNotificationLineSegments(notification)
@@ -100,7 +110,9 @@ export function NotificationsPopover() {
                           <span
                             key={`${notification.id}-${i}`}
                             className={
-                              s.emphasis ? "font-semibold text-white" : "font-normal text-zinc-400"
+                              s.emphasis
+                                ? "font-semibold text-white"
+                                : "font-normal text-zinc-400"
                             }
                           >
                             {s.text}
@@ -120,7 +132,9 @@ export function NotificationsPopover() {
                         </>
                       )}
                     </div>
-                    <div className="text-xs text-zinc-500">{timeLabel(notification.createdAt)}</div>
+                    <div className="text-xs text-zinc-500">
+                      {timeLabel(notification.createdAt)}
+                    </div>
                   </div>
                   {!notification.read && (
                     <div className="absolute end-2 top-1/2 -translate-y-1/2">

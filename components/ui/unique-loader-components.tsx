@@ -1,7 +1,6 @@
-"use client";
+"use client"
 
-import React from "react";
-import { motion } from "motion/react";
+import { motion } from "motion/react"
 
 export const LoaderOne = () => {
   const transition = (x: number) => {
@@ -11,8 +10,8 @@ export const LoaderOne = () => {
       repeatType: "loop" as const,
       delay: x * 0.2,
       ease: [0.42, 0, 0.58, 1] as const,
-    };
-  };
+    }
+  }
   return (
     <div className="flex items-center gap-2">
       <motion.div
@@ -46,8 +45,8 @@ export const LoaderOne = () => {
         className="h-4 w-4 rounded-full border border-neutral-300 bg-gradient-to-b from-neutral-400 to-neutral-300"
       />
     </div>
-  );
-};
+  )
+}
 
 export const LoaderTwo = () => {
   const transition = (x: number) => {
@@ -57,8 +56,8 @@ export const LoaderTwo = () => {
       repeatType: "loop" as const,
       delay: x * 0.2,
       ease: [0.42, 0, 0.58, 1] as const,
-    };
-  };
+    }
+  }
   return (
     <div className="flex items-center">
       <motion.div
@@ -92,8 +91,8 @@ export const LoaderTwo = () => {
         className="h-4 w-4 -translate-x-4 rounded-full bg-neutral-200 shadow-md dark:bg-neutral-500"
       />
     </div>
-  );
-};
+  )
+}
 
 export const LoaderThree = () => {
   return (
@@ -122,8 +121,8 @@ export const LoaderThree = () => {
         d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"
       />
     </motion.svg>
-  );
-};
+  )
+}
 
 export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
   return (
@@ -180,8 +179,8 @@ export const LoaderFour = ({ text = "Loading..." }: { text?: string }) => {
         {text}
       </motion.span>
     </div>
-  );
-};
+  )
+}
 
 export const LoaderFive = ({ text }: { text: string }) => {
   return (
@@ -213,6 +212,5 @@ export const LoaderFive = ({ text }: { text: string }) => {
         </motion.span>
       ))}
     </div>
-  );
-};
-
+  )
+}

@@ -2,11 +2,15 @@
   "name": "fifth.task",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "prepare": "husky",
+    "commitlint": "commitlint",
     "gen:favicon": "node scripts/generate-favicon.mjs"
   },
   "dependencies": {
@@ -42,13 +46,15 @@
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
+    "@commitlint/cli": "^20.5.2",
+    "@commitlint/config-conventional": "^20.5.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.1",
+    "husky": "^9.1.7",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",

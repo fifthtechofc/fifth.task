@@ -23,7 +23,11 @@ export function rateLimit(key: string, cfg: RateLimitConfig) {
 
   if (tokens < 1) {
     buckets.set(key, { tokens, updatedAt: now })
-    return { ok: false as const, remaining: 0, resetAt: bucket.updatedAt + cfg.windowMs }
+    return {
+      ok: false as const,
+      remaining: 0,
+      resetAt: bucket.updatedAt + cfg.windowMs,
+    }
   }
 
   const next = { tokens: tokens - 1, updatedAt: now }
@@ -36,10 +40,9 @@ export function rateLimit(key: string, cfg: RateLimitConfig) {
 }
 
 export function getClientIp(headers: Headers) {
-  const xf = headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const xf = headers.get("x-forwarded-for")?.split(",")[0]?.trim()
   if (xf) return xf
-  const realIp = headers.get('x-real-ip')?.trim()
+  const realIp = headers.get("x-real-ip")?.trim()
   if (realIp) return realIp
-  return 'unknown'
+  return "unknown"
 }
-

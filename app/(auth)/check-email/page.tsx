@@ -1,14 +1,13 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from "next/navigation"
 
-import EmailVerificationBlock from '@/components/ui/email-verification-block'
+import EmailVerificationBlock from "@/components/ui/email-verification-block"
 
 export default function CheckEmailPage() {
   const search = useSearchParams()
-  const email = (search.get('email') ?? '').trim()
-  const verified = (search.get('verified') ?? '').trim() === '1'
+  const email = (search.get("email") ?? "").trim()
+  const verified = (search.get("verified") ?? "").trim() === "1"
 
   return (
     <div className="relative isolate flex min-h-[calc(100vh-2rem)] w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)] px-6 py-10 text-center">
@@ -22,9 +21,11 @@ export default function CheckEmailPage() {
       />
 
       <div className="relative z-10 w-full px-2">
-        <EmailVerificationBlock email={email || undefined} initialVerified={verified} />
+        <EmailVerificationBlock
+          email={email || undefined}
+          initialVerified={verified}
+        />
       </div>
     </div>
   )
 }
-

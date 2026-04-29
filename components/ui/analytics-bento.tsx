@@ -26,11 +26,17 @@ export function BudgetCard() {
   const getY = (value: number) => {
     const range = maxValue - minValue || 1
     const normalized = (value - minValue) / range
-    return chartHeight - padding.bottom - normalized * (chartHeight - padding.top - padding.bottom)
+    return (
+      chartHeight -
+      padding.bottom -
+      normalized * (chartHeight - padding.top - padding.bottom)
+    )
   }
 
   const getX = (index: number) =>
-    padding.left + (index / (weekData.length - 1)) * (chartWidth - padding.left - padding.right)
+    padding.left +
+    (index / (weekData.length - 1)) *
+      (chartWidth - padding.left - padding.right)
 
   const generatePath = () => {
     const points = weekData.map((d, i) => ({ x: getX(i), y: getY(d.value) }))
@@ -110,8 +116,16 @@ export function BudgetCard() {
               $30.739
             </h2>
             <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
-              <span className="text-[14px] font-semibold text-foreground">+ $317</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-foreground">
+              <span className="text-[14px] font-semibold text-foreground">
+                + $317
+              </span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                className="text-foreground"
+              >
                 <path
                   d="M2 11L6 7L9 10L14 4"
                   stroke="currentColor"
@@ -145,15 +159,38 @@ export function BudgetCard() {
             style={{ cursor: "default" }}
           >
             <defs>
-              <linearGradient id="analyticsAreaGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                id="analyticsAreaGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
                 <stop offset="0%" stopColor="#c7d1db" stopOpacity="0.28" />
                 <stop offset="50%" stopColor="#c7d1db" stopOpacity="0.12" />
                 <stop offset="100%" stopColor="#c7d1db" stopOpacity="0.02" />
               </linearGradient>
-              <filter id="analyticsTooltipShadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.2" />
+              <filter
+                id="analyticsTooltipShadow"
+                x="-50%"
+                y="-50%"
+                width="200%"
+                height="200%"
+              >
+                <feDropShadow
+                  dx="0"
+                  dy="4"
+                  stdDeviation="6"
+                  floodOpacity="0.2"
+                />
               </filter>
-              <filter id="analyticsDotGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <filter
+                id="analyticsDotGlow"
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
                 <feGaussianBlur stdDeviation="2" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
@@ -177,10 +214,21 @@ export function BudgetCard() {
             ))}
 
             {scatteredDots.map((dot, i) => (
-              <circle key={i} cx={dot.x} cy={dot.y} r={dot.size} fill="rgba(255,255,255,0.12)" opacity={dot.opacity} />
+              <circle
+                key={i}
+                cx={dot.x}
+                cy={dot.y}
+                r={dot.size}
+                fill="rgba(255,255,255,0.12)"
+                opacity={dot.opacity}
+              />
             ))}
 
-            <path d={generateAreaPath()} fill="url(#analyticsAreaGradient)" className="transition-all duration-300" />
+            <path
+              d={generateAreaPath()}
+              fill="url(#analyticsAreaGradient)"
+              className="transition-all duration-300"
+            />
 
             <path
               d={generatePath()}
@@ -272,19 +320,40 @@ function MoneyIllustration() {
       </defs>
 
       <g transform="translate(8, 12) rotate(-20, 40, 25)">
-        <rect x="0" y="0" width="80" height="48" rx="6" fill="url(#analyticsBill1)" />
+        <rect
+          x="0"
+          y="0"
+          width="80"
+          height="48"
+          rx="6"
+          fill="url(#analyticsBill1)"
+        />
         <circle cx="62" cy="14" r="7" fill="url(#analyticsHoleGrad)" />
         <circle cx="62" cy="34" r="5" fill="url(#analyticsHoleGrad)" />
       </g>
 
       <g transform="translate(22, 28) rotate(-10, 40, 25)">
-        <rect x="0" y="0" width="80" height="48" rx="6" fill="url(#analyticsBill2)" />
+        <rect
+          x="0"
+          y="0"
+          width="80"
+          height="48"
+          rx="6"
+          fill="url(#analyticsBill2)"
+        />
         <circle cx="62" cy="14" r="7" fill="url(#analyticsHoleGrad)" />
         <circle cx="62" cy="34" r="5" fill="url(#analyticsHoleGrad)" />
       </g>
 
       <g transform="translate(38, 44) rotate(-2, 40, 25)">
-        <rect x="0" y="0" width="80" height="48" rx="6" fill="url(#analyticsBill3)" />
+        <rect
+          x="0"
+          y="0"
+          width="80"
+          height="48"
+          rx="6"
+          fill="url(#analyticsBill3)"
+        />
         <circle cx="62" cy="14" r="7" fill="url(#analyticsHoleGrad)" />
         <circle cx="62" cy="34" r="5" fill="url(#analyticsHoleGrad)" />
       </g>

@@ -20,9 +20,7 @@ export default function RootLayout({
         <div className="fixed inset-0 -z-10">
           <NeuralBackground color="#c7d1db" trailOpacity={0.2} />
         </div>
-        <div className="relative z-10 min-h-screen">
-          {children}
-        </div>
+        <div className="relative z-10 min-h-screen">{children}</div>
       </body>
     </html>
   )

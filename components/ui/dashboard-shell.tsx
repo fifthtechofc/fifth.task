@@ -1,38 +1,44 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import SidebarComponent from "@/components/ui/sidebar-component";
-import { PresenceHeartbeat } from "@/components/presence-heartbeat";
-import { Toaster } from "sonner";
-import { LoaderOne } from "@/components/ui/unique-loader-components";
-import CustomAlert from "@/components/ui/custom-alert";
-import { AppNotificationsProvider } from "@/lib/app-notifications-context";
-import { NotificationsPopover } from "@/components/notifications/notifications-popover";
+import * as React from "react"
+import { Toaster } from "sonner"
+import { NotificationsPopover } from "@/components/notifications/notifications-popover"
+import { PresenceHeartbeat } from "@/components/presence-heartbeat"
+import CustomAlert from "@/components/ui/custom-alert"
+import SidebarComponent from "@/components/ui/sidebar-component"
+import { LoaderOne } from "@/components/ui/unique-loader-components"
+import { AppNotificationsProvider } from "@/lib/app-notifications-context"
 
-type AlertVariant = "success" | "error" | "warning" | "info";
+type AlertVariant = "success" | "error" | "warning" | "info"
 
 interface DashboardUIContextValue {
-  loading: boolean;
-  setLoading: (value: boolean) => void;
-  showAlert: (params: { variant?: AlertVariant; title: string; description?: string }) => void;
+  loading: boolean
+  setLoading: (value: boolean) => void
+  showAlert: (params: {
+    variant?: AlertVariant
+    title: string
+    description?: string
+  }) => void
 }
 
-const DashboardUIContext = React.createContext<DashboardUIContextValue | undefined>(undefined);
+const DashboardUIContext = React.createContext<
+  DashboardUIContextValue | undefined
+>(undefined)
 
 export function useDashboardLoading() {
-  const ctx = React.useContext(DashboardUIContext);
+  const ctx = React.useContext(DashboardUIContext)
   if (!ctx) {
     return {
       loading: false,
       setLoading: () => undefined,
       showAlert: () => undefined,
-    };
+    }
   }
-  return ctx;
+  return ctx
 }
 
-const POST_AUTH_LOADER_KEY = "ft:postAuthLoader";
-const FORCE_DASHBOARD_LOADER_KEY = "ft:forceDashboardLoader";
+const POST_AUTH_LOADER_KEY = "ft:postAuthLoader"
+const FORCE_DASHBOARD_LOADER_KEY = "ft:forceDashboardLoader"
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [loading, _setLoading] = React.useState(() => {
@@ -40,87 +46,93 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       return (
         window.sessionStorage.getItem(POST_AUTH_LOADER_KEY) === "1" ||
         window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1"
-      );
+      )
     } catch {
-      return false;
+      return false
     }
-  });
-  const desiredLoadingRef = React.useRef<boolean>(loading);
-  const hideTimeoutRef = React.useRef<number | null>(null);
+  })
+  const desiredLoadingRef = React.useRef<boolean>(loading)
+  const hideTimeoutRef = React.useRef<number | null>(null)
   const [alert, setAlert] = React.useState<{
-    id: number;
-    variant: AlertVariant;
-    title: string;
-    description?: string;
-  } | null>(null);
+    id: number
+    variant: AlertVariant
+    title: string
+    description?: string
+  } | null>(null)
 
-  const setLoading: DashboardUIContextValue["setLoading"] = React.useCallback((value) => {
-    // If a hard lock is active (logout flow), never hide.
-    try {
-      if (!value && window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1") {
-        desiredLoadingRef.current = true;
-        _setLoading(true);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-    desiredLoadingRef.current = value;
-
-    if (hideTimeoutRef.current) {
-      window.clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-
-    if (value) {
-      _setLoading(true);
-      return;
-    }
-
-    // Avoid flicker when multiple components toggle loading back-to-back.
-    hideTimeoutRef.current = window.setTimeout(() => {
-      hideTimeoutRef.current = null;
-      if (!desiredLoadingRef.current) {
-        _setLoading(false);
-        try {
-          window.sessionStorage.removeItem(POST_AUTH_LOADER_KEY);
-        } catch {
-          // ignore
+  const setLoading: DashboardUIContextValue["setLoading"] = React.useCallback(
+    (value) => {
+      // If a hard lock is active (logout flow), never hide.
+      try {
+        if (
+          !value &&
+          window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1"
+        ) {
+          desiredLoadingRef.current = true
+          _setLoading(true)
+          return
         }
+      } catch {
+        // ignore
       }
-    }, 180);
-  }, []);
+      desiredLoadingRef.current = value
+
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current)
+        hideTimeoutRef.current = null
+      }
+
+      if (value) {
+        _setLoading(true)
+        return
+      }
+
+      // Avoid flicker when multiple components toggle loading back-to-back.
+      hideTimeoutRef.current = window.setTimeout(() => {
+        hideTimeoutRef.current = null
+        if (!desiredLoadingRef.current) {
+          _setLoading(false)
+          try {
+            window.sessionStorage.removeItem(POST_AUTH_LOADER_KEY)
+          } catch {
+            // ignore
+          }
+        }
+      }, 180)
+    },
+    [],
+  )
 
   React.useEffect(() => {
     // Failsafe: if the logout loader lock gets stuck, clear it.
     // This prevents "infinite loading" in dashboard pages if navigation is interrupted.
-    let id: number | null = null;
+    let id: number | null = null
     try {
       if (window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) === "1") {
         id = window.setTimeout(() => {
           try {
-            window.sessionStorage.removeItem(FORCE_DASHBOARD_LOADER_KEY);
+            window.sessionStorage.removeItem(FORCE_DASHBOARD_LOADER_KEY)
           } catch {
             // ignore
           }
           // if nobody is actively requesting loading, allow hiding
           if (!desiredLoadingRef.current) {
-            _setLoading(false);
+            _setLoading(false)
           }
-        }, 6000);
+        }, 6000)
       }
     } catch {
       // ignore
     }
     return () => {
       if (hideTimeoutRef.current) {
-        window.clearTimeout(hideTimeoutRef.current);
+        window.clearTimeout(hideTimeoutRef.current)
       }
       if (id) {
-        window.clearTimeout(id);
+        window.clearTimeout(id)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   React.useEffect(() => {
     // Handoff pós-login: `ft:postAuthLoader` é setado na tela de login para evitar flash,
@@ -131,74 +143,78 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         window.sessionStorage.getItem(POST_AUTH_LOADER_KEY) === "1" &&
         window.sessionStorage.getItem(FORCE_DASHBOARD_LOADER_KEY) !== "1"
       ) {
-        setLoading(false);
+        setLoading(false)
       }
     } catch {
       // ignore
     }
-  }, [setLoading]);
+  }, [setLoading])
 
-  const showAlert: DashboardUIContextValue["showAlert"] = React.useCallback((params) => {
-    setAlert({
-      id: Date.now(),
-      variant: params.variant ?? "success",
-      title: params.title,
-      description: params.description,
-    });
-  }, []);
+  const showAlert: DashboardUIContextValue["showAlert"] = React.useCallback(
+    (params) => {
+      setAlert({
+        id: Date.now(),
+        variant: params.variant ?? "success",
+        title: params.title,
+        description: params.description,
+      })
+    },
+    [],
+  )
 
   const ctxValue = React.useMemo(
     () => ({ loading, setLoading, showAlert }),
     [loading, setLoading, showAlert],
-  );
+  )
 
   React.useEffect(() => {
-    if (!alert) return;
+    if (!alert) return
     const timeout = setTimeout(() => {
-      setAlert(null);
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [alert]);
+      setAlert(null)
+    }, 5000)
+    return () => clearTimeout(timeout)
+  }, [alert])
 
   return (
     <DashboardUIContext.Provider value={ctxValue}>
       <AppNotificationsProvider>
-      <div className="relative h-screen overflow-hidden">
-        {/* Alert global do dashboard, sempre acima do conteúdo e do loader */}
-        {alert && (
-          <div className="pointer-events-auto fixed inset-x-0 top-6 z-60 flex justify-center">
-            <CustomAlert
-              key={alert.id}
-              variant={alert.variant}
-              title={alert.title}
-              description={alert.description}
-              onClose={() => setAlert(null)}
-            />
-          </div>
-        )}
-
-        {/* Loader global do dashboard, fica por cima do conteúdo, mas abaixo do alerta */}
-        {loading && (
-          <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <LoaderOne />
-          </div>
-        )}
-
-        <div className="relative z-20 flex h-full flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:gap-0">
-          <PresenceHeartbeat />
-          <SidebarComponent />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="hidden shrink-0 justify-end px-1 pb-2 lg:flex">
-              <NotificationsPopover />
+        <div className="relative h-screen overflow-hidden">
+          {/* Alert global do dashboard, sempre acima do conteúdo e do loader */}
+          {alert && (
+            <div className="pointer-events-auto fixed inset-x-0 top-6 z-60 flex justify-center">
+              <CustomAlert
+                key={alert.id}
+                variant={alert.variant}
+                title={alert.title}
+                description={alert.description}
+                onClose={() => setAlert(null)}
+              />
             </div>
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
-          </div>
-        </div>
+          )}
 
-        <Toaster richColors theme="dark" position="top-center" />
-      </div>
+          {/* Loader global do dashboard, fica por cima do conteúdo, mas abaixo do alerta */}
+          {loading && (
+            <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+              <LoaderOne />
+            </div>
+          )}
+
+          <div className="relative z-20 flex h-full flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:gap-0">
+            <PresenceHeartbeat />
+            <SidebarComponent />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="hidden shrink-0 justify-end px-1 pb-2 lg:flex">
+                <NotificationsPopover />
+              </div>
+              <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+                {children}
+              </main>
+            </div>
+          </div>
+
+          <Toaster richColors theme="dark" position="top-center" />
+        </div>
       </AppNotificationsProvider>
     </DashboardUIContext.Provider>
-  );
+  )
 }
-

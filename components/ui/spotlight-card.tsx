@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, ReactNode } from "react"
+import type React from "react"
+import { type ReactNode, useEffect, useRef } from "react"
 
 type GlowColor = "blue" | "purple" | "green" | "red" | "orange"
 type GlowSize = "sm" | "md" | "lg"
@@ -45,9 +46,15 @@ const GlowCard: React.FC<GlowCardProps> = ({
 
       if (cardRef.current) {
         cardRef.current.style.setProperty("--x", x.toFixed(2))
-        cardRef.current.style.setProperty("--xp", (x / window.innerWidth).toFixed(2))
+        cardRef.current.style.setProperty(
+          "--xp",
+          (x / window.innerWidth).toFixed(2),
+        )
         cardRef.current.style.setProperty("--y", y.toFixed(2))
-        cardRef.current.style.setProperty("--yp", (y / window.innerHeight).toFixed(2))
+        cardRef.current.style.setProperty(
+          "--yp",
+          (y / window.innerHeight).toFixed(2),
+        )
       }
     }
 
@@ -193,4 +200,3 @@ const GlowCard: React.FC<GlowCardProps> = ({
 }
 
 export { GlowCard }
-

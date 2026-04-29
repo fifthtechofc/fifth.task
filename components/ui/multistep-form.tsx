@@ -1,21 +1,16 @@
- "use client"
- 
- /**
+"use client"
+import { AnimatePresence, motion } from "framer-motion"
+import { Check, ChevronLeft, ChevronRight, Loader2, Pencil } from "lucide-react"
+import { useRouter } from "next/navigation"
+
+/**
  * Wizard multietapas para criar um board + colunas iniciais.
  * Baseado no padrão shadcn + framer-motion; usa @/lib/utils para `cn`.
  */
 import * as React from "react"
-import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight, Check, Loader2, Pencil } from "lucide-react"
 import { toast } from "sonner"
-
-import { supabase } from "@/lib/supabase"
-import { createBoard, createBoardColumn, getOrCreateBoardByTitle, updateBoard } from "@/lib/kanban"
-import { rpcNotifyBoardCreated } from "@/lib/kanban-notifications-rpc"
-import { Button } from "@/components/ui/button"
-import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { HorizontalScroll } from "@/components/kanban/horizontal-scroll"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -24,11 +19,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { ColorPicker } from "@/components/ui/color-picker"
+import {
+  createBoard,
+  createBoardColumn,
+  getOrCreateBoardByTitle,
+  updateBoard,
+} from "@/lib/kanban"
+import { rpcNotifyBoardCreated } from "@/lib/kanban-notifications-rpc"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const steps = [
@@ -58,7 +61,10 @@ function slugify(input: string) {
     .replace(/(^-|-$)+/g, "")
 }
 
-function columnTitlesFromTemplate(template: ColumnTemplate, customText: string): string[] {
+function columnTitlesFromTemplate(
+  template: ColumnTemplate,
+  customText: string,
+): string[] {
   switch (template) {
     case "empty":
       return []
@@ -102,7 +108,10 @@ export function BoardCreateMultistepForm() {
 
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
 
-  const updateFormData = <K extends keyof BoardWizardData>(field: K, value: BoardWizardData[K]) => {
+  const updateFormData = <K extends keyof BoardWizardData>(
+    field: K,
+    value: BoardWizardData[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -120,7 +129,10 @@ export function BoardCreateMultistepForm() {
         return formData.title.trim() !== ""
       case 1:
         if (formData.columnTemplate === "custom") {
-          return columnTitlesFromTemplate("custom", formData.customColumns).length > 0
+          return (
+            columnTitlesFromTemplate("custom", formData.customColumns).length >
+            0
+          )
         }
         return true
       default:
@@ -141,7 +153,10 @@ export function BoardCreateMultistepForm() {
       }
 
       const t = formData.title.trim()
-      const titles = columnTitlesFromTemplate(formData.columnTemplate, formData.customColumns)
+      const titles = columnTitlesFromTemplate(
+        formData.columnTemplate,
+        formData.customColumns,
+      )
 
       let boardId: string | null = null
       let createdNewBoard = false
@@ -204,7 +219,7 @@ export function BoardCreateMultistepForm() {
     }
   }
 
-  const progressPct =
+  const _progressPct =
     steps.length > 1 ? (currentStep / (steps.length - 1)) * 100 : 100
 
   const previewColumns = columnTitlesFromTemplate(
@@ -221,8 +236,8 @@ export function BoardCreateMultistepForm() {
     "bg-slate-500",
   ] as const
 
-  const effectiveLogoUrl = formData.logoUrl ?? "/Logo.png"
-  const isDefaultLogo = !formData.logoUrl
+  const _effectiveLogoUrl = formData.logoUrl ?? "/Logo.png"
+  const _isDefaultLogo = !formData.logoUrl
 
   return (
     <div className="relative mx-auto flex w-full max-w-6xl gap-10 py-0">
@@ -241,8 +256,9 @@ export function BoardCreateMultistepForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05 }}
         >
-          Defina o nome, descrição e colunas iniciais do seu quadro. Você também pode enviar uma logo
-          personalizada agora para deixá-lo com a cara do seu time.
+          Defina o nome, descrição e colunas iniciais do seu quadro. Você também
+          pode enviar uma logo personalizada agora para deixá-lo com a cara do
+          seu time.
         </motion.p>
 
         <motion.div
@@ -276,265 +292,322 @@ export function BoardCreateMultistepForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-        <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-3xl border shadow-md">
-          <div className="flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                variants={contentVariants}
-              >
-                {currentStep === 0 && (
-                  <>
-                    <CardHeader>
-                      <CardTitle>Nome do quadro</CardTitle>
-                      <CardDescription>
-                        Como esse projeto vai aparecer no menu lateral e no topo do Kanban.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <motion.div variants={fadeInUp} className="space-y-2">
-                        <Label htmlFor="board-title">Título</Label>
-                        <Input
-                          id="board-title"
-                          placeholder="Ex: Sprint"
-                          value={formData.title}
-                          onChange={(e) => updateFormData("title", e.target.value)}
-                          className="transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        />
-                      </motion.div>
-                      <motion.div variants={fadeInUp} className="space-y-2">
-                        <Label htmlFor="board-desc">Descrição (opcional)</Label>
-                        <Textarea
-                          id="board-desc"
-                          placeholder="Objetivo do quadro, time ou marcos…"
-                          value={formData.description}
-                          onChange={(e) => updateFormData("description", e.target.value)}
-                          className="min-h-[100px] transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        />
-                      </motion.div>
-
-                      <motion.div variants={fadeInUp} className="space-y-2">
-                        <Label>Logo do quadro</Label>
-                        <div className="flex items-center gap-3 pt-1">
-                          <label className="relative inline-flex cursor-pointer items-center">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_0_26px_rgba(255,255,255,0.55)]">
-                              <img
-                                src={formData.logoUrl ?? "/Logo.png"}
-                                alt="Preview da logo"
-                                className={`h-10 w-10 object-contain ${
-                                  formData.logoUrl ? "" : "brightness-0 invert"
-                                }`}
-                              />
-                              <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black/60 bg-white text-black shadow-md">
-                                <Pencil className="h-3 w-3" />
-                              </span>
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0]
-                                if (!file) return
-
-                                try {
-                                  const path = `wizard-temp/${Date.now()}-${file.name}`
-                                  const { error: uploadError } = await supabase.storage
-                                    .from("board-logos")
-                                    .upload(path, file, { upsert: true })
-                                  if (uploadError) throw uploadError
-
-                                  const { data } = supabase.storage
-                                    .from("board-logos")
-                                    .getPublicUrl(path)
-                                  if (data?.publicUrl) {
-                                    updateFormData("logoUrl", data.publicUrl)
-                                  }
-                                } catch {
-                                  // feedback de erro pode ser adicionado com toast se necessário
-                                } finally {
-                                  e.target.value = ""
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Se nenhuma logo for enviada, usamos a padrão do sistema.
-                        </p>
-                      </motion.div>
-                    </CardContent>
-                  </>
-                )}
-
-                {currentStep === 1 && (
-                  <>
-                    <CardHeader>
-                      <CardTitle>Colunas iniciais</CardTitle>
-                      <CardDescription>
-                        Escolha um modelo ou defina nomes personalizados (um por linha).
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="mt-4 space-y-4">
-                      <motion.div variants={fadeInUp} className="space-y-2">
-                        <Label>Modelo</Label>
-                        <RadioGroup
-                          value={formData.columnTemplate}
-                          onValueChange={(v) => updateFormData("columnTemplate", v as ColumnTemplate)}
-                          className="space-y-2"
-                        >
-                          {[
-                            { value: "empty" as const, label: "Vazio — crio as colunas depois no Kanban" },
-                            { value: "simple" as const, label: "Simples: A fazer · Fazendo · Concluído" },
-                            {
-                              value: "scrum" as const,
-                              label: "Scrum: Backlog · A fazer · Em andamento · Revisão · Concluído",
-                            },
-                            { value: "custom" as const, label: "Personalizado (uma coluna por linha)" },
-                          ].map((opt, index) => (
-                            <motion.div
-                              key={opt.value}
-                              className="flex cursor-pointer items-center space-x-2 rounded-md border p-3 transition-colors hover:bg-accent"
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{
-                                opacity: 1,
-                                x: 0,
-                                transition: { delay: 0.08 * index, duration: 0.3 },
-                              }}
-                            >
-                              <RadioGroupItem value={opt.value} id={`col-${opt.value}`} />
-                              <Label htmlFor={`col-${opt.value}`} className="w-full cursor-pointer">
-                                {opt.label}
-                              </Label>
-                            </motion.div>
-                          ))}
-                        </RadioGroup>
-                      </motion.div>
-                      {formData.columnTemplate === "custom" && (
+          <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-3xl border shadow-md">
+            <div className="flex-1">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStep}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={contentVariants}
+                >
+                  {currentStep === 0 && (
+                    <>
+                      <CardHeader>
+                        <CardTitle>Nome do quadro</CardTitle>
+                        <CardDescription>
+                          Como esse projeto vai aparecer no menu lateral e no
+                          topo do Kanban.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         <motion.div variants={fadeInUp} className="space-y-2">
-                          <Label htmlFor="custom-cols">Nomes das colunas</Label>
-                          <Textarea
-                            id="custom-cols"
-                            placeholder={"Ideias\nA fazer\nConcluído"}
-                            value={formData.customColumns}
-                            onChange={(e) => updateFormData("customColumns", e.target.value)}
-                            className="min-h-[120px] font-mono text-sm transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          <Label htmlFor="board-title">Título</Label>
+                          <Input
+                            id="board-title"
+                            placeholder="Ex: Sprint"
+                            value={formData.title}
+                            onChange={(e) =>
+                              updateFormData("title", e.target.value)
+                            }
+                            className="transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
                           />
                         </motion.div>
-                      )}
-                    </CardContent>
-                  </>
-                )}
+                        <motion.div variants={fadeInUp} className="space-y-2">
+                          <Label htmlFor="board-desc">
+                            Descrição (opcional)
+                          </Label>
+                          <Textarea
+                            id="board-desc"
+                            placeholder="Objetivo do quadro, time ou marcos…"
+                            value={formData.description}
+                            onChange={(e) =>
+                              updateFormData("description", e.target.value)
+                            }
+                            className="min-h-[100px] transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                        </motion.div>
 
-                {currentStep === 2 && (
-                  <>
-                    <CardHeader>
-                      <CardTitle>Revisar e criar</CardTitle>
-                      <CardDescription>Veja uma prévia de como o quadro será criado.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                      <motion.div
-                        variants={fadeInUp}
-                        className="rounded-2xl border border-white/10 bg-black/40 p-4"
-                      >
-                        {previewColumns.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Este quadro será criado <span className="font-semibold">sem colunas</span>. Você
-                            poderá adicioná-las depois diretamente no Kanban.
+                        <motion.div variants={fadeInUp} className="space-y-2">
+                          <Label>Logo do quadro</Label>
+                          <div className="flex items-center gap-3 pt-1">
+                            <label className="relative inline-flex cursor-pointer items-center">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_0_26px_rgba(255,255,255,0.55)]">
+                                <img
+                                  src={formData.logoUrl ?? "/Logo.png"}
+                                  alt="Preview da logo"
+                                  className={`h-10 w-10 object-contain ${
+                                    formData.logoUrl
+                                      ? ""
+                                      : "brightness-0 invert"
+                                  }`}
+                                />
+                                <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-black/60 bg-white text-black shadow-md">
+                                  <Pencil className="h-3 w-3" />
+                                </span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+
+                                  try {
+                                    const path = `wizard-temp/${Date.now()}-${file.name}`
+                                    const { error: uploadError } =
+                                      await supabase.storage
+                                        .from("board-logos")
+                                        .upload(path, file, { upsert: true })
+                                    if (uploadError) throw uploadError
+
+                                    const { data } = supabase.storage
+                                      .from("board-logos")
+                                      .getPublicUrl(path)
+                                    if (data?.publicUrl) {
+                                      updateFormData("logoUrl", data.publicUrl)
+                                    }
+                                  } catch {
+                                    // feedback de erro pode ser adicionado com toast se necessário
+                                  } finally {
+                                    e.target.value = ""
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Se nenhuma logo for enviada, usamos a padrão do
+                            sistema.
                           </p>
-                        ) : (
-                          <>
-                            <div className="mb-2 text-center">
-                              <p className="text-sm font-semibold text-foreground">
-                                {formData.title.trim() || "Quadro sem título"}
-                              </p>
-                              {formData.description.trim() && (
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {formData.description.trim()}
+                        </motion.div>
+                      </CardContent>
+                    </>
+                  )}
+
+                  {currentStep === 1 && (
+                    <>
+                      <CardHeader>
+                        <CardTitle>Colunas iniciais</CardTitle>
+                        <CardDescription>
+                          Escolha um modelo ou defina nomes personalizados (um
+                          por linha).
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="mt-4 space-y-4">
+                        <motion.div variants={fadeInUp} className="space-y-2">
+                          <Label>Modelo</Label>
+                          <RadioGroup
+                            value={formData.columnTemplate}
+                            onValueChange={(v) =>
+                              updateFormData(
+                                "columnTemplate",
+                                v as ColumnTemplate,
+                              )
+                            }
+                            className="space-y-2"
+                          >
+                            {[
+                              {
+                                value: "empty" as const,
+                                label:
+                                  "Vazio — crio as colunas depois no Kanban",
+                              },
+                              {
+                                value: "simple" as const,
+                                label: "Simples: A fazer · Fazendo · Concluído",
+                              },
+                              {
+                                value: "scrum" as const,
+                                label:
+                                  "Scrum: Backlog · A fazer · Em andamento · Revisão · Concluído",
+                              },
+                              {
+                                value: "custom" as const,
+                                label: "Personalizado (uma coluna por linha)",
+                              },
+                            ].map((opt, index) => (
+                              <motion.div
+                                key={opt.value}
+                                className="flex cursor-pointer items-center space-x-2 rounded-md border p-3 transition-colors hover:bg-accent"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{
+                                  opacity: 1,
+                                  x: 0,
+                                  transition: {
+                                    delay: 0.08 * index,
+                                    duration: 0.3,
+                                  },
+                                }}
+                              >
+                                <RadioGroupItem
+                                  value={opt.value}
+                                  id={`col-${opt.value}`}
+                                />
+                                <Label
+                                  htmlFor={`col-${opt.value}`}
+                                  className="w-full cursor-pointer"
+                                >
+                                  {opt.label}
+                                </Label>
+                              </motion.div>
+                            ))}
+                          </RadioGroup>
+                        </motion.div>
+                        {formData.columnTemplate === "custom" && (
+                          <motion.div variants={fadeInUp} className="space-y-2">
+                            <Label htmlFor="custom-cols">
+                              Nomes das colunas
+                            </Label>
+                            <Textarea
+                              id="custom-cols"
+                              placeholder={"Ideias\nA fazer\nConcluído"}
+                              value={formData.customColumns}
+                              onChange={(e) =>
+                                updateFormData("customColumns", e.target.value)
+                              }
+                              className="min-h-[120px] font-mono text-sm transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            />
+                          </motion.div>
+                        )}
+                      </CardContent>
+                    </>
+                  )}
+
+                  {currentStep === 2 && (
+                    <>
+                      <CardHeader>
+                        <CardTitle>Revisar e criar</CardTitle>
+                        <CardDescription>
+                          Veja uma prévia de como o quadro será criado.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 text-sm">
+                        <motion.div
+                          variants={fadeInUp}
+                          className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                        >
+                          {previewColumns.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              Este quadro será criado{" "}
+                              <span className="font-semibold">sem colunas</span>
+                              . Você poderá adicioná-las depois diretamente no
+                              Kanban.
+                            </p>
+                          ) : (
+                            <>
+                              <div className="mb-2 text-center">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {formData.title.trim() || "Quadro sem título"}
                                 </p>
-                              )}
-                            </div>
-                            <HorizontalScroll className="mt-1 h-56 rounded-2xl border border-white/15 bg-zinc-950/70 px-3 py-3">
-                              <div className="flex h-full items-stretch gap-3">
-                                {previewColumns.map((col, index) => (
-                                  <div
-                                    key={col}
-                                    className="flex w-48 flex-shrink-0 flex-col rounded-xl border border-white/15 bg-zinc-900/80 p-3"
-                                  >
-                                    <div className="mb-2 flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className={cn(
-                                            "h-2.5 w-2.5 rounded-full",
-                                            previewColors[index % previewColors.length],
-                                          )}
-                                        />
-                                        <p className="truncate text-xs font-semibold text-foreground">
-                                          {col}
-                                        </p>
+                                {formData.description.trim() && (
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {formData.description.trim()}
+                                  </p>
+                                )}
+                              </div>
+                              <HorizontalScroll className="mt-1 h-56 rounded-2xl border border-white/15 bg-zinc-950/70 px-3 py-3">
+                                <div className="flex h-full items-stretch gap-3">
+                                  {previewColumns.map((col, index) => (
+                                    <div
+                                      key={col}
+                                      className="flex w-48 flex-shrink-0 flex-col rounded-xl border border-white/15 bg-zinc-900/80 p-3"
+                                    >
+                                      <div className="mb-2 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className={cn(
+                                              "h-2.5 w-2.5 rounded-full",
+                                              previewColors[
+                                                index % previewColors.length
+                                              ],
+                                            )}
+                                          />
+                                          <p className="truncate text-xs font-semibold text-foreground">
+                                            {col}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <div className="h-9 rounded-md bg-zinc-800/90" />
+                                        <div className="h-9 rounded-md bg-zinc-800/70" />
+                                        <div className="h-9 rounded-md bg-zinc-800/60" />
                                       </div>
                                     </div>
-                                    <div className="space-y-2">
-                                      <div className="h-9 rounded-md bg-zinc-800/90" />
-                                      <div className="h-9 rounded-md bg-zinc-800/70" />
-                                      <div className="h-9 rounded-md bg-zinc-800/60" />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </HorizontalScroll>
-                          </>
-                        )}
-                      </motion.div>
-                    </CardContent>
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+                                  ))}
+                                </div>
+                              </HorizontalScroll>
+                            </>
+                          )}
+                        </motion.div>
+                      </CardContent>
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-          <CardFooter className="mt-auto flex justify-between pb-4 pt-6">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 0 || isSubmitting}
-                className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+            <CardFooter className="mt-auto flex justify-between pb-4 pt-6">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <ChevronLeft className="h-4 w-4" /> Voltar
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                type="button"
-                onClick={currentStep === steps.length - 1 ? handleSubmit : nextStep}
-                disabled={!isStepValid() || isSubmitting}
-                className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 0 || isSubmitting}
+                  className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Voltar
+                </Button>
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Criando…
-                  </>
-                ) : (
-                  <>
-                    {currentStep === steps.length - 1 ? "Criar quadro" : "Próximo"}
-                    {currentStep === steps.length - 1 ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          </CardFooter>
-        </Card>
+                <Button
+                  type="button"
+                  onClick={
+                    currentStep === steps.length - 1 ? handleSubmit : nextStep
+                  }
+                  disabled={!isStepValid() || isSubmitting}
+                  className="flex items-center gap-1 rounded-2xl transition-all duration-300"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Criando…
+                    </>
+                  ) : (
+                    <>
+                      {currentStep === steps.length - 1
+                        ? "Criar quadro"
+                        : "Próximo"}
+                      {currentStep === steps.length - 1 ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            </CardFooter>
+          </Card>
         </motion.div>
       </div>
     </div>

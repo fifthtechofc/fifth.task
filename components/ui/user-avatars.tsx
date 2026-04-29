@@ -1,5 +1,5 @@
-import { useState, type KeyboardEvent } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import { type KeyboardEvent, useState } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -107,18 +107,16 @@ export function UserAvatars({
                 <div className="flex h-full w-full items-center justify-center bg-background text-xs font-medium">
                   +{users.length - maxVisible}
                 </div>
+              ) : user.image ? (
+                <img
+                  src={user.image}
+                  alt={user.name || "User"}
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                user.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name || "User"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-background text-xs font-semibold text-foreground">
-                    {userInitials(user.name)}
-                  </div>
-                )
+                <div className="flex h-full w-full items-center justify-center bg-background text-xs font-semibold text-foreground">
+                  {userInitials(user.name)}
+                </div>
               )}
             </div>
 
@@ -138,7 +136,9 @@ export function UserAvatars({
                   transition={{ duration: 0.18 }}
                   className={cn(
                     "absolute left-1/2 z-50",
-                    tooltipPlacement === "bottom" ? "top-full mt-2" : "bottom-full mb-2",
+                    tooltipPlacement === "bottom"
+                      ? "top-full mt-2"
+                      : "bottom-full mb-2",
                   )}
                 >
                   <div className="whitespace-nowrap text-[11px] text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.85)]">
@@ -155,4 +155,3 @@ export function UserAvatars({
     </div>
   )
 }
-

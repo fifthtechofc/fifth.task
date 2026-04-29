@@ -1,42 +1,35 @@
 "use client"
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   BarChart3,
   Calendar,
   ChevronDown,
   FolderKanban,
   LayoutDashboard,
-  Menu,
   LogOut,
+  Menu,
   Plus,
   PlusSquare,
   Search,
   Settings,
   Users,
 } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-import { getSupabaseUserId, supabase } from "@/lib/supabase"
-import {
-  fetchCalendarAccess,
-  fetchCalendarEvents,
-  formatEventTimeRange,
-  type CalendarEventRecord,
-} from "@/lib/calendar"
-import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
-import { getMyProfile, getTeamMembers } from "@/lib/profile"
-import { signOutUser } from "@/lib/auth"
-import { AUTH_INTRO_STORAGE_KEY } from "@/lib/intro-storage"
-import { useDashboardLoading } from "@/components/ui/dashboard-shell"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { SettingsProfileSection } from "@/components/settings-profile-section"
-import { MembersSelect } from "@/components/ui/members-select"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import * as React from "react"
 import { NotificationsPopover } from "@/components/notifications/notifications-popover"
+import { SettingsProfileSection } from "@/components/settings-profile-section"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -46,8 +39,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { signOutUser } from "@/lib/auth"
+import {
+  type CalendarEventRecord,
+  fetchCalendarAccess,
+  fetchCalendarEvents,
+  formatEventTimeRange,
+} from "@/lib/calendar"
+import { AUTH_INTRO_STORAGE_KEY } from "@/lib/intro-storage"
+import { fetchBoards, getBoardDisplayTitle } from "@/lib/kanban"
+import { getMyProfile, getTeamMembers } from "@/lib/profile"
+import { getSupabaseUserId, supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 type NavSectionId =
   | "dashboard"
@@ -172,13 +176,19 @@ const navItems: {
   },
 ]
 
-const sidebarContent: Record<NavSectionId, { title: string; sections: MenuSection[] }> = {
+const sidebarContent: Record<
+  NavSectionId,
+  { title: string; sections: MenuSection[] }
+> = {
   dashboard: {
     title: "Dashboard",
     sections: [
       {
         title: "Em breve",
-        items: [{ label: "Modulo em preparacao" }, { label: "Liberaremos futuramente" }],
+        items: [
+          { label: "Modulo em preparacao" },
+          { label: "Liberaremos futuramente" },
+        ],
       },
     ],
   },
@@ -187,13 +197,23 @@ const sidebarContent: Record<NavSectionId, { title: string; sections: MenuSectio
     sections: [
       {
         title: "Kanban",
-        items: [{ label: "Projetos", children: [{ label: "Criar board", href: "/boards/create" }] }],
+        items: [
+          {
+            label: "Projetos",
+            children: [{ label: "Criar board", href: "/boards/create" }],
+          },
+        ],
       },
     ],
   },
   projects: {
     title: "Projetos",
-    sections: [{ title: "Ativos", items: [{ label: "Todos os projetos", href: "/projects" }] }],
+    sections: [
+      {
+        title: "Ativos",
+        items: [{ label: "Todos os projetos", href: "/projects" }],
+      },
+    ],
   },
   calendar: {
     title: "Calendário",
@@ -212,7 +232,10 @@ const sidebarContent: Record<NavSectionId, { title: string; sections: MenuSectio
     sections: [
       {
         title: "Em breve",
-        items: [{ label: "Modulo em preparacao" }, { label: "Liberaremos futuramente" }],
+        items: [
+          { label: "Modulo em preparacao" },
+          { label: "Liberaremos futuramente" },
+        ],
       },
     ],
   },
@@ -285,14 +308,21 @@ function RailNavLink({
       <span
         className={cn(
           "relative z-10 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
-          disabled ? "text-zinc-600" : isActive ? "bg-white/12 text-white" : "text-zinc-400",
+          disabled
+            ? "text-zinc-600"
+            : isActive
+              ? "bg-white/12 text-white"
+              : "text-zinc-400",
         )}
       >
         {icon}
       </span>
       <span
         className="pointer-events-none absolute top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/10 bg-black/95 px-3 py-1 text-xs font-medium text-white shadow-lg transition-all duration-300"
-        style={{ left: isHovered ? "3.5rem" : "3rem", opacity: isHovered ? 1 : 0 }}
+        style={{
+          left: isHovered ? "3.5rem" : "3rem",
+          opacity: isHovered ? 1 : 0,
+        }}
       >
         {disabled ? "Pagina em breve" : label}
       </span>
@@ -313,7 +343,8 @@ function CalendarSectionList({
   if (!section.events) return null
 
   const sectionKey = `calendar-section-${section.title}`
-  const isExpanded = expandedItems[sectionKey] ?? section.title === "Eventos de hoje"
+  const isExpanded =
+    expandedItems[sectionKey] ?? section.title === "Eventos de hoje"
 
   return (
     <div className="flex flex-col gap-2">
@@ -323,14 +354,21 @@ function CalendarSectionList({
         className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/8"
       >
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{section.title}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            {section.title}
+          </p>
           <p className="mt-1 text-xs text-zinc-400">
             {section.events.length > 0
               ? `${section.events.length} evento${section.events.length > 1 ? "s" : ""}`
               : "Nenhum evento"}
           </p>
         </div>
-        <ChevronDown className={cn("h-4 w-4 text-zinc-500 transition-transform", isExpanded && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-zinc-500 transition-transform",
+            isExpanded && "rotate-180",
+          )}
+        />
       </button>
 
       {isExpanded ? (
@@ -344,15 +382,24 @@ function CalendarSectionList({
                 className="rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
               >
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                  <p className="text-sm font-medium text-white">{event.title}</p>
+                  <p className="text-sm font-medium text-white">
+                    {event.title}
+                  </p>
                   <span className="text-xs text-zinc-400">
-                    {new Date(event.startAt).toLocaleDateString("pt-BR")} - {formatEventTimeRange(event.startAt, event.endAt)}
+                    {new Date(event.startAt).toLocaleDateString("pt-BR")} -{" "}
+                    {formatEventTimeRange(event.startAt, event.endAt)}
                   </span>
                 </div>
                 {event.isMeeting && event.meetingLink ? (
-                  <span className="mt-2 inline-flex text-[11px] font-medium text-emerald-300">Link da reuniao salvo</span>
+                  <span className="mt-2 inline-flex text-[11px] font-medium text-emerald-300">
+                    Link da reuniao salvo
+                  </span>
                 ) : null}
-                {event.description ? <p className="mt-2 line-clamp-2 text-xs text-zinc-500">{event.description}</p> : null}
+                {event.description ? (
+                  <p className="mt-2 line-clamp-2 text-xs text-zinc-500">
+                    {event.description}
+                  </p>
+                ) : null}
               </Link>
             ))}
           </div>
@@ -373,21 +420,38 @@ export default function SidebarComponent() {
   const { setLoading: setDashboardLoading } = useDashboardLoading()
 
   const [isHovered, setIsHovered] = React.useState(false)
-  const [previewSection, setPreviewSection] = React.useState<NavSectionId | null>(null)
-  const [mobileSection, setMobileSection] = React.useState<NavSectionId>(getActiveSection(pathname))
+  const [previewSection, setPreviewSection] =
+    React.useState<NavSectionId | null>(null)
+  const [mobileSection, setMobileSection] = React.useState<NavSectionId>(
+    getActiveSection(pathname),
+  )
   const [mobilePanelOpen, setMobilePanelOpen] = React.useState(false)
-  const [boards, setBoards] = React.useState<Array<{ id: string; title: string }>>([])
-  const [teams, setTeams] = React.useState<Array<{ id: string; name: string }>>([])
-  const [me, setMe] = React.useState<{ name: string; email: string; avatarUrl: string } | null>(null)
-  const [calendarEvents, setCalendarEvents] = React.useState<CalendarEventRecord[]>([])
-  const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({ "Kanban-Projetos": true })
+  const [boards, setBoards] = React.useState<
+    Array<{ id: string; title: string }>
+  >([])
+  const [teams, setTeams] = React.useState<Array<{ id: string; name: string }>>(
+    [],
+  )
+  const [me, setMe] = React.useState<{
+    name: string
+    email: string
+    avatarUrl: string
+  } | null>(null)
+  const [calendarEvents, setCalendarEvents] = React.useState<
+    CalendarEventRecord[]
+  >([])
+  const [expandedItems, setExpandedItems] = React.useState<
+    Record<string, boolean>
+  >({ "Kanban-Projetos": true })
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
   const [createTeamOpen, setCreateTeamOpen] = React.useState(false)
   const [teamName, setTeamName] = React.useState("")
   const [teamDescription, setTeamDescription] = React.useState("")
   const [creatingTeam, setCreatingTeam] = React.useState(false)
   const [allMembers, setAllMembers] = React.useState<TeamMember[]>([])
-  const [selectedMemberIds, setSelectedMemberIds] = React.useState<Set<string>>(new Set())
+  const [selectedMemberIds, setSelectedMemberIds] = React.useState<Set<string>>(
+    new Set(),
+  )
 
   const activeSection = getActiveSection(pathname)
   const activeSettingsSection = searchParams.get("section") ?? "profile"
@@ -445,7 +509,9 @@ export default function SidebarComponent() {
         const withLast = rows.map((row) => {
           let lastAt = 0
           try {
-            const raw = window.localStorage.getItem(`kanban:boardLastAt:${row.id}`)
+            const raw = window.localStorage.getItem(
+              `kanban:boardLastAt:${row.id}`,
+            )
             lastAt = raw ? Number(raw) : 0
           } catch {
             lastAt = 0
@@ -542,13 +608,20 @@ export default function SidebarComponent() {
       if (sectionId === "boards") {
         const projectChildren: MenuChild[] = boards.map((board) => {
           const slug = slugify(board.title) || "board"
-          return { label: board.title, href: `/boards/${slug}?id=${encodeURIComponent(board.id)}` }
+          return {
+            label: board.title,
+            href: `/boards/${slug}?id=${encodeURIComponent(board.id)}`,
+          }
         })
         return {
           ...sidebarContent.boards,
           sections: sidebarContent.boards.sections.map((section) => ({
             ...section,
-            items: section.items.map((item) => (item.label === "Projetos" ? { ...item, children: projectChildren } : item)),
+            items: section.items.map((item) =>
+              item.label === "Projetos"
+                ? { ...item, children: projectChildren }
+                : item,
+            ),
           })),
         }
       }
@@ -560,7 +633,10 @@ export default function SidebarComponent() {
             ...section,
             items: [
               { label: "Todos os membros", href: "/teams" },
-              ...teams.map((team) => ({ label: team.name, href: `/teams?teamId=${encodeURIComponent(team.id)}` })),
+              ...teams.map((team) => ({
+                label: team.name,
+                href: `/teams?teamId=${encodeURIComponent(team.id)}`,
+              })),
             ],
           })),
         }
@@ -577,21 +653,32 @@ export default function SidebarComponent() {
             const date = new Date(event.startAt)
             return Number.isFinite(date.getTime()) ? date < today : false
           })
-          .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+          .sort(
+            (a, b) =>
+              new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+          )
 
         const todayEvents = calendarEvents
           .filter((event) => {
             const date = new Date(event.startAt)
-            return Number.isFinite(date.getTime()) ? date >= today && date <= endOfToday : false
+            return Number.isFinite(date.getTime())
+              ? date >= today && date <= endOfToday
+              : false
           })
-          .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+          .sort(
+            (a, b) =>
+              new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+          )
 
         const futureEvents = calendarEvents
           .filter((event) => {
             const date = new Date(event.startAt)
             return Number.isFinite(date.getTime()) ? date > endOfToday : false
           })
-          .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+          .sort(
+            (a, b) =>
+              new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+          )
 
         return {
           ...sidebarContent.calendar,
@@ -612,8 +699,14 @@ export default function SidebarComponent() {
     [boards, teams, calendarEvents],
   )
 
-  const desktopContent = React.useMemo(() => buildContent(visibleDesktopSection), [buildContent, visibleDesktopSection])
-  const mobileContent = React.useMemo(() => buildContent(mobileSection), [buildContent, mobileSection])
+  const desktopContent = React.useMemo(
+    () => buildContent(visibleDesktopSection),
+    [buildContent, visibleDesktopSection],
+  )
+  const mobileContent = React.useMemo(
+    () => buildContent(mobileSection),
+    [buildContent, mobileSection],
+  )
 
   const toggleExpanded = React.useCallback((key: string) => {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -647,11 +740,16 @@ export default function SidebarComponent() {
 
       const { data: team, error: teamError } = await supabase
         .from("teams")
-        .insert({ name: teamName.trim(), description: teamDescription.trim() || null, created_by: userId })
+        .insert({
+          name: teamName.trim(),
+          description: teamDescription.trim() || null,
+          created_by: userId,
+        })
         .select("id")
         .single()
 
-      if (teamError || !team) throw teamError ?? new Error("Falha ao criar time.")
+      if (teamError || !team)
+        throw teamError ?? new Error("Falha ao criar time.")
 
       const memberIds = new Set(selectedMemberIds)
       memberIds.add(userId)
@@ -661,7 +759,9 @@ export default function SidebarComponent() {
           profile_id: profileId,
           role: profileId === userId ? "Lider" : "Membro",
         }))
-        const { error: memberError } = await supabase.from("team_members").insert(payload)
+        const { error: memberError } = await supabase
+          .from("team_members")
+          .insert(payload)
         if (memberError) throw memberError
       }
 
@@ -677,12 +777,20 @@ export default function SidebarComponent() {
     }
   }
 
-  function renderMenuSections(content: { title: string; sections: MenuSection[] }, sectionId: NavSectionId, onNavigate?: () => void) {
+  function renderMenuSections(
+    content: { title: string; sections: MenuSection[] },
+    sectionId: NavSectionId,
+    onNavigate?: () => void,
+  ) {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {content.sections.map((section) => (
           <div key={section.title} className="flex flex-col gap-2">
-            {sectionId !== "calendar" && <p className="px-2 text-xs uppercase tracking-[0.2em] text-zinc-500">{section.title}</p>}
+            {sectionId !== "calendar" && (
+              <p className="px-2 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {section.title}
+              </p>
+            )}
 
             {section.items.map((item) => {
               const itemKey = `${section.title}-${item.label}`
@@ -691,11 +799,14 @@ export default function SidebarComponent() {
               if (item.href) {
                 const itemSection =
                   sectionId === "settings"
-                    ? new URL(item.href, "http://localhost").searchParams.get("section") ?? "profile"
+                    ? (new URL(item.href, "http://localhost").searchParams.get(
+                        "section",
+                      ) ?? "profile")
                     : null
                 const isItemActive =
                   sectionId === "settings"
-                    ? activeSection === "settings" && activeSettingsSection === itemSection
+                    ? activeSection === "settings" &&
+                      activeSettingsSection === itemSection
                     : pathname === item.href
 
                 return (
@@ -705,7 +816,9 @@ export default function SidebarComponent() {
                     onClick={onNavigate}
                     className={cn(
                       "rounded-xl px-3 py-2 text-sm transition-colors",
-                      isItemActive ? "bg-white/10 text-white" : "text-zinc-300 hover:bg-white/6 hover:text-white",
+                      isItemActive
+                        ? "bg-white/10 text-white"
+                        : "text-zinc-300 hover:bg-white/6 hover:text-white",
                     )}
                   >
                     {item.label}
@@ -721,7 +834,14 @@ export default function SidebarComponent() {
                     className="flex items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-white/6 hover:text-white"
                   >
                     <span>{item.label}</span>
-                    {item.children && <ChevronDown className={cn("h-4 w-4 text-zinc-500 transition-transform", isExpanded && "rotate-180")} />}
+                    {item.children && (
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 text-zinc-500 transition-transform",
+                          isExpanded && "rotate-180",
+                        )}
+                      />
+                    )}
                   </button>
 
                   {isExpanded && item.children && (
@@ -734,13 +854,18 @@ export default function SidebarComponent() {
                             onClick={onNavigate}
                             className={cn(
                               "rounded-lg px-3 py-2 text-sm transition-colors",
-                              pathname === child.href ? "bg-white/8 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200",
+                              pathname === child.href
+                                ? "bg-white/8 text-white"
+                                : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200",
                             )}
                           >
                             {child.label}
                           </Link>
                         ) : (
-                          <div key={`${child.label}-${index}`} className="rounded-lg px-3 py-2 text-sm text-zinc-400">
+                          <div
+                            key={`${child.label}-${index}`}
+                            className="rounded-lg px-3 py-2 text-sm text-zinc-400"
+                          >
                             {child.label}
                           </div>
                         ),
@@ -764,7 +889,10 @@ export default function SidebarComponent() {
       </div>
     )
   }
-  function renderPrimaryAction(sectionId: NavSectionId, onNavigate?: () => void) {
+  function renderPrimaryAction(
+    sectionId: NavSectionId,
+    onNavigate?: () => void,
+  ) {
     if (sectionId === "teams") {
       return (
         <Sheet open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
@@ -777,38 +905,72 @@ export default function SidebarComponent() {
               <Plus className="h-4 w-4" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" showClose className="border-l border-white/10 bg-zinc-950/95 text-foreground">
+          <SheetContent
+            side="right"
+            showClose
+            className="border-l border-white/10 bg-zinc-950/95 text-foreground"
+          >
             <SheetHeader>
               <SheetTitle>Novo time</SheetTitle>
-              <SheetDescription>Defina o nome e uma breve descricao para o time.</SheetDescription>
+              <SheetDescription>
+                Defina o nome e uma breve descricao para o time.
+              </SheetDescription>
             </SheetHeader>
 
             <div className="mt-4 space-y-4 px-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-zinc-300">Nome do time</p>
-                <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Ex: Time de desenvolvimento" />
+                <p className="text-xs font-medium text-zinc-300">
+                  Nome do time
+                </p>
+                <Input
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="Ex: Time de desenvolvimento"
+                />
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-zinc-300">Descricao (opcional)</p>
-                <Textarea rows={3} value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} placeholder="Uma frase que explique o foco deste time." />
+                <p className="text-xs font-medium text-zinc-300">
+                  Descricao (opcional)
+                </p>
+                <Textarea
+                  rows={3}
+                  value={teamDescription}
+                  onChange={(e) => setTeamDescription(e.target.value)}
+                  placeholder="Uma frase que explique o foco deste time."
+                />
               </div>
               <div className="space-y-2">
                 <MembersSelect
                   label="Membros do time"
                   buttonLabel="Membros do time"
-                  members={allMembers.map((member) => ({ id: member.id, name: member.name, imageSrc: member.imageSrc }))}
+                  members={allMembers.map((member) => ({
+                    id: member.id,
+                    name: member.name,
+                    imageSrc: member.imageSrc,
+                  }))}
                   selectedIds={[...selectedMemberIds]}
                   onChange={(ids) => setSelectedMemberIds(new Set(ids))}
                 />
-                <p className="mt-8 text-center text-[10px] text-zinc-500">* Voce sera adicionado automaticamente como lider do time.</p>
+                <p className="mt-8 text-center text-[10px] text-zinc-500">
+                  * Voce sera adicionado automaticamente como lider do time.
+                </p>
               </div>
             </div>
 
             <SheetFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateTeamOpen(false)} disabled={creatingTeam}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateTeamOpen(false)}
+                disabled={creatingTeam}
+              >
                 Cancelar
               </Button>
-              <Button type="button" onClick={() => void handleCreateTeam()} disabled={!teamName.trim() || creatingTeam}>
+              <Button
+                type="button"
+                onClick={() => void handleCreateTeam()}
+                disabled={!teamName.trim() || creatingTeam}
+              >
                 {creatingTeam ? "Criando..." : "Criar time"}
               </Button>
             </SheetFooter>
@@ -851,8 +1013,13 @@ export default function SidebarComponent() {
         className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition-colors hover:bg-white/10"
       >
         <Avatar className="h-9 w-9 border border-white/10">
-          <AvatarImage src={me.avatarUrl || undefined} alt={me.name || "Usuario"} />
-          <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">{initials(me.name || "Usuario")}</AvatarFallback>
+          <AvatarImage
+            src={me.avatarUrl || undefined}
+            alt={me.name || "Usuario"}
+          />
+          <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
+            {initials(me.name || "Usuario")}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{me.name || "Usuario"}</p>
@@ -913,7 +1080,12 @@ export default function SidebarComponent() {
                   setPreviewSection("settings")
                 }}
               />
-              <RailNavLink label="Sair" icon={<LogOut className="h-4 w-4" />} isActive={false} onClick={() => void handleLogout()} />
+              <RailNavLink
+                label="Sair"
+                icon={<LogOut className="h-4 w-4" />}
+                isActive={false}
+                onClick={() => void handleLogout()}
+              />
             </div>
           </aside>
 
@@ -924,15 +1096,29 @@ export default function SidebarComponent() {
             )}
             onMouseEnter={() => setIsHovered(true)}
           >
-            <div className={cn("flex items-center", isHovered ? "justify-between" : "justify-center")}>
+            <div
+              className={cn(
+                "flex items-center",
+                isHovered ? "justify-between" : "justify-center",
+              )}
+            >
               {isHovered && (
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">Workspace</p>
-                  <h2 className="text-lg font-semibold">{desktopContent.title}</h2>
+                  <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+                    Workspace
+                  </p>
+                  <h2 className="text-lg font-semibold">
+                    {desktopContent.title}
+                  </h2>
                 </div>
               )}
               <div className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", isHovered && "-rotate-90")} />
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    isHovered && "-rotate-90",
+                  )}
+                />
               </div>
             </div>
 
@@ -940,7 +1126,11 @@ export default function SidebarComponent() {
               <>
                 <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3">
                   <Search className="h-4 w-4 shrink-0 text-zinc-400" />
-                  <input type="text" placeholder="Buscar..." className="h-10 w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    className="h-10 w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+                  />
                 </div>
                 {renderMenuSections(desktopContent, visibleDesktopSection)}
                 <div className="flex flex-col gap-2">
@@ -969,7 +1159,11 @@ export default function SidebarComponent() {
                   <Menu className="h-5 w-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="left" showClose className="w-[88vw] border-r border-white/10 bg-zinc-950/95 text-white sm:max-w-sm">
+              <SheetContent
+                side="left"
+                showClose
+                className="w-[88vw] border-r border-white/10 bg-zinc-950/95 text-white sm:max-w-sm"
+              >
                 <SheetHeader>
                   <SheetTitle>Workspace</SheetTitle>
                   <SheetDescription>
@@ -1004,7 +1198,9 @@ export default function SidebarComponent() {
                           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/20">
                             {item.icon}
                           </span>
-                          <span className="whitespace-nowrap">{item.label}</span>
+                          <span className="whitespace-nowrap">
+                            {item.label}
+                          </span>
                         </button>
                       )
                     })}
@@ -1020,11 +1216,15 @@ export default function SidebarComponent() {
                   </div>
 
                   <div className="min-h-0 flex-1 overflow-y-auto">
-                    {renderMenuSections(mobileContent, mobileSection, () => setMobilePanelOpen(false))}
+                    {renderMenuSections(mobileContent, mobileSection, () =>
+                      setMobilePanelOpen(false),
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {renderPrimaryAction(mobileSection, () => setMobilePanelOpen(false))}
+                    {renderPrimaryAction(mobileSection, () =>
+                      setMobilePanelOpen(false),
+                    )}
                     {renderProfileCard(() => {
                       setMobilePanelOpen(false)
                       setProfileDialogOpen(true)
@@ -1043,8 +1243,12 @@ export default function SidebarComponent() {
             </Sheet>
 
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">Workspace</p>
-              <h2 className="truncate text-sm font-semibold">{mobileContent.title}</h2>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+                Workspace
+              </p>
+              <h2 className="truncate text-sm font-semibold">
+                {mobileContent.title}
+              </h2>
             </div>
           </div>
 
@@ -1059,7 +1263,10 @@ export default function SidebarComponent() {
           <DialogHeader className="sr-only">
             <DialogTitle>Editar perfil</DialogTitle>
           </DialogHeader>
-          <SettingsProfileSection showSummary={false} onDetailsSaved={() => setProfileDialogOpen(false)} />
+          <SettingsProfileSection
+            showSummary={false}
+            onDetailsSaved={() => setProfileDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </>

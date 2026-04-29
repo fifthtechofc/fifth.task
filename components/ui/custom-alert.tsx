@@ -1,9 +1,9 @@
 "use client"
 
+import { AnimatePresence, motion } from "framer-motion"
+import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type AlertVariant = "success" | "error" | "warning" | "info"
@@ -46,7 +46,7 @@ export default function CustomAlert({
           className={cn(
             "relative w-full max-w-md mx-auto p-4 rounded-2xl shadow-lg border backdrop-blur-md",
             "bg-white/10 dark:bg-black/20 border-white/20 dark:border-white/10",
-            "dark:text-white"
+            "dark:text-white",
           )}
         >
           <button
@@ -72,4 +72,3 @@ export default function CustomAlert({
     </AnimatePresence>
   )
 }
-

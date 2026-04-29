@@ -43,13 +43,13 @@ Este sistema foi desenvolvido para seguir a identidade visual da **FIFTHTECH**, 
 1. Instale as dependências:
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. Inicie o ambiente de desenvolvimento:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 3. Abra no navegador:
@@ -60,11 +60,13 @@ http://localhost:3000
 
 ## 🛠️ Scripts úteis
 
-- `npm run dev` - inicia o servidor de desenvolvimento
-- `npm run build` - gera a build de produção
-- `npm run start` - executa a aplicação em modo de produção
-- `npm run lint` - roda o ESLint
-- `npm run gen:favicon` - gera favicon a partir de imagens
+- `pnpm dev` - inicia o servidor de desenvolvimento
+- `pnpm build` - gera a build de produção
+- `pnpm start` - executa a aplicação em modo de produção
+- `pnpm lint` - roda o Biome
+- `pnpm lint:fix` - aplica correções automáticas do Biome
+- `pnpm commitlint --edit <commit-msg-file>` - valida mensagens de commit no padrão Conventional Commits
+- `pnpm gen:favicon` - gera favicon a partir de imagens
 
 ## 💡 Dicas
 
@@ -75,4 +77,3 @@ http://localhost:3000
 ## ❤️ Sobre
 
 Este projeto é ideal para criar uma dashboard de produtividade com funcionalidades colaborativas e layout responsivo. Seu design modular permite evoluir facilmente com novos recursos e integrações.
-

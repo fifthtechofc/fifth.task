@@ -12,8 +12,8 @@ export default function CalendarPage() {
             Agenda mensal do workspace
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">
-            Acompanhe reuniões, reviews, planejamentos e eventos importantes
-            do time em uma visão única.
+            Acompanhe reuniões, reviews, planejamentos e eventos importantes do
+            time em uma visão única.
           </p>
         </div>
 

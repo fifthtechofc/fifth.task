@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"
 import { CheckCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface ButtonSaveProps {
   label?: string
@@ -25,4 +25,3 @@ const ButtonSaveDemo = ({
 }
 
 export default ButtonSaveDemo
-

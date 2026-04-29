@@ -1,9 +1,13 @@
-import { AuthIntroGate } from '@/components/auth-intro-gate'
-import { RedirectIfAuthed } from '@/components/auth/redirect-if-authed'
-import { AuthCardTransition } from '@/components/ui/auth-card-transition'
-import { AuthRouteTransition } from '@/components/ui/auth-route-transition'
+import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed"
+import { AuthIntroGate } from "@/components/auth-intro-gate"
+import { AuthCardTransition } from "@/components/ui/auth-card-transition"
+import { AuthRouteTransition } from "@/components/ui/auth-route-transition"
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <AuthIntroGate>
       <RedirectIfAuthed>

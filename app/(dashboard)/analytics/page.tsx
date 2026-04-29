@@ -1,4 +1,11 @@
-import { BarChart3, BriefcaseBusiness, FolderPlus, Gauge, Target, Users } from "lucide-react"
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  FolderPlus,
+  Gauge,
+  Target,
+  Users,
+} from "lucide-react"
 
 import { BudgetCard } from "@/components/ui/analytics-bento"
 
@@ -53,8 +60,8 @@ export default function AnalyticsPage() {
             Visao consolidada da operacao
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">
-            Indicadores do workspace para acompanhar produtividade, criacao
-            de projetos, entregas e evolucao financeira.
+            Indicadores do workspace para acompanhar produtividade, criacao de
+            projetos, entregas e evolucao financeira.
           </p>
         </div>
 
@@ -116,7 +123,8 @@ export default function AnalyticsPage() {
                   <div
                     className="h-full rounded-full bg-zinc-200/90"
                     style={{
-                      width: metric.label === "Boards em Operacao" ? "64%" : "91%",
+                      width:
+                        metric.label === "Boards em Operacao" ? "64%" : "91%",
                     }}
                   />
                 </div>

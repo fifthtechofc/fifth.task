@@ -1,21 +1,21 @@
 "use client"
 
+import { AlertTriangle, GripVertical, Pencil, Trash2 } from "lucide-react"
 import * as React from "react"
-import { GripVertical, Pencil, Trash2, AlertTriangle } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { KanbanColumn, KanbanTask } from "@/types/kanban"
-import { AddTaskForm } from "./add-task-form"
-import { TaskCard } from "./task-card"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import type { KanbanColumn, KanbanTask } from "@/types/kanban"
+import { AddTaskForm } from "./add-task-form"
+import { TaskCard } from "./task-card"
 
 interface ColumnProps {
   column: KanbanColumn
@@ -46,7 +46,11 @@ interface ColumnProps {
   onTaskDragStart: (task: KanbanTask, columnId: string) => void
   onTaskDragEnd: () => void
   onOpenAddCard: (columnId: string, columnColor: string) => void
-  onOpenEditTask: (columnId: string, task: KanbanTask, columnColor: string) => void
+  onOpenEditTask: (
+    columnId: string,
+    task: KanbanTask,
+    columnColor: string,
+  ) => void
   onCancelTaskForm: () => void
   onTaskTitleChange: (value: string) => void
   onTaskDescriptionChange: (value: string) => void
@@ -128,7 +132,7 @@ export function Column({
         "flex h-full min-h-full min-w-[280px] max-w-[280px] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200 sm:min-w-[320px] sm:max-w-[320px] xl:min-w-[360px] xl:max-w-[360px]",
         isDropActive
           ? "border-primary/50 border-dashed bg-primary/5"
-          : "border-transparent"
+          : "border-transparent",
       )}
     >
       <div className="mb-3 flex items-center justify-between px-1">
@@ -178,7 +182,9 @@ export function Column({
           />
 
           <div>
-            <h2 className="text-sm font-semibold text-foreground">{column.title}</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {column.title}
+            </h2>
           </div>
 
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
@@ -194,7 +200,9 @@ export function Column({
             onClick={() => onEditColumn(column)}
             className="rounded-md p-1.5 transition-all duration-200"
             style={{
-              backgroundColor: isEditHovered ? "rgba(59, 130, 246, 0.12)" : "transparent",
+              backgroundColor: isEditHovered
+                ? "rgba(59, 130, 246, 0.12)"
+                : "transparent",
             }}
             aria-label="Editar coluna"
           >
@@ -212,7 +220,9 @@ export function Column({
                 onMouseLeave={() => setIsDeleteHovered(false)}
                 className="rounded-md p-1.5 transition-all duration-200"
                 style={{
-                  backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
+                  backgroundColor: isDeleteHovered
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : "transparent",
                 }}
                 aria-label="Remover coluna"
                 title="Remover coluna"
@@ -231,8 +241,9 @@ export function Column({
                 <DialogHeader className="flex-1 space-y-2 text-left">
                   <DialogTitle>Excluir coluna</DialogTitle>
                   <DialogDescription>
-                    Tem certeza que deseja excluir esta coluna? Todas as tarefas dentro dela serão removidas.
-                    Essa ação não pode ser desfeita.
+                    Tem certeza que deseja excluir esta coluna? Todas as tarefas
+                    dentro dela serão removidas. Essa ação não pode ser
+                    desfeita.
                   </DialogDescription>
                 </DialogHeader>
               </div>
@@ -262,86 +273,91 @@ export function Column({
 
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto pr-1">
         <div className="space-y-2">
-        {column.tasks.map((task) =>
-          editingTaskId === task.id ? (
-            <div key={task.id} className="space-y-2">
-              <AddTaskForm
-                isOpen
-                title={taskTitleDraft}
-                description={taskDescriptionDraft}
-                color={taskColorDraft}
-                assigneeIds={assigneeIdsDraft}
-                assignees={assignees}
-                heading="Editar tarefa"
-                submitLabel="Salvar tarefa"
-                onTitleChange={onTaskTitleChange}
-                onDescriptionChange={onTaskDescriptionChange}
-                onAssigneeIdsChange={onAssigneeIdsChange}
-                onOpen={() => undefined}
-                onCancel={onCancelTaskForm}
-                onSubmit={() => onSubmitTask(column.id)}
-              />
+          {column.tasks.map((task) =>
+            editingTaskId === task.id ? (
+              <div key={task.id} className="space-y-2">
+                <AddTaskForm
+                  isOpen
+                  title={taskTitleDraft}
+                  description={taskDescriptionDraft}
+                  color={taskColorDraft}
+                  assigneeIds={assigneeIdsDraft}
+                  assignees={assignees}
+                  heading="Editar tarefa"
+                  submitLabel="Salvar tarefa"
+                  onTitleChange={onTaskTitleChange}
+                  onDescriptionChange={onTaskDescriptionChange}
+                  onAssigneeIdsChange={onAssigneeIdsChange}
+                  onOpen={() => undefined}
+                  onCancel={onCancelTaskForm}
+                  onSubmit={() => onSubmitTask(column.id)}
+                />
 
-              {editingCardId && (
-                <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Checklist
-                  </h4>
+                {editingCardId && (
+                  <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Checklist
+                    </h4>
 
-                  {checklistItems.length > 0 ? (
-                    <ul className="mb-3 space-y-1">
-                      {checklistItems
-                        .slice()
-                        .sort((a, b) => a.position - b.position)
-                        .map((item) => (
-                          <li key={item.id} className="text-sm text-foreground">
-                            - {item.title}
-                          </li>
-                        ))}
-                    </ul>
-                  ) : (
-                    <p className="mb-3 text-sm text-muted-foreground">Sem itens ainda.</p>
-                  )}
+                    {checklistItems.length > 0 ? (
+                      <ul className="mb-3 space-y-1">
+                        {checklistItems
+                          .slice()
+                          .sort((a, b) => a.position - b.position)
+                          .map((item) => (
+                            <li
+                              key={item.id}
+                              className="text-sm text-foreground"
+                            >
+                              - {item.title}
+                            </li>
+                          ))}
+                      </ul>
+                    ) : (
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        Sem itens ainda.
+                      </p>
+                    )}
 
-                  <div className="flex gap-2">
-                    <input
-                      value={checklistTitleDraft}
-                      onChange={(e) => onChecklistTitleChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          onAddChecklistItem(editingCardId)
-                        }
-                      }}
-                      placeholder="Novo item…"
-                      className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onAddChecklistItem(editingCardId)}
-                      className="h-9 shrink-0 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                    >
-                      Adicionar
-                    </button>
+                    <div className="flex gap-2">
+                      <input
+                        value={checklistTitleDraft}
+                        onChange={(e) => onChecklistTitleChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            onAddChecklistItem(editingCardId)
+                          }
+                        }}
+                        placeholder="Novo item…"
+                        className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onAddChecklistItem(editingCardId)}
+                        className="h-9 shrink-0 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <TaskCard
-              key={task.id}
-              task={task}
-              columnColor={columnColor}
-              columnTitle={column.title}
-              isDragging={draggedTask?.task.id === task.id}
-              onDragStart={() => onTaskDragStart(task, column.id)}
-              onDragEnd={onTaskDragEnd}
-              onEdit={() => onOpenEditTask(column.id, task, columnColor)}
-              onRemove={() => onRemoveTask(column.id, task.id)}
-              getLabelColor={getLabelColor}
-            />
-          )
-        )}
+                )}
+              </div>
+            ) : (
+              <TaskCard
+                key={task.id}
+                task={task}
+                columnColor={columnColor}
+                columnTitle={column.title}
+                isDragging={draggedTask?.task.id === task.id}
+                onDragStart={() => onTaskDragStart(task, column.id)}
+                onDragEnd={onTaskDragEnd}
+                onEdit={() => onOpenEditTask(column.id, task, columnColor)}
+                onRemove={() => onRemoveTask(column.id, task.id)}
+                getLabelColor={getLabelColor}
+              />
+            ),
+          )}
         </div>
 
         {allowAddTask && addingCardTo === column.id && (
@@ -363,19 +379,21 @@ export function Column({
           />
         )}
 
-        {allowAddTask && addingCardTo !== column.id && editingTaskId === null && (
-          <AddTaskForm
-            isOpen={false}
-            title=""
-            description=""
-            color={columnColor}
-            onTitleChange={() => undefined}
-            onDescriptionChange={() => undefined}
-            onOpen={() => onOpenAddCard(column.id, columnColor)}
-            onCancel={() => undefined}
-            onSubmit={() => undefined}
-          />
-        )}
+        {allowAddTask &&
+          addingCardTo !== column.id &&
+          editingTaskId === null && (
+            <AddTaskForm
+              isOpen={false}
+              title=""
+              description=""
+              color={columnColor}
+              onTitleChange={() => undefined}
+              onDescriptionChange={() => undefined}
+              onOpen={() => onOpenAddCard(column.id, columnColor)}
+              onCancel={() => undefined}
+              onSubmit={() => undefined}
+            />
+          )}
       </div>
     </div>
   )

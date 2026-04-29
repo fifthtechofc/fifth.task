@@ -1,18 +1,18 @@
 "use client"
 
-import * as React from "react"
 import { Button } from "@/components/ui/button"
+import { ColorPicker } from "@/components/ui/color-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ColorPicker } from "@/components/ui/color-picker"
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet"
+
 interface EditColumnModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -33,7 +33,6 @@ export function EditColumnModal({
   onTitleChange,
   onColorChange,
   onSave,
-  onDelete,
   saving = false,
 }: EditColumnModalProps) {
   const canSave = title.trim().length > 0 && !saving
@@ -49,7 +48,8 @@ export function EditColumnModal({
           <div>
             <SheetTitle>Editar coluna</SheetTitle>
             <SheetDescription>
-              Altere o nome e a cor. O nome pode ser qualquer texto que faça sentido para o seu fluxo.
+              Altere o nome e a cor. O nome pode ser qualquer texto que faça
+              sentido para o seu fluxo.
             </SheetDescription>
           </div>
         </SheetHeader>
@@ -114,4 +114,3 @@ export function EditColumnModal({
     </Sheet>
   )
 }
-

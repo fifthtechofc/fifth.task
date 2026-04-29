@@ -1,22 +1,21 @@
- "use client"
+"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Crown, Pencil, Plus } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-
-import { AvatarHoverCard } from "@/components/ui/avatar-hover-card"
+import { useEffect, useMemo, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { AvatarHoverCard } from "@/components/ui/avatar-hover-card"
+import { Button } from "@/components/ui/button"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog"
-import { getTeamMembers, type TeamMember } from "@/lib/profile"
-import { useDashboardLoading } from "@/components/ui/dashboard-shell"
-import { supabase } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
-import { Crown, Pencil, Plus } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -26,10 +25,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { MembersSelect } from "@/components/ui/members-select"
+import { getTeamMembers, type TeamMember } from "@/lib/profile"
+import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 function getStatusClasses(status: TeamMember["status"]) {
   if (status === "online") return "bg-emerald-400"
@@ -50,12 +49,16 @@ export default function TeamsPage() {
   const [allProfiles, setAllProfiles] = useState<TeamMember[]>([])
   const [teamName, setTeamName] = useState<string | null>(null)
   const [teamDescription, setTeamDescription] = useState<string | null>(null)
-  const [teamRolesByMember, setTeamRolesByMember] = useState<Record<string, string | null>>({})
+  const [teamRolesByMember, setTeamRolesByMember] = useState<
+    Record<string, string | null>
+  >({})
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [savingTeam, setSavingTeam] = useState(false)
-  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set())
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
+    new Set(),
+  )
 
   const isCurrentUserLeader =
     !!teamId &&
@@ -117,7 +120,9 @@ export default function TeamsPage() {
           profile_id: profileId,
           role: teamRolesByMember[profileId] ?? "Membro",
         }))
-        const { error: insertError } = await supabase.from("team_members").insert(insertPayload)
+        const { error: insertError } = await supabase
+          .from("team_members")
+          .insert(insertPayload)
         if (insertError) throw insertError
       }
 
@@ -167,7 +172,11 @@ export default function TeamsPage() {
         })
         .catch((err) => {
           if (cancelled) return
-          setError(err instanceof Error ? err.message : "Não foi possível carregar o time.")
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Não foi possível carregar o time.",
+          )
         })
         .finally(() => {
           if (cancelled) return
@@ -188,38 +197,48 @@ export default function TeamsPage() {
         .eq("team_id", teamId),
       supabase.auth.getUser().then(({ data }) => data.user ?? null),
     ])
-      .then(([allMembers, { data: teamMembersData, error: teamMembersError }, user]) => {
-        if (cancelled) return
-        if (teamMembersError) {
-          throw teamMembersError
-        }
-
-        const roleMap: Record<string, string | null> = {}
-        let tName: string | null = null
-        let tDescription: string | null = null
-
-        ;(teamMembersData ?? []).forEach((row: any) => {
-          if (row.profile_id) {
-            roleMap[String(row.profile_id)] = row.role ?? null
+      .then(
+        ([
+          allMembers,
+          { data: teamMembersData, error: teamMembersError },
+          user,
+        ]) => {
+          if (cancelled) return
+          if (teamMembersError) {
+            throw teamMembersError
           }
-          if (row.teams && !tName) {
-            tName = row.teams.name ?? null
-            tDescription = row.teams.description ?? null
-          }
-        })
 
-        const filteredMembers = allMembers.filter((m) => roleMap[m.id])
+          const roleMap: Record<string, string | null> = {}
+          let tName: string | null = null
+          let tDescription: string | null = null
 
-        setAllProfiles(allMembers)
-        setMembers(filteredMembers)
-        setCurrentUserId(user?.id ?? null)
-        setTeamRolesByMember(roleMap)
-        setTeamName(tName)
-        setTeamDescription(tDescription)
-      })
+          ;(teamMembersData ?? []).forEach((row: any) => {
+            if (row.profile_id) {
+              roleMap[String(row.profile_id)] = row.role ?? null
+            }
+            if (row.teams && !tName) {
+              tName = row.teams.name ?? null
+              tDescription = row.teams.description ?? null
+            }
+          })
+
+          const filteredMembers = allMembers.filter((m) => roleMap[m.id])
+
+          setAllProfiles(allMembers)
+          setMembers(filteredMembers)
+          setCurrentUserId(user?.id ?? null)
+          setTeamRolesByMember(roleMap)
+          setTeamName(tName)
+          setTeamDescription(tDescription)
+        },
+      )
       .catch((err) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : "Não foi possível carregar o time.")
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível carregar o time.",
+        )
       })
       .finally(() => {
         if (cancelled) return
@@ -294,7 +313,9 @@ export default function TeamsPage() {
 
                 <div className="mt-4 space-y-4 px-2">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-zinc-300">Nome do time</p>
+                    <p className="text-xs font-medium text-zinc-300">
+                      Nome do time
+                    </p>
                     <Input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
@@ -302,7 +323,9 @@ export default function TeamsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-zinc-300">Descrição</p>
+                    <p className="text-xs font-medium text-zinc-300">
+                      Descrição
+                    </p>
                     <Textarea
                       rows={3}
                       value={editDescription}
@@ -359,7 +382,9 @@ export default function TeamsPage() {
             >
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-foreground">{member.name}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {member.name}
+                  </p>
                   {member.role && (
                     <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                       {member.role}
@@ -412,7 +437,10 @@ export default function TeamsPage() {
                 </span>
                 <span className="max-w-[14rem]">
                   Clique para adicionar{" "}
-                  <span className="font-semibold text-white">novos membros</span> a este time
+                  <span className="font-semibold text-white">
+                    novos membros
+                  </span>{" "}
+                  a este time
                 </span>
               </div>
             </button>
@@ -420,22 +448,28 @@ export default function TeamsPage() {
         </div>
       </div>
 
-      <Dialog open={profileDialogOpen && !!selectedMember} onOpenChange={setProfileDialogOpen}>
+      <Dialog
+        open={profileDialogOpen && !!selectedMember}
+        onOpenChange={setProfileDialogOpen}
+      >
         <DialogContent className="w-full max-w-xl border border-white/10 bg-black/90 p-6 text-white backdrop-blur-xl">
           {selectedMember && (
             <>
               <DialogHeader>
                 <DialogTitle>Perfil</DialogTitle>
                 <DialogDescription>
-                  Visualização do perfil de {selectedMember.name}. Apenas seu próprio perfil pode
-                  ser editado pelas configurações.
+                  Visualização do perfil de {selectedMember.name}. Apenas seu
+                  próprio perfil pode ser editado pelas configurações.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20 border border-white/15">
-                    <AvatarImage src={selectedMember.imageSrc} alt={selectedMember.name} />
+                    <AvatarImage
+                      src={selectedMember.imageSrc}
+                      alt={selectedMember.name}
+                    />
                     <AvatarFallback className="bg-white/10 text-sm font-semibold text-white">
                       {selectedMember.name
                         .split(" ")
@@ -462,14 +496,16 @@ export default function TeamsPage() {
                       "h-3 w-3 rounded-full",
                       selectedMember.status === "online" && "bg-emerald-400",
                       selectedMember.status === "focus" && "bg-amber-400",
-                      (!selectedMember.status || selectedMember.status === "offline") &&
+                      (!selectedMember.status ||
+                        selectedMember.status === "offline") &&
                         "bg-zinc-500",
                     )}
                   />
                   <span className="text-xs text-zinc-300">
                     {selectedMember.status === "online" && "Online"}
                     {selectedMember.status === "focus" && "Em foco"}
-                    {(!selectedMember.status || selectedMember.status === "offline") &&
+                    {(!selectedMember.status ||
+                      selectedMember.status === "offline") &&
                       "Offline"}
                   </span>
                 </div>
@@ -495,7 +531,9 @@ export default function TeamsPage() {
                         Data de nascimento
                       </p>
                       <p className="mt-1 text-xs font-medium text-foreground">
-                        {new Date(selectedMember.birthday).toLocaleDateString("pt-BR")}
+                        {new Date(selectedMember.birthday).toLocaleDateString(
+                          "pt-BR",
+                        )}
                       </p>
                     </div>
                   )}
@@ -511,7 +549,6 @@ export default function TeamsPage() {
                   )}
                 </div>
               )}
-
             </>
           )}
         </DialogContent>

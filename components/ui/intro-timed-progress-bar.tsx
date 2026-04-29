@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import {
   forwardRef,
@@ -6,9 +6,9 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-} from 'react'
+} from "react"
 
-import LinearBasic from '@/components/ui/progress-1'
+import LinearBasic from "@/components/ui/progress-1"
 
 export type IntroTimedProgressBarHandle = {
   /** Para o rAF e fixa 100% (fim real da intro). */
@@ -31,7 +31,7 @@ export const IntroTimedProgressBar = forwardRef<
     /** Chamado uma vez quando a barra chega a 100% por tempo (ignorado se `capUntilComplete`). */
     onComplete?: () => void
     onLight?: boolean
-    size?: 'sm' | 'md'
+    size?: "sm" | "md"
     glow?: boolean
   }
 >(function IntroTimedProgressBar(
@@ -41,7 +41,7 @@ export const IntroTimedProgressBar = forwardRef<
     capUntilComplete = false,
     onComplete,
     onLight = false,
-    size = 'sm',
+    size = "sm",
     glow = false,
   },
   ref,
@@ -83,7 +83,7 @@ export const IntroTimedProgressBar = forwardRef<
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [durationMs, capUntilComplete])
+  }, [durationMs])
 
   return (
     <LinearBasic
@@ -97,4 +97,4 @@ export const IntroTimedProgressBar = forwardRef<
   )
 })
 
-IntroTimedProgressBar.displayName = 'IntroTimedProgressBar'
+IntroTimedProgressBar.displayName = "IntroTimedProgressBar"

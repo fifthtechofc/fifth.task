@@ -1,10 +1,10 @@
 "use client"
 
-import * as React from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
-import { fetchBoards } from "@/lib/kanban"
+import * as React from "react"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import { fetchBoards } from "@/lib/kanban"
+import { supabase } from "@/lib/supabase"
 
 function slugify(input: string) {
   return input
@@ -39,8 +39,10 @@ export function BoardsHome() {
         }
 
         try {
-          const href = window.localStorage.getItem("kanban:lastBoardHref")?.trim()
-          if (href && href.startsWith("/boards/") && href !== "/boards") {
+          const href = window.localStorage
+            .getItem("kanban:lastBoardHref")
+            ?.trim()
+          if (href?.startsWith("/boards/") && href !== "/boards") {
             router.replace(href)
             return
           }
@@ -58,8 +60,9 @@ export function BoardsHome() {
         // ignore errors
       } finally {
         // Essa página só redireciona; não pode deixar o loader global preso.
-        if (!alive) return
-        setDashboardLoading(false)
+        if (alive) {
+          setDashboardLoading(false)
+        }
       }
     }
 
@@ -73,4 +76,3 @@ export function BoardsHome() {
   // Não renderiza um board aqui; apenas deixa o loader global aparecer enquanto redireciona.
   return null
 }
-

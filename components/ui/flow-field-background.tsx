@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 type Particle = {
@@ -167,9 +167,14 @@ export default function NeuralBackground({
   }, [color, particleCountMemo, speed, trailOpacity])
 
   return (
-    <div ref={containerRef} className={cn("relative h-full w-full bg-black overflow-hidden", className)}>
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative h-full w-full bg-black overflow-hidden",
+        className,
+      )}
+    >
       <canvas ref={canvasRef} className="block h-full w-full" />
     </div>
   )
 }
-

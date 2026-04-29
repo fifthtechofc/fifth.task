@@ -1,37 +1,37 @@
 "use client"
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import * as React from "react"
-import { cn } from "@/lib/utils"
-import { KanbanColumn, KanbanTask, type ColumnType } from "@/types/kanban"
-import { Column } from "./column"
-import { AddColumnForm } from "./add-column-form"
-import { EditColumnModal } from "./edit-column-modal"
-import { HorizontalScroll } from "./horizontal-scroll"
-import { GlowCard } from "@/components/ui/spotlight-card"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import { GlowCard } from "@/components/ui/spotlight-card"
 import { useAppNotifications } from "@/lib/app-notifications-context"
-import { getTeamMembers } from "@/lib/profile"
 import {
   buildKanbanColumns,
   createBoardCard,
   createBoardColumn,
-  fetchCardAssignees,
-  setCardAssignees,
+  createChecklistItem,
   fetchBoardCards,
   fetchBoardColumns,
+  fetchCardAssignees,
   fetchCardChecklist,
+  inferColumnTypeFromTitle,
   moveBoardCard,
   removeBoardCard,
   removeBoardColumn,
+  setCardAssignees,
   updateBoardCard,
   updateBoardColumnsPositions,
   updateColumnTitle,
-  createChecklistItem,
-  inferColumnTypeFromTitle,
 } from "@/lib/kanban"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { httpNotifyTaskAssigned } from "@/lib/notifications-http"
 import { rpcNotifyTaskCreated } from "@/lib/kanban-notifications-rpc"
+import { httpNotifyTaskAssigned } from "@/lib/notifications-http"
+import { getTeamMembers } from "@/lib/profile"
+import { cn } from "@/lib/utils"
+import type { ColumnType, KanbanColumn, KanbanTask } from "@/types/kanban"
+import { AddColumnForm } from "./add-column-form"
+import { Column } from "./column"
+import { EditColumnModal } from "./edit-column-modal"
+import { HorizontalScroll } from "./horizontal-scroll"
 
 interface BoardProps {
   boardId: string
@@ -126,10 +126,12 @@ export function Board({
 
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
 
-  const [draggedColumnId, setDraggedColumnId] = React.useState<string | null>(null)
-  const [columnDropTargetId, setColumnDropTargetId] = React.useState<string | null>(
+  const [draggedColumnId, setDraggedColumnId] = React.useState<string | null>(
     null,
   )
+  const [columnDropTargetId, setColumnDropTargetId] = React.useState<
+    string | null
+  >(null)
 
   const [draggedTask, setDraggedTask] = React.useState<{
     task: KanbanTask
@@ -146,14 +148,18 @@ export function Board({
   const [taskTitleDraft, setTaskTitleDraft] = React.useState("")
   const [taskDescriptionDraft, setTaskDescriptionDraft] = React.useState("")
   const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
-  const [taskAssigneeIdsDraft, setTaskAssigneeIdsDraft] = React.useState<string[]>([])
+  const [taskAssigneeIdsDraft, setTaskAssigneeIdsDraft] = React.useState<
+    string[]
+  >([])
   const [newChecklistTitleDraft, setNewChecklistTitleDraft] = React.useState("")
 
   const [isAddingColumn, setIsAddingColumn] = React.useState(false)
-  const [editingColumnId, setEditingColumnId] = React.useState<string | null>(null)
+  const [editingColumnId, setEditingColumnId] = React.useState<string | null>(
+    null,
+  )
   const [columnTitleDraft, setColumnTitleDraft] = React.useState("")
   const [columnColorDraft, setColumnColorDraft] = React.useState(
-    defaultColumnPalette.custom
+    defaultColumnPalette.custom,
   )
 
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
@@ -289,8 +295,11 @@ export function Board({
 
     const targetColumn = columns.find((c) => c.id === targetColumnId)
     const nextPosition =
-      Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) + 1
-    const targetColor = targetColumn ? getColumnColor(targetColumn) : defaultColumnPalette.custom
+      Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) +
+      1
+    const targetColor = targetColumn
+      ? getColumnColor(targetColumn)
+      : defaultColumnPalette.custom
 
     const updatedColumns = columns.map((column) => {
       if (column.id === sourceColumnId) {
@@ -364,7 +373,11 @@ export function Board({
         const rows = await fetchCardChecklist(task.id)
         setChecklistsByCardId((prev) => ({
           ...prev,
-          [task.id]: rows.map((r) => ({ id: r.id, title: r.title, position: r.position })),
+          [task.id]: rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            position: r.position,
+          })),
         }))
       } catch {
         // ignore checklist load errors to avoid blocking edit UI
@@ -397,16 +410,22 @@ export function Board({
                         assignees:
                           taskAssigneeIdsDraft.length > 0
                             ? taskAssigneeIdsDraft
-                                .map((id) => teamMembers.find((x) => x.id === id))
+                                .map((id) =>
+                                  teamMembers.find((x) => x.id === id),
+                                )
                                 .filter(Boolean)
-                                .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+                                .map((m) => ({
+                                  id: m?.id,
+                                  name: m?.name,
+                                  imageSrc: m?.imageSrc,
+                                }))
                             : undefined,
                       }
-                    : task
+                    : task,
                 ),
               }
-            : column
-        )
+            : column,
+        ),
       )
       try {
         await updateBoardCard({
@@ -439,7 +458,11 @@ export function Board({
             ? ids
                 .map((id) => teamMembers.find((x) => x.id === id))
                 .filter(Boolean)
-                .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+                .map((m) => ({
+                  id: m?.id,
+                  name: m?.name,
+                  imageSrc: m?.imageSrc,
+                }))
             : undefined
         setColumns((prev) =>
           prev.map((col) =>
@@ -447,7 +470,9 @@ export function Board({
               ? col
               : {
                   ...col,
-                  tasks: col.tasks.map((t) => (t.id === cardId ? { ...t, assignees } : t)),
+                  tasks: col.tasks.map((t) =>
+                    t.id === cardId ? { ...t, assignees } : t,
+                  ),
                 },
           ),
         )
@@ -456,7 +481,9 @@ export function Board({
       }
 
       // Notify only newly added assignees.
-      const added = nextAssigneeIds.filter((id) => !prevAssigneeIds.includes(id))
+      const added = nextAssigneeIds.filter(
+        (id) => !prevAssigneeIds.includes(id),
+      )
       if (added.length > 0) {
         void (async () => {
           const r = await httpNotifyTaskAssigned({
@@ -473,7 +500,11 @@ export function Board({
             setError(`Notificação in-app: ${r.inAppRpcError}`)
           }
           if (r.ok) {
-            const boardHref = boardNotificationHref(boardProjectSlug, boardId, cardId)
+            const boardHref = boardNotificationHref(
+              boardProjectSlug,
+              boardId,
+              cardId,
+            )
             const boardLabel = boardTitle?.trim() || "Quadro"
             const assigneeLabel = formatAssigneeNames(added, teamMembers)
             const selfMember = teamMembers.find((m) => m.id === userId)
@@ -491,7 +522,8 @@ export function Board({
       }
     } else {
       const col = columns.find((c) => c.id === columnId)
-      const nextPosition = Math.max(0, ...(col?.tasks ?? []).map((t) => t.position ?? 0)) + 1
+      const nextPosition =
+        Math.max(0, ...(col?.tasks ?? []).map((t) => t.position ?? 0)) + 1
 
       try {
         const created = await createBoardCard({
@@ -516,19 +548,28 @@ export function Board({
           position: created.position,
           assignees:
             ms.length > 0
-              ? ms.map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+              ? ms.map((m) => ({
+                  id: m?.id,
+                  name: m?.name,
+                  imageSrc: m?.imageSrc,
+                }))
               : undefined,
         }
 
         setColumns((prev) =>
           prev.map((column) =>
-            column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column,
+            column.id === columnId
+              ? { ...column, tasks: [...column.tasks, newTask] }
+              : column,
           ),
         )
 
         // Multi-assign is optional (depends on card_assignees table/policies).
         try {
-          await setCardAssignees({ cardId: created.id, userIds: taskAssigneeIdsDraft })
+          await setCardAssignees({
+            cardId: created.id,
+            userIds: taskAssigneeIdsDraft,
+          })
         } catch (e) {
           setError(
             e instanceof Error
@@ -545,7 +586,7 @@ export function Board({
             const assignees = ids
               .map((id) => teamMembers.find((x) => x.id === id))
               .filter(Boolean)
-              .map((m) => ({ id: m!.id, name: m!.name, imageSrc: m!.imageSrc }))
+              .map((m) => ({ id: m?.id, name: m?.name, imageSrc: m?.imageSrc }))
             setColumns((prev) =>
               prev.map((col) =>
                 col.id !== columnId
@@ -579,9 +620,16 @@ export function Board({
               setError(`Notificação in-app: ${r.inAppRpcError}`)
             }
             if (r.ok) {
-              const boardHref = boardNotificationHref(boardProjectSlug, boardId, created.id)
+              const boardHref = boardNotificationHref(
+                boardProjectSlug,
+                boardId,
+                created.id,
+              )
               const boardLabel = boardTitle?.trim() || "Quadro"
-              const assigneeLabel = formatAssigneeNames(taskAssigneeIdsDraft, teamMembers)
+              const assigneeLabel = formatAssigneeNames(
+                taskAssigneeIdsDraft,
+                teamMembers,
+              )
               const selfMember = teamMembers.find((m) => m.id === userId)
               await pushNotification({
                 notificationType: "assignment_actor_confirm",
@@ -627,8 +675,8 @@ export function Board({
               ...column,
               tasks: column.tasks.filter((task) => task.id !== taskId),
             }
-          : column
-      )
+          : column,
+      ),
     )
 
     if (editingTask?.taskId === taskId) {
@@ -677,8 +725,8 @@ export function Board({
                 type: inferred,
                 color: columnColorDraft,
               }
-            : column
-        )
+            : column,
+        ),
       )
       try {
         await updateColumnTitle({ id: editingColumnId, title: trimmed })
@@ -689,7 +737,8 @@ export function Board({
       resetColumnForm()
       return
     } else {
-      const nextPosition = Math.max(0, ...columns.map((c) => c.position ?? 0)) + 1
+      const nextPosition =
+        Math.max(0, ...columns.map((c) => c.position ?? 0)) + 1
       try {
         const created = await createBoardColumn({
           boardId,
@@ -750,12 +799,12 @@ export function Board({
     if (loading) return
     if (handledCardFromQueryRef.current === cardId) return
 
-    let found: { columnId: string; task: KanbanTask; color: string } | null = null
+    let found: { columnId: string; task: KanbanTask; color: string } | null =
+      null
     for (const col of columns) {
       const task = col.tasks.find((t) => t.id === cardId)
       if (task) {
-        const color =
-          task.color ?? col.color ?? defaultColumnPalette[col.type]
+        const color = task.color ?? col.color ?? defaultColumnPalette[col.type]
         found = { columnId: col.id, task, color }
         break
       }
@@ -784,7 +833,11 @@ export function Board({
     setNewChecklistTitleDraft("")
 
     try {
-      const created = await createChecklistItem({ cardId, title, position: nextPosition })
+      const created = await createChecklistItem({
+        cardId,
+        title,
+        position: nextPosition,
+      })
       setChecklistsByCardId((prev) => ({
         ...prev,
         [cardId]: [...(prev[cardId] ?? []), created].map((t) => ({
@@ -852,7 +905,10 @@ export function Board({
           imageSrc: m.imageSrc,
         }))
         const assigneesById = Object.fromEntries(
-          assignees.map((a) => [a.id, { id: a.id, name: a.name, imageSrc: a.imageSrc }]),
+          assignees.map((a) => [
+            a.id,
+            { id: a.id, name: a.name, imageSrc: a.imageSrc },
+          ]),
         )
 
         const [colRows, cardRows] = await Promise.all([
@@ -860,7 +916,9 @@ export function Board({
           fetchBoardCards(boardId),
         ])
 
-        const assigneeIdsByCardId = await fetchCardAssignees(cardRows.map((c) => c.id))
+        const assigneeIdsByCardId = await fetchCardAssignees(
+          cardRows.map((c) => c.id),
+        )
 
         const nextColumns = buildKanbanColumns({
           columns: colRows,
@@ -877,8 +935,9 @@ export function Board({
         if (!alive) return
         setError(e instanceof Error ? e.message : "Falha ao carregar o Kanban.")
       } finally {
-        if (!alive) return
-        setLoading(false)
+        if (alive) {
+          setLoading(false)
+        }
       }
     }
 
@@ -899,7 +958,12 @@ export function Board({
 
   if (columns.length === 0) {
     return (
-      <div className={cn("min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4", className)}>
+      <div
+        className={cn(
+          "min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4",
+          className,
+        )}
+      >
         <div className="flex min-h-[calc(100dvh-11rem)] w-full flex-col rounded-2xl border border-border/40 bg-background px-3 py-4 shadow-sm sm:px-4 sm:py-6 lg:h-[calc(100vh-3rem)] lg:rounded-3xl">
           <EditColumnModal
             open={editingColumnId !== null}
@@ -932,7 +996,12 @@ export function Board({
   }
 
   return (
-    <div className={cn("min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4", className)}>
+    <div
+      className={cn(
+        "min-h-0 w-full px-0 py-2 sm:px-3 sm:py-3 lg:px-6 lg:py-4",
+        className,
+      )}
+    >
       <EditColumnModal
         open={editingColumnId !== null}
         onOpenChange={handleCloseEditColumnModal}
@@ -965,11 +1034,17 @@ export function Board({
         customSize
         className="flex min-h-[calc(100dvh-11rem)] w-full flex-col border border-border/60 bg-background px-3 py-3 sm:px-4 sm:py-4 lg:h-[calc(100vh-3rem)]"
       >
-        <HorizontalScroll ref={scrollRef} className="mt-1 flex-1" onDragOver={handleBoardDragOver}>
+        <HorizontalScroll
+          ref={scrollRef}
+          className="mt-1 flex-1"
+          onDragOver={handleBoardDragOver}
+        >
           <div className="flex h-full min-h-full w-full flex-1 items-stretch gap-4 pb-4">
             {columns.map((column) => {
               const isColumnDropActive =
-                columnDropTargetId === column.id && draggedColumnId && draggedColumnId !== column.id
+                columnDropTargetId === column.id &&
+                draggedColumnId &&
+                draggedColumnId !== column.id
               return (
                 <Column
                   key={column.id}
@@ -990,7 +1065,11 @@ export function Board({
                   draggedTask={draggedTask}
                   dropTarget={dropTarget}
                   addingCardTo={addingCardTo}
-                  editingTaskId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+                  editingTaskId={
+                    editingTask?.columnId === column.id
+                      ? editingTask.taskId
+                      : null
+                  }
                   taskTitleDraft={taskTitleDraft}
                   taskDescriptionDraft={taskDescriptionDraft}
                   taskColorDraft={taskColorDraft}
@@ -1011,19 +1090,27 @@ export function Board({
                   onTaskTitleChange={setTaskTitleDraft}
                   onTaskDescriptionChange={setTaskDescriptionDraft}
                   onSubmitTask={(colId) => void handleSubmitTask(colId)}
-                  onRemoveTask={(colId, taskId) => void handleRemoveTask(colId, taskId)}
+                  onRemoveTask={(colId, taskId) =>
+                    void handleRemoveTask(colId, taskId)
+                  }
                   onEditColumn={handleOpenEditColumn}
                   onRemoveColumn={(colId) => void handleRemoveColumn(colId)}
                   getLabelColor={getLabelColor}
                   checklistItems={
                     editingTask?.columnId === column.id
-                      ? checklistsByCardId[editingTask.taskId] ?? []
+                      ? (checklistsByCardId[editingTask.taskId] ?? [])
                       : []
                   }
                   checklistTitleDraft={newChecklistTitleDraft}
                   onChecklistTitleChange={setNewChecklistTitleDraft}
-                  onAddChecklistItem={(cardId) => void handleAddChecklistItem(cardId)}
-                  editingCardId={editingTask?.columnId === column.id ? editingTask.taskId : null}
+                  onAddChecklistItem={(cardId) =>
+                    void handleAddChecklistItem(cardId)
+                  }
+                  editingCardId={
+                    editingTask?.columnId === column.id
+                      ? editingTask.taskId
+                      : null
+                  }
                 />
               )
             })}

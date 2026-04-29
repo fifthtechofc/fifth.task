@@ -1,16 +1,16 @@
 "use client"
 
-import * as React from "react"
+import { ArrowLeft, CheckCircle, Mail } from "lucide-react"
 import Link from "next/link"
-import { Mail, CheckCircle, ArrowLeft } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardFooter,
+  CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 
@@ -19,10 +19,13 @@ type Props = {
   initialVerified?: boolean
 }
 
-export default function EmailVerificationBlock({ email, initialVerified }: Props) {
+export default function EmailVerificationBlock({
+  email,
+  initialVerified,
+}: Props) {
   const [isResending, setIsResending] = React.useState(false)
   const [resendSuccess, setResendSuccess] = React.useState(false)
-  const [isVerified, setIsVerified] = React.useState(Boolean(initialVerified))
+  const [isVerified, _setIsVerified] = React.useState(Boolean(initialVerified))
 
   async function handleResendEmail() {
     if (!email) return
@@ -133,4 +136,3 @@ export default function EmailVerificationBlock({ email, initialVerified }: Props
     </Card>
   )
 }
-

@@ -1,4 +1,4 @@
-import { RequireAuth } from '@/components/auth/require-auth'
+import { RequireAuth } from "@/components/auth/require-auth"
 import { DashboardShell } from "@/components/ui/dashboard-shell"
 
 export default function DashboardLayout({

@@ -33,8 +33,9 @@ function parsePipeParts(value: string) {
 }
 
 function parseLegacyWrappedParts(value: string) {
-  return Array.from(value.matchAll(/(?:Ã‚Â«|«|<<)\s*([^<>«»]+?)\s*(?:Ã‚Â»|»|>>)/g), (match) =>
-    stripGuillemets(match[1] ?? ""),
+  return Array.from(
+    value.matchAll(/(?:Ã‚Â«|«|<<)\s*([^<>«»]+?)\s*(?:Ã‚Â»|»|>>)/g),
+    (match) => stripGuillemets(match[1] ?? ""),
   ).filter(Boolean)
 }
 
@@ -44,7 +45,9 @@ function parseNotificationParts(value: string) {
   return parseLegacyWrappedParts(value)
 }
 
-export function getNotificationLineSegments(n: AppNotification): NotificationLineSegment[] | null {
+export function getNotificationLineSegments(
+  n: AppNotification,
+): NotificationLineSegment[] | null {
   const actor = pickActorName(n)
   const type = n.notificationType ?? "generic"
 
@@ -142,9 +145,11 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
     const assigneeNames = parts[2] || ""
 
     const action =
-      type === "calendar_event_created" || type === "calendar_event_created_with_assignees"
+      type === "calendar_event_created" ||
+      type === "calendar_event_created_with_assignees"
         ? " criou o evento "
-        : type === "calendar_event_updated" || type === "calendar_event_updated_with_assignees"
+        : type === "calendar_event_updated" ||
+            type === "calendar_event_updated_with_assignees"
           ? " atualizou o evento "
           : type === "calendar_event_deleted"
             ? " removeu o evento "
@@ -207,7 +212,9 @@ export function getNotificationLineSegments(n: AppNotification): NotificationLin
   return null
 }
 
-export function appNotificationClickHref(n: AppNotification): string | undefined {
+export function appNotificationClickHref(
+  n: AppNotification,
+): string | undefined {
   const href = n.href?.trim()
   if (!href) return undefined
   const cardId = n.cardId?.trim()

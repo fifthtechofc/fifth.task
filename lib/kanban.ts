@@ -45,8 +45,9 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   try {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by,created_at,background_color,logo_url")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .select(
+        "id,title,description,created_by,created_at,background_color,logo_url",
+      )
       .order("created_at" as any, { ascending: false })
 
     if (error) throw new Error(error.message)
@@ -54,17 +55,23 @@ export async function fetchBoards(): Promise<BoardRow[]> {
   } catch {
     const { data, error } = await supabase
       .from("boards")
-      .select("id,title,description,created_by,created_at,background_color,logo_url")
+      .select(
+        "id,title,description,created_by,created_at,background_color,logo_url",
+      )
 
     if (error) throw new Error(error.message)
     return (data ?? []) as BoardRow[]
   }
 }
 
-export async function fetchBoardById(boardId: string): Promise<BoardRow | null> {
+export async function fetchBoardById(
+  boardId: string,
+): Promise<BoardRow | null> {
   const { data, error } = await supabase
     .from("boards")
-    .select("id,title,description,created_by,created_at,background_color,logo_url")
+    .select(
+      "id,title,description,created_by,created_at,background_color,logo_url",
+    )
     .eq("id", boardId)
     .maybeSingle()
 
@@ -134,7 +141,13 @@ export function inferColumnTypeFromTitle(title: string): ColumnType {
   ) {
     return "in-progress"
   }
-  if (t === "review" || t === "revisão" || t === "revisao" || t === "code review") return "review"
+  if (
+    t === "review" ||
+    t === "revisão" ||
+    t === "revisao" ||
+    t === "code review"
+  )
+    return "review"
   if (
     t === "done" ||
     t === "concluído" ||
@@ -156,7 +169,9 @@ export async function getOrCreateBoardByTitle(params: {
   const title = params.title.trim()
   const { data: existing, error: findError } = await supabase
     .from("boards")
-    .select("id,title,description,created_by,created_at,background_color,logo_url")
+    .select(
+      "id,title,description,created_by,created_at,background_color,logo_url",
+    )
     .eq("title", title)
     .limit(1)
 
@@ -171,7 +186,9 @@ export async function getOrCreateBoardByTitle(params: {
       description: params.description?.trim() || null,
       created_by: params.createdBy,
     })
-    .select("id,title,description,created_by,created_at,background_color,logo_url")
+    .select(
+      "id,title,description,created_by,created_at,background_color,logo_url",
+    )
     .single()
 
   if (error) throw new Error(error.message)
@@ -208,8 +225,10 @@ export async function updateBoard(params: {
 }): Promise<BoardRow> {
   const payload: Partial<BoardRow> & { background_color?: string | null } = {}
   if (params.title !== undefined) payload.title = params.title.trim()
-  if (params.description !== undefined) payload.description = params.description?.trim() || null
-  if (params.backgroundColor !== undefined) payload.background_color = params.backgroundColor
+  if (params.description !== undefined)
+    payload.description = params.description?.trim() || null
+  if (params.backgroundColor !== undefined)
+    payload.background_color = params.backgroundColor
   if (params.logoUrl !== undefined) payload.logo_url = params.logoUrl
 
   const { data, error } = await supabase
@@ -237,7 +256,9 @@ export async function fetchBoardColumns(boardId: string): Promise<ColumnRow[]> {
 export async function fetchBoardCards(boardId: string): Promise<CardRow[]> {
   const { data, error } = await supabase
     .from("board_cards")
-    .select("id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at")
+    .select(
+      "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
+    )
     .eq("board_id", boardId)
     .order("position", { ascending: true })
 
@@ -245,7 +266,9 @@ export async function fetchBoardCards(boardId: string): Promise<CardRow[]> {
   return (data ?? []) as CardRow[]
 }
 
-export async function fetchCardChecklist(cardId: string): Promise<CardTaskRow[]> {
+export async function fetchCardChecklist(
+  cardId: string,
+): Promise<CardTaskRow[]> {
   const { data, error } = await supabase
     .from("card_tasks")
     .select("id,card_id,title,position")
@@ -281,7 +304,9 @@ export function buildKanbanColumns(params: {
       position: r.position,
     }))
 
-    const ids = assigneeIdsByCardId[card.id] ?? (card.assigned_to ? [card.assigned_to] : [])
+    const ids =
+      assigneeIdsByCardId[card.id] ??
+      (card.assigned_to ? [card.assigned_to] : [])
     const assignees = ids.map((id) => assigneesById[id]).filter(Boolean)
 
     list.push({
@@ -328,14 +353,12 @@ export async function updateBoardColumnsPositions(params: {
   updates: Array<{ id: string; position: number }>
 }) {
   // Usamos UPDATE simples em vez de UPSERT para evitar inserts com board_id nulo.
-  const { error } = await supabase
-    .from("board_columns")
-    .update(
-      params.updates.reduce<Record<string, number>>((acc, curr) => {
-        // esse objeto é ignorado, pois usamos .eq por id em cada chamada abaixo
-        return acc
-      }, {}),
-    )
+  const { error } = await supabase.from("board_columns").update(
+    params.updates.reduce<Record<string, number>>((acc, _curr) => {
+      // esse objeto é ignorado, pois usamos .eq por id em cada chamada abaixo
+      return acc
+    }, {}),
+  )
 
   // Como o update em lote acima não funciona bem com diferentes posições por linha,
   // aplicamos as atualizações individualmente para cada coluna.
@@ -372,7 +395,9 @@ export async function createBoardCard(params: {
       created_by: params.createdBy,
       assigned_to: params.assignedTo ?? null,
     })
-    .select("id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at")
+    .select(
+      "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
+    )
     .single()
 
   if (error) throw new Error(error.message)
@@ -398,7 +423,9 @@ export async function updateBoardCard(params: {
   if (error) throw new Error(error.message)
 }
 
-export async function fetchCardAssignees(cardIds: string[]): Promise<Record<string, string[]>> {
+export async function fetchCardAssignees(
+  cardIds: string[],
+): Promise<Record<string, string[]>> {
   if (cardIds.length === 0) return {}
 
   try {
@@ -422,7 +449,10 @@ export async function fetchCardAssignees(cardIds: string[]): Promise<Record<stri
   }
 }
 
-export async function setCardAssignees(params: { cardId: string; userIds: string[] }) {
+export async function setCardAssignees(params: {
+  cardId: string
+  userIds: string[]
+}) {
   try {
     const { error: delError } = await supabase
       .from("card_assignees")
@@ -436,7 +466,9 @@ export async function setCardAssignees(params: { cardId: string; userIds: string
     }))
 
     if (rows.length === 0) return
-    const { error: insError } = await supabase.from("card_assignees").insert(rows)
+    const { error: insError } = await supabase
+      .from("card_assignees")
+      .insert(rows)
     if (insError) throw new Error(insError.message)
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Falha ao salvar responsáveis."
@@ -452,7 +484,10 @@ export async function removeBoardCard(cardId: string) {
 }
 
 export async function removeBoardColumn(columnId: string) {
-  const { error } = await supabase.from("board_columns").delete().eq("id", columnId)
+  const { error } = await supabase
+    .from("board_columns")
+    .delete()
+    .eq("id", columnId)
   if (error) throw new Error(error.message)
 }
 
@@ -514,7 +549,10 @@ export async function removeBoard(boardId: string) {
   }
 
   // 6) Finalmente, apagar o próprio board
-  const { error: deleteBoardError } = await supabase.from("boards").delete().eq("id", boardId)
+  const { error: deleteBoardError } = await supabase
+    .from("boards")
+    .delete()
+    .eq("id", boardId)
   if (deleteBoardError) throw new Error(deleteBoardError.message)
 }
 
@@ -536,7 +574,10 @@ export async function moveBoardCard(params: {
 }
 
 export async function updateColumnTitle(params: { id: string; title: string }) {
-  const { error } = await supabase.from("board_columns").update({ title: params.title.trim() }).eq("id", params.id)
+  const { error } = await supabase
+    .from("board_columns")
+    .update({ title: params.title.trim() })
+    .eq("id", params.id)
   if (error) throw new Error(error.message)
 }
 
@@ -558,4 +599,3 @@ export async function createChecklistItem(params: {
   if (error) throw new Error(error.message)
   return data as CardTaskRow
 }
-

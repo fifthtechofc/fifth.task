@@ -124,11 +124,16 @@ export function ProjectCard({
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-[var(--color-gray-light)]/80">
             <span>Progress</span>
-            <span className="font-semibold text-[var(--color-white)]">{progress}</span>
+            <span className="font-semibold text-[var(--color-white)]">
+              {progress}
+            </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
             <div
-              className={cn("h-full rounded-full transition-[width] duration-500", accentSet.progress)}
+              className={cn(
+                "h-full rounded-full transition-[width] duration-500",
+                accentSet.progress,
+              )}
               style={{ width: progress }}
             />
           </div>

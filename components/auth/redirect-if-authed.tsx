@@ -1,14 +1,14 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter } from "next/navigation"
+import * as React from "react"
 
-import { supabase } from '@/lib/supabase'
+import { supabase } from "@/lib/supabase"
 
 export function RedirectIfAuthed({
   children,
-  redirectTo = '/boards',
-  ignorePaths = ['/reset-password', '/confirm-email', '/check-email'],
+  redirectTo = "/boards",
+  ignorePaths = ["/reset-password", "/confirm-email", "/check-email"],
 }: {
   children: React.ReactNode
   redirectTo?: string
@@ -23,7 +23,11 @@ export function RedirectIfAuthed({
 
     async function check() {
       try {
-        if (ignorePaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+        if (
+          ignorePaths.some(
+            (p) => pathname === p || pathname.startsWith(`${p}/`),
+          )
+        ) {
           setShouldRender(true)
           return
         }
@@ -49,6 +53,5 @@ export function RedirectIfAuthed({
     }
   }, [ignorePaths, pathname, redirectTo, router])
 
-  return shouldRender ? <>{children}</> : null
+  return shouldRender ? children : null
 }
-
