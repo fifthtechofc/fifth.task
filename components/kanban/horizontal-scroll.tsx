@@ -12,7 +12,9 @@ function isInteractiveTarget(el: EventTarget | null) {
   if (!el) return false
   // `event.target` pode ser SVGElement (não é HTMLElement). Usamos `closest` via Element.
   const node = el as Element
-  const closest = (node as unknown as { closest?: (sel: string) => Element | null }).closest
+  const closest = (
+    node as unknown as { closest?: (sel: string) => Element | null }
+  ).closest
   if (!closest) return false
   return Boolean(
     closest.call(
@@ -28,12 +30,25 @@ function setRef<T>(ref: React.Ref<T> | undefined, value: T) {
   else (ref as React.MutableRefObject<T>).current = value
 }
 
-export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrollProps>(
-  function HorizontalScroll(
-    { className, children, enableDragScroll = true, style, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture, ...props },
-    forwardedRef,
-  ) {
-    const ref = React.useRef<HTMLDivElement | null>(null)
+export const HorizontalScroll = React.forwardRef<
+  HTMLDivElement,
+  HorizontalScrollProps
+>(function HorizontalScroll(
+  {
+    className,
+    children,
+    enableDragScroll = true,
+    style,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onClickCapture,
+    ...props
+  },
+  forwardedRef,
+) {
+  const ref = React.useRef<HTMLDivElement | null>(null)
   const pointerIdRef = React.useRef<number | null>(null)
   const startXRef = React.useRef(0)
   const startScrollLeftRef = React.useRef(0)
@@ -44,7 +59,8 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!enableDragScroll) return
       if (e.button !== 0) return // only primary click/touch
-      if (e.pointerType === "mouse" && (e.ctrlKey || e.metaKey || e.shiftKey)) return
+      if (e.pointerType === "mouse" && (e.ctrlKey || e.metaKey || e.shiftKey))
+        return
       if (isInteractiveTarget(e.target)) return
 
       const el = ref.current
@@ -64,24 +80,29 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
     [enableDragScroll],
   )
 
-  const handlePointerMove = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const el = ref.current
-    if (!el) return
-    if (pointerIdRef.current === null || e.pointerId !== pointerIdRef.current) return
+  const handlePointerMove = React.useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const el = ref.current
+      if (!el) return
+      if (pointerIdRef.current === null || e.pointerId !== pointerIdRef.current)
+        return
 
-    const dx = e.clientX - startXRef.current
-    if (!movedRef.current && Math.abs(dx) < 6) return
-    movedRef.current = true
+      const dx = e.clientX - startXRef.current
+      if (!movedRef.current && Math.abs(dx) < 6) return
+      movedRef.current = true
 
-    // Dragging to the right should scroll left, and vice-versa.
-    el.scrollLeft = startScrollLeftRef.current - dx
-    e.preventDefault()
-  }, [])
+      // Dragging to the right should scroll left, and vice-versa.
+      el.scrollLeft = startScrollLeftRef.current - dx
+      e.preventDefault()
+    },
+    [],
+  )
 
   const endDrag = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const el = ref.current
     if (!el) return
-    if (pointerIdRef.current === null || e.pointerId !== pointerIdRef.current) return
+    if (pointerIdRef.current === null || e.pointerId !== pointerIdRef.current)
+      return
 
     try {
       el.releasePointerCapture(e.pointerId)
@@ -93,27 +114,30 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
     }
   }, [])
 
-  const handleClickCapture = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Never swallow clicks on interactive elements (buttons, links, inputs, etc.)
-    if (isInteractiveTarget(e.target)) {
-      movedRef.current = false
-      return
-    }
+  const handleClickCapture = React.useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Never swallow clicks on interactive elements (buttons, links, inputs, etc.)
+      if (isInteractiveTarget(e.target)) {
+        movedRef.current = false
+        return
+      }
 
-    // If the user dragged, avoid "click-through" on cards/links.
-    if (movedRef.current) {
-      e.preventDefault()
-      e.stopPropagation()
-      movedRef.current = false
-      return
-    }
-    // If we just finished a drag-scroll, ignore the immediate click only.
-    const dt = Date.now() - lastDragAtRef.current
-    if (dt >= 0 && dt < 280) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-  }, [])
+      // If the user dragged, avoid "click-through" on cards/links.
+      if (movedRef.current) {
+        e.preventDefault()
+        e.stopPropagation()
+        movedRef.current = false
+        return
+      }
+      // If we just finished a drag-scroll, ignore the immediate click only.
+      const dt = Date.now() - lastDragAtRef.current
+      if (dt >= 0 && dt < 280) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    },
+    [],
+  )
 
   return (
     <div
@@ -156,6 +180,4 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
       <div className="flex h-full min-h-full w-full">{children}</div>
     </div>
   )
-  },
-)
-
+})

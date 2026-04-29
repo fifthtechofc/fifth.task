@@ -1,17 +1,17 @@
 "use client"
 
-import * as React from "react"
 import { useSearchParams } from "next/navigation"
-
-import { type MemberOption } from "@/components/ui/members-select"
+import * as React from "react"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import {
-  FullScreenCalendar,
   type CalendarData,
   type CalendarEventItem,
+  FullScreenCalendar,
 } from "@/components/ui/fullscreen-calendar"
+import type { MemberOption } from "@/components/ui/members-select"
 import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
+  type CalendarEventRecord,
   createCalendarEvent,
   deleteCalendarEvent,
   fetchCalendarAccess,
@@ -19,7 +19,6 @@ import {
   fetchCalendarWorkspaceMembers,
   formatEventTimeRange,
   updateCalendarEvent,
-  type CalendarEventRecord,
   type WorkspaceOption,
 } from "@/lib/calendar"
 
@@ -78,7 +77,10 @@ function CalendarLoadingSkeleton() {
       </div>
       <div className="grid grid-cols-7 gap-px bg-white/6 p-2">
         {Array.from({ length: 35 }).map((_, i) => (
-          <div key={i} className="min-h-[88px] rounded-lg bg-white/5 lg:min-h-[120px]" />
+          <div
+            key={i}
+            className="min-h-[88px] rounded-lg bg-white/5 lg:min-h-[120px]"
+          />
         ))}
       </div>
     </div>
@@ -86,7 +88,9 @@ function CalendarLoadingSkeleton() {
 }
 
 function formatAssigneeNames(assignees: MemberOption[]) {
-  const names = assignees.map((assignee) => assignee.name.trim()).filter(Boolean)
+  const names = assignees
+    .map((assignee) => assignee.name.trim())
+    .filter(Boolean)
   if (names.length === 0) return ""
   return names.slice(0, 5).join(", ")
 }
@@ -111,11 +115,15 @@ export function CalendarWorkspaceView() {
   const { pushNotification } = useAppNotifications()
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [eventsLoadError, setEventsLoadError] = React.useState<string | null>(null)
+  const [eventsLoadError, setEventsLoadError] = React.useState<string | null>(
+    null,
+  )
   const [workspaces, setWorkspaces] = React.useState<WorkspaceOption[]>([])
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState("")
   const [events, setEvents] = React.useState<CalendarEventRecord[]>([])
-  const [membersByWorkspaceId, setMembersByWorkspaceId] = React.useState<Record<string, MemberOption[]>>({})
+  const [membersByWorkspaceId, setMembersByWorkspaceId] = React.useState<
+    Record<string, MemberOption[]>
+  >({})
 
   React.useLayoutEffect(() => {
     setDashboardLoading(loading)
@@ -125,7 +133,8 @@ export function CalendarWorkspaceView() {
   }, [loading, setDashboardLoading])
 
   const workspaceLabelById = React.useMemo(
-    () => new Map(workspaces.map((workspace) => [workspace.id, workspace.label])),
+    () =>
+      new Map(workspaces.map((workspace) => [workspace.id, workspace.label])),
     [workspaces],
   )
   const focusEventId = searchParams.get("eventId")
@@ -140,7 +149,13 @@ export function CalendarWorkspaceView() {
       const workspaceIds = access.workspaces.map((workspace) => workspace.id)
 
       setWorkspaces(access.workspaces)
-      setSelectedWorkspaceId((current) => current || access.defaultWorkspaceId || access.workspaces[0]?.id || "")
+      setSelectedWorkspaceId(
+        (current) =>
+          current ||
+          access.defaultWorkspaceId ||
+          access.workspaces[0]?.id ||
+          "",
+      )
 
       try {
         const [rows, membersByWorkspace] = await Promise.all([
@@ -153,14 +168,20 @@ export function CalendarWorkspaceView() {
         setEvents([])
         setMembersByWorkspaceId({})
         setEventsLoadError(
-          eventError instanceof Error ? eventError.message : "Não foi possível carregar os eventos.",
+          eventError instanceof Error
+            ? eventError.message
+            : "Não foi possível carregar os eventos.",
         )
       }
     } catch (loadError) {
       setWorkspaces([])
       setEvents([])
       setMembersByWorkspaceId({})
-      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar o calendário.")
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Não foi possível carregar o calendário.",
+      )
     } finally {
       setLoading(false)
     }
@@ -175,7 +196,10 @@ export function CalendarWorkspaceView() {
     return events.filter((event) => event.workspaceId === selectedWorkspaceId)
   }, [events, selectedWorkspaceId])
 
-  const calendarData = React.useMemo(() => buildCalendarData(visibleEvents), [visibleEvents])
+  const calendarData = React.useMemo(
+    () => buildCalendarData(visibleEvents),
+    [visibleEvents],
+  )
 
   const handleCreateEvent = async (input: {
     workspaceId: string
@@ -201,12 +225,18 @@ export function CalendarWorkspaceView() {
         assigneeIds: input.assigneeIds,
       })
 
-      setEvents((current) => [...current, created].sort((a, b) => a.startAt.localeCompare(b.startAt)))
+      setEvents((current) =>
+        [...current, created].sort((a, b) =>
+          a.startAt.localeCompare(b.startAt),
+        ),
+      )
       setSelectedWorkspaceId(created.workspaceId)
 
       await pushNotification({
         notificationType:
-          created.assignees.length > 0 ? "calendar_event_created_with_assignees" : "calendar_event_created",
+          created.assignees.length > 0
+            ? "calendar_event_created_with_assignees"
+            : "calendar_event_created",
         title: "Novo evento",
         body: formatCalendarNotificationBody(
           created.title,
@@ -261,21 +291,26 @@ export function CalendarWorkspaceView() {
       )
       setSelectedWorkspaceId(updated.workspaceId)
 
-      const previousAssigneeIds = previousEvent?.assignees.map((assignee) => assignee.id) ?? []
+      const previousAssigneeIds =
+        previousEvent?.assignees.map((assignee) => assignee.id) ?? []
       const addedAssigneeIds = updated.assignees
         .map((assignee) => assignee.id)
         .filter((assigneeId) => !previousAssigneeIds.includes(assigneeId))
 
       await pushNotification({
         notificationType:
-          updated.assignees.length > 0 ? "calendar_event_updated_with_assignees" : "calendar_event_updated",
+          updated.assignees.length > 0
+            ? "calendar_event_updated_with_assignees"
+            : "calendar_event_updated",
         title: "Evento atualizado",
         body: formatCalendarNotificationBody(
           updated.title,
           workspaceLabelById.get(updated.workspaceId) ?? "Workspace",
           formatAssigneeNames(
             addedAssigneeIds.length > 0
-              ? updated.assignees.filter((assignee) => addedAssigneeIds.includes(assignee.id))
+              ? updated.assignees.filter((assignee) =>
+                  addedAssigneeIds.includes(assignee.id),
+                )
               : updated.assignees,
           ),
         ),
@@ -342,7 +377,8 @@ export function CalendarWorkspaceView() {
     <div className="flex flex-col gap-3">
       {eventsLoadError ? (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Os eventos não foram carregados, mas a grade do mês continua disponível: {eventsLoadError}
+          Os eventos não foram carregados, mas a grade do mês continua
+          disponível: {eventsLoadError}
         </p>
       ) : null}
       <FullScreenCalendar

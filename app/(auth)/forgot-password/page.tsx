@@ -1,12 +1,11 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-
-import { httpRequestPasswordReset } from '@/lib/auth-http'
-import NeuralBackground from '@/components/ui/flow-field-background'
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import Image from "next/image"
+import Link from "next/link"
+import * as React from "react"
+import NeuralBackground from "@/components/ui/flow-field-background"
+import { httpRequestPasswordReset } from "@/lib/auth-http"
 
 const AUTH_EASE = [0.22, 1, 0.36, 1] as const
 const AUTH_IN_DURATION = 0.48
@@ -27,14 +26,14 @@ function authEnterProps(
   }
   const initial: Record<string, number | string> = {
     opacity: 0,
-    filter: 'blur(10px)',
+    filter: "blur(10px)",
   }
   if (x) initial.x = x
   if (y) initial.y = y
   if (scale !== 1) initial.scale = scale
   return {
     initial,
-    animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: 'blur(0px)' },
+    animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
     transition: { duration: AUTH_IN_DURATION, delay, ease: AUTH_EASE },
   }
 }
@@ -59,7 +58,9 @@ function AppInput({ label, icon, ...rest }: AppInputProps) {
   return (
     <div className="relative w-full min-w-[200px]">
       {label && (
-        <label className="mb-2 block text-sm text-[var(--color-text-primary)]">{label}</label>
+        <label className="mb-2 block text-sm text-[var(--color-text-primary)]">
+          {label}
+        </label>
       )}
 
       <div className="relative w-full">
@@ -88,7 +89,11 @@ function AppInput({ label, icon, ...rest }: AppInputProps) {
           </>
         )}
 
-        {icon && <div className="absolute top-1/2 right-3 z-20 -translate-y-1/2">{icon}</div>}
+        {icon && (
+          <div className="absolute top-1/2 right-3 z-20 -translate-y-1/2">
+            {icon}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -96,7 +101,7 @@ function AppInput({ label, icon, ...rest }: AppInputProps) {
 
 export default function ForgotPasswordPage() {
   const reduceMotion = useReducedMotion()
-  const [email, setEmail] = React.useState('')
+  const [email, setEmail] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [info, setInfo] = React.useState<string | null>(null)
@@ -111,7 +116,7 @@ export default function ForgotPasswordPage() {
 
     const trimmed = email.trim()
     if (!trimmed) {
-      setError('Informe seu e-mail.')
+      setError("Informe seu e-mail.")
       return
     }
 
@@ -120,9 +125,13 @@ export default function ForgotPasswordPage() {
       const redirectTo = `${window.location.origin}/reset-password`
       const result = await httpRequestPasswordReset(trimmed, redirectTo)
       if (!result.ok) throw new Error(result.error)
-      setInfo('Se este e-mail existir, enviaremos um link para redefinir sua senha.')
+      setInfo(
+        "Se este e-mail existir, enviaremos um link para redefinir sua senha.",
+      )
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível enviar o e-mail.')
+      setError(
+        e instanceof Error ? e.message : "Não foi possível enviar o e-mail.",
+      )
     } finally {
       setLoading(false)
     }
@@ -169,11 +178,11 @@ export default function ForgotPasswordPage() {
         />
         <div
           className={`pointer-events-none absolute z-[5] h-[500px] w-[500px] rounded-full bg-gradient-to-r from-white/25 via-white/15 to-white/20 blur-3xl transition-opacity duration-200 ${
-            panelHover ? 'opacity-100' : 'opacity-0'
+            panelHover ? "opacity-100" : "opacity-0"
           }`}
           style={{
             transform: `translate(${panelMouse.x - 250}px, ${panelMouse.y - 250}px)`,
-            transition: 'transform 0.1s ease-out',
+            transition: "transform 0.1s ease-out",
           }}
           aria-hidden
         />
@@ -200,21 +209,32 @@ export default function ForgotPasswordPage() {
           <AnimatePresence mode="sync">
             {(error || info) && (
               <motion.div
-                key={`${error ?? ''}-${info ?? ''}`}
+                key={`${error ?? ""}-${info ?? ""}`}
                 className="w-full rounded-md border px-3 py-2 text-left text-sm"
-                role={error ? 'alert' : 'status'}
-                initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
+                role={error ? "alert" : "status"}
+                initial={
+                  reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }
+                }
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.98 }}
+                exit={
+                  reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.98 }
+                }
                 transition={{ duration: 0.32, ease: AUTH_EASE }}
               >
-                {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
-                {info && !error && <p className="text-[var(--color-text-primary)]">{info}</p>}
+                {error && (
+                  <p className="text-red-600 dark:text-red-400">{error}</p>
+                )}
+                {info && !error && (
+                  <p className="text-[var(--color-text-primary)]">{info}</p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          <motion.div className="w-full" {...authEnterProps(reduceMotion, { x: -20, delay: 0.12 })}>
+          <motion.div
+            className="w-full"
+            {...authEnterProps(reduceMotion, { x: -20, delay: 0.12 })}
+          >
             <AppInput
               name="email"
               placeholder="E-mail"
@@ -227,13 +247,18 @@ export default function ForgotPasswordPage() {
             />
           </motion.div>
 
-          <motion.div className="w-full mt-2" {...authEnterProps(reduceMotion, { y: 16, delay: 0.2 })}>
+          <motion.div
+            className="w-full mt-2"
+            {...authEnterProps(reduceMotion, { y: 16, delay: 0.2 })}
+          >
             <button
               type="submit"
               disabled={loading}
               className="group/button relative inline-flex h-12 w-full cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[var(--color-border)] px-5 py-2 text-white transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-lg hover:shadow-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-60"
             >
-              <span className="px-2 py-1 text-sm">{loading ? 'Enviando…' : 'Enviar link'}</span>
+              <span className="px-2 py-1 text-sm">
+                {loading ? "Enviando…" : "Enviar link"}
+              </span>
               <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-1000 group-hover/button:[transform:skew(-13deg)_translateX(100%)]">
                 <div className="relative h-full w-8 bg-white/20" />
               </div>
@@ -244,8 +269,11 @@ export default function ForgotPasswordPage() {
             className="pt-2 text-sm text-zinc-400"
             {...authEnterProps(reduceMotion, { y: 10, delay: 0.28 })}
           >
-            Voltar para{' '}
-            <Link href="/login" className="font-medium text-white hover:opacity-80">
+            Voltar para{" "}
+            <Link
+              href="/login"
+              className="font-medium text-white hover:opacity-80"
+            >
               Login
             </Link>
             .
@@ -255,4 +283,3 @@ export default function ForgotPasswordPage() {
     </div>
   )
 }
-

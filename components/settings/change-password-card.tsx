@@ -1,20 +1,23 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { Eye, EyeOff, KeyRound } from 'lucide-react'
-
-import { updateMyPassword } from '@/lib/auth'
-import { useDashboardLoading } from '@/components/ui/dashboard-shell'
-import { supabase } from '@/lib/supabase'
-import PasswordInput from '@/components/ui/password-input-1'
+import { Eye, EyeOff, KeyRound } from "lucide-react"
+import * as React from "react"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import PasswordInput from "@/components/ui/password-input-1"
+import { updateMyPassword } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 const MIN_PASSWORD_LENGTH = 8
 
-export function ChangePasswordCard({ embedded = false }: { embedded?: boolean }) {
+export function ChangePasswordCard({
+  embedded = false,
+}: {
+  embedded?: boolean
+}) {
   const { showAlert, setLoading: setDashboardLoading } = useDashboardLoading()
-  const [currentPassword, setCurrentPassword] = React.useState('')
-  const [newPassword, setNewPassword] = React.useState('')
-  const [confirmPassword, setConfirmPassword] = React.useState('')
+  const [currentPassword, setCurrentPassword] = React.useState("")
+  const [newPassword, setNewPassword] = React.useState("")
+  const [confirmPassword, setConfirmPassword] = React.useState("")
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [currentVisible, setCurrentVisible] = React.useState(false)
@@ -28,15 +31,17 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
     const next = newPassword
 
     if (!current) {
-      setError('Informe sua senha atual.')
+      setError("Informe sua senha atual.")
       return
     }
     if (next.length < MIN_PASSWORD_LENGTH) {
-      setError(`A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`)
+      setError(
+        `A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+      )
       return
     }
     if (next !== confirmPassword) {
-      setError('A confirmação não coincide com a nova senha.')
+      setError("A confirmação não coincide com a nova senha.")
       return
     }
 
@@ -46,7 +51,7 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
       // Reautentica antes de trocar a senha (evita mudança silenciosa em sessão antiga).
       const { data, error: userError } = await supabase.auth.getUser()
       if (userError || !data.user?.email) {
-        throw userError ?? new Error('Não foi possível validar sua sessão.')
+        throw userError ?? new Error("Não foi possível validar sua sessão.")
       }
 
       const { error: reauthError } = await supabase.auth.signInWithPassword({
@@ -54,24 +59,25 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
         password: current,
       })
       if (reauthError) {
-        throw new Error('Senha atual incorreta.')
+        throw new Error("Senha atual incorreta.")
       }
 
       await updateMyPassword(next)
-      setNewPassword('')
-      setConfirmPassword('')
-      setCurrentPassword('')
+      setNewPassword("")
+      setConfirmPassword("")
+      setCurrentPassword("")
       showAlert({
-        variant: 'success',
-        title: 'Senha alterada',
-        description: 'Sua senha foi atualizada com sucesso.',
+        variant: "success",
+        title: "Senha alterada",
+        description: "Sua senha foi atualizada com sucesso.",
       })
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Não foi possível atualizar a senha.'
+      const message =
+        e instanceof Error ? e.message : "Não foi possível atualizar a senha."
       setError(message)
       showAlert({
-        variant: 'error',
-        title: 'Não foi possível alterar a senha',
+        variant: "error",
+        title: "Não foi possível alterar a senha",
         description: message,
       })
     } finally {
@@ -93,7 +99,7 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
           <p className="text-xs font-medium text-zinc-300">Senha atual</p>
           <div className="relative">
             <input
-              type={currentVisible ? 'text' : 'password'}
+              type={currentVisible ? "text" : "password"}
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
@@ -104,7 +110,9 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
             <button
               type="button"
               onClick={() => setCurrentVisible((v) => !v)}
-              aria-label={currentVisible ? 'Ocultar senha atual' : 'Mostrar senha atual'}
+              aria-label={
+                currentVisible ? "Ocultar senha atual" : "Mostrar senha atual"
+              }
               className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-white/90 transition hover:text-white"
               disabled={saving}
             >
@@ -128,10 +136,12 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs font-medium text-zinc-300">Confirmar nova senha</p>
+          <p className="text-xs font-medium text-zinc-300">
+            Confirmar nova senha
+          </p>
           <div className="relative">
             <input
-              type={confirmVisible ? 'text' : 'password'}
+              type={confirmVisible ? "text" : "password"}
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -142,7 +152,9 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
             <button
               type="button"
               onClick={() => setConfirmVisible((v) => !v)}
-              aria-label={confirmVisible ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+              aria-label={
+                confirmVisible ? "Ocultar confirmação" : "Mostrar confirmação"
+              }
               className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-white/90 transition hover:text-white"
               disabled={saving}
             >
@@ -156,7 +168,7 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
           disabled={saving}
           className="inline-flex h-10 w-full items-center justify-center rounded-md bg-white/90 text-sm font-semibold text-black transition hover:bg-white disabled:opacity-60"
         >
-          {saving ? 'Salvando…' : 'Atualizar senha'}
+          {saving ? "Salvando…" : "Atualizar senha"}
         </button>
       </form>
     </>
@@ -182,4 +194,3 @@ export function ChangePasswordCard({ embedded = false }: { embedded?: boolean })
     </section>
   )
 }
-

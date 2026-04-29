@@ -1,60 +1,60 @@
-'use client';
-import React, { useState, useMemo } from 'react';
-import { Check, Eye, EyeOff, X } from 'lucide-react';
+"use client"
+import { Check, Eye, EyeOff, X } from "lucide-react"
+import { useMemo, useState } from "react"
 
 const PASSWORD_REQUIREMENTS = [
-  { regex: /.{8,}/, text: 'Pelo menos 8 caracteres' },
-  { regex: /[0-9]/, text: 'Pelo menos 1 número' },
-  { regex: /[a-z]/, text: 'Pelo menos 1 letra minúscula' },
-  { regex: /[A-Z]/, text: 'Pelo menos 1 letra maiúscula' },
-  { regex: /[!-\/:-@[-`{-~]/, text: 'Pelo menos 1 caractere especial' },
-] as const;
+  { regex: /.{8,}/, text: "Pelo menos 8 caracteres" },
+  { regex: /[0-9]/, text: "Pelo menos 1 número" },
+  { regex: /[a-z]/, text: "Pelo menos 1 letra minúscula" },
+  { regex: /[A-Z]/, text: "Pelo menos 1 letra maiúscula" },
+  { regex: /[!-/:-@[-`{-~]/, text: "Pelo menos 1 caractere especial" },
+] as const
 
-type StrengthScore = 0 | 1 | 2 | 3 | 4 | 5;
+type StrengthScore = 0 | 1 | 2 | 3 | 4 | 5
 
 const STRENGTH_CONFIG = {
   colors: {
-    0: 'bg-border',
-    1: 'bg-red-500',
-    2: 'bg-orange-500',
-    3: 'bg-amber-500',
-    4: 'bg-amber-700',
-    5: 'bg-emerald-500',
+    0: "bg-border",
+    1: "bg-red-500",
+    2: "bg-orange-500",
+    3: "bg-amber-500",
+    4: "bg-amber-700",
+    5: "bg-emerald-500",
   } satisfies Record<StrengthScore, string>,
   texts: {
-    0: 'Digite uma senha',
-    1: 'Senha fraca',
-    2: 'Senha média',
-    3: 'Senha forte',
-    4: 'Senha muito forte',
+    0: "Digite uma senha",
+    1: "Senha fraca",
+    2: "Senha média",
+    3: "Senha forte",
+    4: "Senha muito forte",
   } satisfies Record<Exclude<StrengthScore, 5>, string>,
-} as const;
+} as const
 
 type Requirement = {
-  met: boolean;
-  text: string;
-};
+  met: boolean
+  text: string
+}
 
 type PasswordStrength = {
-  score: StrengthScore;
-  requirements: Requirement[];
-};
+  score: StrengthScore
+  requirements: Requirement[]
+}
 
 const PasswordInputDemo = () => {
-  const [password, setPassword] = useState('');
-  const [isVisible, setIsVisible] = useState(false);
+  const [password, setPassword] = useState("")
+  const [isVisible, setIsVisible] = useState(false)
 
   const calculateStrength = useMemo((): PasswordStrength => {
     const requirements = PASSWORD_REQUIREMENTS.map((req) => ({
       met: req.regex.test(password),
       text: req.text,
-    }));
+    }))
 
     return {
       score: requirements.filter((req) => req.met).length as StrengthScore,
       requirements,
-    };
-  }, [password]);
+    }
+  }, [password])
 
   return (
     <div className="w-96 mx-auto">
@@ -65,7 +65,7 @@ const PasswordInputDemo = () => {
         <div className="relative">
           <input
             id="password"
-            type={isVisible ? 'text' : 'password'}
+            type={isVisible ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Senha"
@@ -76,7 +76,7 @@ const PasswordInputDemo = () => {
           <button
             type="button"
             onClick={() => setIsVisible((prev) => !prev)}
-            aria-label={isVisible ? 'Ocultar senha' : 'Mostrar senha'}
+            aria-label={isVisible ? "Ocultar senha" : "Mostrar senha"}
             className="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-muted-foreground/80 "
           >
             {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -109,7 +109,7 @@ const PasswordInputDemo = () => {
             STRENGTH_CONFIG.texts[
               Math.min(
                 calculateStrength.score,
-                4
+                4,
               ) as keyof typeof STRENGTH_CONFIG.texts
             ]
           }
@@ -126,20 +126,19 @@ const PasswordInputDemo = () => {
             )}
             <span
               className={`text-xs ${
-                req.met ? 'text-emerald-600' : 'text-muted-foreground'
+                req.met ? "text-emerald-600" : "text-muted-foreground"
               }`}
             >
               {req.text}
               <span className="sr-only">
-                {req.met ? ' - Requirement met' : ' - Requirement not met'}
+                {req.met ? " - Requirement met" : " - Requirement not met"}
               </span>
             </span>
           </li>
         ))}
       </ul>
     </div>
-  );
-};
+  )
+}
 
-export default PasswordInputDemo;
-
+export default PasswordInputDemo

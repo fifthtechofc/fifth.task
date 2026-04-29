@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server'
-
-import { supabase } from '@/lib/supabase'
-import { getClientIp, rateLimit } from '@/lib/server/rate-limit'
+import { NextResponse } from "next/server"
+import { getClientIp, rateLimit } from "@/lib/server/rate-limit"
+import { supabase } from "@/lib/supabase"
 
 export async function POST(req: Request) {
   const ip = getClientIp(req.headers)
   const rl = rateLimit(`auth:signin:${ip}`, { limit: 12, windowMs: 60_000 })
   if (!rl.ok) {
     return NextResponse.json(
-      { ok: false, error: 'Muitas tentativas. Tente novamente em instantes.' },
+      { ok: false, error: "Muitas tentativas. Tente novamente em instantes." },
       { status: 429 },
     )
   }
@@ -20,16 +19,19 @@ export async function POST(req: Request) {
     body = {}
   }
 
-  const email = body.email?.trim() ?? ''
-  const password = body.password ?? ''
+  const email = body.email?.trim() ?? ""
+  const password = body.password ?? ""
   if (!email || !password) {
     return NextResponse.json(
-      { ok: false, error: 'Informe e-mail e senha.' },
+      { ok: false, error: "Informe e-mail e senha." },
       { status: 400 },
     )
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
   if (error) {
     return NextResponse.json(
       { ok: false, error: error.message },
@@ -39,11 +41,11 @@ export async function POST(req: Request) {
 
   // best-effort audit (doesn't fail request)
   try {
-    await supabase.rpc('log_audit_event', {
-      p_action: 'auth.login',
-      p_metadata: { method: 'password', source: 'api' },
+    await supabase.rpc("log_audit_event", {
+      p_action: "auth.login",
+      p_metadata: { method: "password", source: "api" },
       p_ip: ip,
-      p_user_agent: req.headers.get('user-agent') ?? null,
+      p_user_agent: req.headers.get("user-agent") ?? null,
     })
   } catch {
     // ignore
@@ -51,4 +53,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, data })
 }
-

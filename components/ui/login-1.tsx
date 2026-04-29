@@ -1,30 +1,36 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { useEffect, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
-import { createPortal } from 'react-dom'
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { Eye, EyeOff } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import type * as React from "react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
-import NeuralBackground from '@/components/ui/flow-field-background'
-import { SimpleIntroSplash } from '@/components/ui/simple-intro-splash'
-import { LoaderOne } from '@/components/ui/unique-loader-components'
-import PasswordInput from '@/components/ui/password-input-1'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { httpSignInWithEmail, httpSignUpWithEmail } from '@/lib/auth-http'
-import { registerMyDeviceSession } from '@/lib/device-session'
-import { supabase } from '@/lib/supabase'
-import { PREDEFINED_JOB_TITLES } from '@/lib/job-titles'
-import { cn } from '@/lib/utils'
+import NeuralBackground from "@/components/ui/flow-field-background"
+import PasswordInput from "@/components/ui/password-input-1"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { SimpleIntroSplash } from "@/components/ui/simple-intro-splash"
+import { LoaderOne } from "@/components/ui/unique-loader-components"
+import { httpSignInWithEmail, httpSignUpWithEmail } from "@/lib/auth-http"
+import { registerMyDeviceSession } from "@/lib/device-session"
+import { PREDEFINED_JOB_TITLES } from "@/lib/job-titles"
+import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 const AUTH_EASE = [0.22, 1, 0.36, 1] as const
 const AUTH_IN_DURATION = 0.48
 
 const MIN_PASSWORD_LENGTH = 6
-const AUTH_NOTICE_KEY = 'ft:authNotice'
+const AUTH_NOTICE_KEY = "ft:authNotice"
 
 type AuthEnterOpts = {
   delay?: number
@@ -43,14 +49,14 @@ function authEnterProps(
   }
   const initial: Record<string, number | string> = {
     opacity: 0,
-    filter: 'blur(10px)',
+    filter: "blur(10px)",
   }
   if (x) initial.x = x
   if (y) initial.y = y
   if (scale !== 1) initial.scale = scale
   return {
     initial,
-    animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: 'blur(0px)' },
+    animate: { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" },
     transition: { duration: AUTH_IN_DURATION, delay, ease: AUTH_EASE },
   }
 }
@@ -129,7 +135,11 @@ function AppInput({ label, icon, ...rest }: AppInputProps) {
 
   return (
     <div className="relative w-full min-w-[200px]">
-      {label && <label className="mb-2 block text-sm text-[var(--color-text-primary)]">{label}</label>}
+      {label && (
+        <label className="mb-2 block text-sm text-[var(--color-text-primary)]">
+          {label}
+        </label>
+      )}
 
       <div className="relative w-full">
         <input
@@ -157,27 +167,31 @@ function AppInput({ label, icon, ...rest }: AppInputProps) {
           </>
         )}
 
-        {icon && <div className="absolute top-1/2 right-3 z-20 -translate-y-1/2">{icon}</div>}
+        {icon && (
+          <div className="absolute top-1/2 right-3 z-20 -translate-y-1/2">
+            {icon}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 type AuthLayoutProps = {
-  mode?: 'login' | 'register'
+  mode?: "login" | "register"
 }
 
-export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
+export default function LoginOne({ mode = "login" }: AuthLayoutProps) {
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isHovering, setIsHovering] = useState(false)
 
-  const [name, setName] = useState('')
-  const [jobTitle, setJobTitle] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [name, setName] = useState("")
+  const [jobTitle, setJobTitle] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [loginPasswordVisible, setLoginPasswordVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -187,13 +201,13 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   const [handoffToDashboard, setHandoffToDashboard] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
 
-  const isRegister = mode === 'register'
+  const isRegister = mode === "register"
 
   useEffect(() => {
     try {
       const url = new URL(window.location.href)
-      const next = url.searchParams.get('next')
-      if (next && next.startsWith('/')) {
+      const next = url.searchParams.get("next")
+      if (next?.startsWith("/")) {
         setNextAfterAuth(next)
       }
     } catch {
@@ -210,9 +224,9 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   }
 
   const socialIcons = [
-    { icon: <SocialInstagram />, href: '#' },
-    { icon: <SocialLinkedin />, href: '#' },
-    { icon: <SocialFacebook />, href: '#' },
+    { icon: <SocialInstagram />, href: "#" },
+    { icon: <SocialLinkedin />, href: "#" },
+    { icon: <SocialFacebook />, href: "#" },
   ]
 
   useEffect(() => {
@@ -220,8 +234,8 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
     const body = document.body
     const prevHtml = html.style.overflow
     const prevBody = body.style.overflow
-    html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
+    html.style.overflow = "hidden"
+    body.style.overflow = "hidden"
     return () => {
       html.style.overflow = prevHtml
       body.style.overflow = prevBody
@@ -235,7 +249,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
   useEffect(() => {
     setError(null)
     setInfo(null)
-    if (mode === 'login') {
+    if (mode === "login") {
       try {
         const msg = window.sessionStorage.getItem(AUTH_NOTICE_KEY)
         if (msg) {
@@ -257,7 +271,7 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
     const trimmedName = name.trim()
     const trimmedJobTitle = jobTitle.trim()
     if (!trimmedEmail) {
-      setError('Informe seu e-mail.')
+      setError("Informe seu e-mail.")
       return
     }
 
@@ -269,15 +283,15 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
 
     if (isRegister) {
       if (!trimmedName) {
-        setError('Informe seu nome completo.')
+        setError("Informe seu nome completo.")
         return
       }
       if (!trimmedJobTitle) {
-        setError('Informe seu cargo.')
+        setError("Informe seu cargo.")
         return
       }
       if (password !== confirmPassword) {
-        setError('As senhas não coincidem.')
+        setError("As senhas não coincidem.")
         return
       }
     }
@@ -316,7 +330,9 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
         setShowPostAuthSplash(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível concluir.')
+      setError(
+        err instanceof Error ? err.message : "Não foi possível concluir.",
+      )
     } finally {
       setLoading(false)
     }
@@ -324,372 +340,391 @@ export default function LoginOne({ mode = 'login' }: AuthLayoutProps) {
 
   return (
     <>
-        {showPostAuthSplash && (
-          <SimpleIntroSplash
-            className="z-[250]"
-            onSequenceComplete={() => {
-              try {
-                window.sessionStorage.setItem('ft:postAuthLoader', '1')
-              } catch {
-                // ignore
-              }
-              // evita flash do form: overlay fica até o unmount da página
-              setHandoffToDashboard(true)
-              router.replace(nextAfterAuth ?? '/boards')
-              // some a splash e deixa só o loader contínuo
-              setShowPostAuthSplash(false)
-            }}
-          />
+      {showPostAuthSplash && (
+        <SimpleIntroSplash
+          className="z-[250]"
+          onSequenceComplete={() => {
+            try {
+              window.sessionStorage.setItem("ft:postAuthLoader", "1")
+            } catch {
+              // ignore
+            }
+            // evita flash do form: overlay fica até o unmount da página
+            setHandoffToDashboard(true)
+            router.replace(nextAfterAuth ?? "/boards")
+            // some a splash e deixa só o loader contínuo
+            setShowPostAuthSplash(false)
+          }}
+        />
+      )}
+      {handoffToDashboard &&
+        portalReady &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="pointer-events-none fixed inset-0 z-[260] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <LoaderOne />
+          </div>,
+          document.body,
         )}
-        {handoffToDashboard &&
-          portalReady &&
-          typeof document !== 'undefined' &&
-          createPortal(
-            <div className="pointer-events-none fixed inset-0 z-[260] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-              <LoaderOne />
-            </div>,
-            document.body,
-          )}
+      <div
+        className="relative isolate flex min-h-0 w-full flex-1 flex-col overflow-hidden px-5 py-5 sm:px-6 sm:py-6 lg:max-h-full lg:w-1/2 lg:min-h-0 lg:px-12 lg:py-8 xl:px-16"
+        onMouseMove={handleMouseMove}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {/* Login: brilho fixo no canto inferior esquerdo. Registro: canto superior direito. */}
         <div
-          className="relative isolate flex min-h-0 w-full flex-1 flex-col overflow-hidden px-5 py-5 sm:px-6 sm:py-6 lg:max-h-full lg:w-1/2 lg:min-h-0 lg:px-12 lg:py-8 xl:px-16"
-          onMouseMove={handleMouseMove}
-          onMouseEnter={() => setIsHovering(true)}
-          onMouseLeave={() => setIsHovering(false)}
+          className={cn(
+            "pointer-events-none absolute z-[4] h-[500px] w-[500px] rounded-full bg-gradient-to-r from-white/25 via-white/15 to-white/20 blur-3xl",
+            isRegister
+              ? "top-0 right-0 translate-x-[38%] -translate-y-[38%]"
+              : "bottom-0 left-0 -translate-x-[38%] translate-y-[38%]",
+          )}
+          aria-hidden
+        />
+        <div
+          className={`pointer-events-none absolute z-[5] h-[500px] w-[500px] rounded-full bg-gradient-to-r from-white/25 via-white/15 to-white/20 blur-3xl transition-opacity duration-200 ${
+            isHovering ? "opacity-100" : "opacity-0"
+          }`}
+          style={{
+            transform: `translate(${mousePosition.x - 250}px, ${mousePosition.y - 250}px)`,
+            transition: "transform 0.1s ease-out",
+          }}
+        />
+
+        <form
+          className={cn(
+            "relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 text-center sm:gap-3 md:gap-4",
+            isRegister
+              ? "justify-start overflow-y-auto overscroll-contain py-4 sm:py-6 ft-scrollbar"
+              : "justify-center overflow-hidden",
+          )}
+          onSubmit={handleSubmit}
+          noValidate
         >
-          {/* Login: brilho fixo no canto inferior esquerdo. Registro: canto superior direito. */}
-          <div
+          <motion.div
+            key={isRegister ? "register-fields" : "login-fields"}
             className={cn(
-              'pointer-events-none absolute z-[4] h-[500px] w-[500px] rounded-full bg-gradient-to-r from-white/25 via-white/15 to-white/20 blur-3xl',
-              isRegister
-                ? 'top-0 right-0 translate-x-[38%] -translate-y-[38%]'
-                : 'bottom-0 left-0 -translate-x-[38%] translate-y-[38%]',
+              "flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 sm:gap-3 md:gap-4",
+              isRegister ? "justify-start pb-6" : "justify-center",
             )}
-            aria-hidden
-          />
-          <div
-            className={`pointer-events-none absolute z-[5] h-[500px] w-[500px] rounded-full bg-gradient-to-r from-white/25 via-white/15 to-white/20 blur-3xl transition-opacity duration-200 ${
-              isHovering ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{
-              transform: `translate(${mousePosition.x - 250}px, ${mousePosition.y - 250}px)`,
-              transition: 'transform 0.1s ease-out',
-            }}
-          />
-
-          <form
-            className={cn(
-              "relative z-20 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 text-center sm:gap-3 md:gap-4",
-              isRegister
-                ? "justify-start overflow-y-auto overscroll-contain py-4 sm:py-6 ft-scrollbar"
-                : "justify-center overflow-hidden",
-            )}
-            onSubmit={handleSubmit}
-            noValidate
+            initial={false}
           >
-            <motion.div
-              key={isRegister ? 'register-fields' : 'login-fields'}
-              className={cn(
-                "flex min-h-0 w-full min-w-0 flex-1 flex-col items-center gap-2 sm:gap-3 md:gap-4",
-                isRegister ? "justify-start pb-6" : "justify-center",
-              )}
-              initial={false}
-            >
-              <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4 md:gap-5">
-                <motion.h1
-                  className="text-2xl font-extrabold text-[var(--color-heading)] sm:text-3xl md:text-4xl"
-                  {...authEnterProps(reduceMotion, { y: 18, delay: 0 })}
+            <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4 md:gap-5">
+              <motion.h1
+                className="text-2xl font-extrabold text-[var(--color-heading)] sm:text-3xl md:text-4xl"
+                {...authEnterProps(reduceMotion, { y: 18, delay: 0 })}
+              >
+                Fifth Task
+              </motion.h1>
+              {!isRegister ? (
+                <motion.p
+                  className="text-sm text-[var(--color-text-secondary)]"
+                  {...authEnterProps(reduceMotion, { x: -16, delay: 0.07 })}
                 >
-                  Fifth Task
-                </motion.h1>
-                {!isRegister ? (
-                  <motion.p
-                    className="text-sm text-[var(--color-text-secondary)]"
-                    {...authEnterProps(reduceMotion, { x: -16, delay: 0.07 })}
-                  >
-                    Entre com seu e-mail e senha para continuar.
-                  </motion.p>
-                ) : (
-                  <motion.p
-                    className="text-sm text-[var(--color-text-secondary)]"
-                    {...authEnterProps(reduceMotion, { x: 16, delay: 0.07 })}
-                  >
-                    Cadastre-se com seu e-mail
-                  </motion.p>
-                )}
-              </div>
+                  Entre com seu e-mail e senha para continuar.
+                </motion.p>
+              ) : (
+                <motion.p
+                  className="text-sm text-[var(--color-text-secondary)]"
+                  {...authEnterProps(reduceMotion, { x: 16, delay: 0.07 })}
+                >
+                  Cadastre-se com seu e-mail
+                </motion.p>
+              )}
+            </div>
 
-              <AnimatePresence mode="sync">
-                {(error || info) && (
-                  <motion.div
-                    key={`${error ?? ''}-${info ?? ''}`}
-                    className="w-full max-w-[360px] shrink-0 rounded-md border px-3 py-2 text-left text-sm"
-                    role={error ? 'alert' : 'status'}
-                    initial={
-                      reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }
-                    }
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={
-                      reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.98 }
-                    }
-                    transition={{ duration: 0.32, ease: AUTH_EASE }}
-                  >
-                    {error && (
-                      <p className="text-red-600 dark:text-red-400">{error}</p>
-                    )}
-                    {info && !error && (
-                      <p className="text-[var(--color-text-primary)]">{info}</p>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            <AnimatePresence mode="sync">
+              {(error || info) && (
+                <motion.div
+                  key={`${error ?? ""}-${info ?? ""}`}
+                  className="w-full max-w-[360px] shrink-0 rounded-md border px-3 py-2 text-left text-sm"
+                  role={error ? "alert" : "status"}
+                  initial={
+                    reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={
+                    reduceMotion
+                      ? undefined
+                      : { opacity: 0, y: -6, scale: 0.98 }
+                  }
+                  transition={{ duration: 0.32, ease: AUTH_EASE }}
+                >
+                  {error && (
+                    <p className="text-red-600 dark:text-red-400">{error}</p>
+                  )}
+                  {info && !error && (
+                    <p className="text-[var(--color-text-primary)]">{info}</p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4">
-                {isRegister && (
-                  <motion.div
-                    {...authEnterProps(reduceMotion, {
-                      x: -20,
-                      delay: 0.12,
-                    })}
-                  >
-                    <AppInput
-                      name="name"
-                      placeholder="Nome completo"
-                      type="text"
-                      autoComplete="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      disabled={loading}
-                    />
-                  </motion.div>
-                )}
-                {isRegister && (
-                  <motion.div
-                    {...authEnterProps(reduceMotion, {
-                      x: 20,
-                      delay: 0.16,
-                    })}
-                  >
-                    <Select value={jobTitle} onValueChange={setJobTitle} disabled={loading}>
-                      <SelectTrigger
-                        aria-label="Cargo"
-                        className="h-12 w-full min-w-[200px] cursor-pointer rounded-md border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-center font-light text-[var(--color-text-primary)] outline-none transition-all duration-200 ease-in-out focus:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60 [&>span]:w-full [&>span]:text-center"
-                      >
-                        <SelectValue placeholder="Selecione o cargo" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" side="bottom" sideOffset={6} align="center">
-                        {PREDEFINED_JOB_TITLES.map((title) => (
-                          <SelectItem key={title} value={title}>
-                            {title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </motion.div>
-                )}
+            <div className="grid w-full max-w-[360px] min-h-0 shrink-0 gap-3 sm:gap-4">
+              {isRegister && (
                 <motion.div
                   {...authEnterProps(reduceMotion, {
-                    x: isRegister ? 20 : -20,
-                    delay: isRegister ? 0.18 : 0.12,
+                    x: -20,
+                    delay: 0.12,
                   })}
                 >
                   <AppInput
-                    name="email"
-                    placeholder="E-mail"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    name="name"
+                    placeholder="Nome completo"
+                    type="text"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     disabled={loading}
                   />
                 </motion.div>
+              )}
+              {isRegister && (
                 <motion.div
                   {...authEnterProps(reduceMotion, {
-                    x: isRegister ? -20 : 20,
-                    delay: isRegister ? 0.24 : 0.2,
+                    x: 20,
+                    delay: 0.16,
                   })}
                 >
-                  {isRegister ? (
-                    <div className="flex justify-center">
-                      <PasswordInput
-                        value={password}
-                        onChange={setPassword}
-                        disabled={loading}
-                        id="register-password"
-                        name="password"
-                        label=""
-                        placeholder="Senha"
-                        autoComplete="new-password"
-                        className="w-full"
-                      />
-                    </div>
-                  ) : (
-                    <AppInput
-                      name="password"
-                      placeholder="Senha"
-                      type={loginPasswordVisible ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                      icon={
-                        <button
-                          type="button"
-                          onClick={() => setLoginPasswordVisible((v) => !v)}
-                          aria-label={loginPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/90 transition hover:text-white"
-                          tabIndex={-1}
-                        >
-                          {loginPasswordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      }
-                    />
-                  )}
-                </motion.div>
-                {isRegister && (
-                  <motion.div
-                    {...authEnterProps(reduceMotion, {
-                      x: 20,
-                      delay: 0.3,
-                    })}
+                  <Select
+                    value={jobTitle}
+                    onValueChange={setJobTitle}
+                    disabled={loading}
                   >
-                    <AppInput
-                      name="confirmPassword"
-                      placeholder="Confirmar senha"
-                      type="password"
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      disabled={loading}
-                    />
-                  </motion.div>
-                )}
-              </div>
-
-              {!isRegister && (
-                <motion.div
-                  className="mt-4 flex w-full max-w-[360px] flex-col items-center gap-3 sm:mt-6"
-                  {...authEnterProps(reduceMotion, { y: 14, delay: 0.28 })}
-                >
-                  <ul className="flex gap-3 md:gap-4">
-                    {socialIcons.map((social, index) => (
-                      <motion.li
-                        key={index}
-                        className="list-none"
-                        initial={
-                          reduceMotion
-                            ? false
-                            : { opacity: 0, y: 12, scale: 0.88 }
-                        }
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{
-                          duration: AUTH_IN_DURATION * 0.85,
-                          delay: 0.32 + index * 0.06,
-                          ease: AUTH_EASE,
-                        }}
-                      >
-                        <a
-                          href={social.href}
-                          className="group relative z-[1] flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-text-primary)] bg-[var(--color-bg-2)] transition-all duration-300 md:h-[3rem] md:w-[3rem]"
-                        >
-                          <div className="absolute inset-0 h-full w-full origin-bottom scale-y-0 bg-[var(--color-bg)] transition-transform duration-500 ease-in-out group-hover:scale-y-100" />
-                          <span className="relative z-[2] text-[var(--color-border)] transition-all duration-500 group-hover:text-[var(--color-text-primary)]">
-                            {social.icon}
-                          </span>
-                        </a>
-                      </motion.li>
-                    ))}
-                  </ul>
-
-                  <motion.div
-                    className="text-sm font-light text-[var(--color-text-primary)] md:text-base"
-                    {...authEnterProps(reduceMotion, { y: 8, delay: 0.52 })}
-                  >
-                    <Link
-                      href="/forgot-password"
-                      className="transition hover:opacity-80"
+                    <SelectTrigger
+                      aria-label="Cargo"
+                      className="h-12 w-full min-w-[200px] cursor-pointer rounded-md border-2 border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-center font-light text-[var(--color-text-primary)] outline-none transition-all duration-200 ease-in-out focus:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60 [&>span]:w-full [&>span]:text-center"
                     >
-                      Esqueceu sua senha?
-                    </Link>
-                  </motion.div>
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      side="bottom"
+                      sideOffset={6}
+                      align="center"
+                    >
+                      {PREDEFINED_JOB_TITLES.map((title) => (
+                        <SelectItem key={title} value={title}>
+                          {title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </motion.div>
               )}
-
               <motion.div
-                className="flex w-full max-w-[360px] items-center justify-center"
                 {...authEnterProps(reduceMotion, {
-                  y: 16,
-                  scale: 0.97,
-                  delay: isRegister ? 0.34 : 0.36,
+                  x: isRegister ? 20 : -20,
+                  delay: isRegister ? 0.18 : 0.12,
                 })}
               >
-                <button
-                  type="submit"
+                <AppInput
+                  name="email"
+                  placeholder="E-mail"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="group/button relative w-full inline-flex cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[var(--color-border)] px-5 py-2 text-white transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-60"
-                >
-                  <span className="px-2 py-1 text-sm">
-                    {loading ? 'Aguarde…' : isRegister ? 'Cadastrar' : 'Entrar'}
-                  </span>
-                  <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-1000 group-hover/button:[transform:skew(-13deg)_translateX(100%)]">
-                    <div className="relative h-full w-8 bg-white/20" />
-                  </div>
-                </button>
+                />
               </motion.div>
-
               <motion.div
-                className="text-sm text-[var(--color-text-secondary)]"
                 {...authEnterProps(reduceMotion, {
-                  y: 10,
-                  delay: isRegister ? 0.42 : 0.44,
+                  x: isRegister ? -20 : 20,
+                  delay: isRegister ? 0.24 : 0.2,
                 })}
               >
-                {isRegister ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}{' '}
-                <Link
-                  href={isRegister ? '/login' : '/register'}
-                  className="font-medium text-[var(--color-text-primary)] transition hover:opacity-80"
-                >
-                  {isRegister ? 'Entrar' : 'Cadastrar'}
-                </Link>
+                {isRegister ? (
+                  <div className="flex justify-center">
+                    <PasswordInput
+                      value={password}
+                      onChange={setPassword}
+                      disabled={loading}
+                      id="register-password"
+                      name="password"
+                      label=""
+                      placeholder="Senha"
+                      autoComplete="new-password"
+                      className="w-full"
+                    />
+                  </div>
+                ) : (
+                  <AppInput
+                    name="password"
+                    placeholder="Senha"
+                    type={loginPasswordVisible ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    icon={
+                      <button
+                        type="button"
+                        onClick={() => setLoginPasswordVisible((v) => !v)}
+                        aria-label={
+                          loginPasswordVisible
+                            ? "Ocultar senha"
+                            : "Mostrar senha"
+                        }
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/90 transition hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {loginPasswordVisible ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
+                      </button>
+                    }
+                  />
+                )}
               </motion.div>
-            </motion.div>
-          </form>
-        </div>
+              {isRegister && (
+                <motion.div
+                  {...authEnterProps(reduceMotion, {
+                    x: 20,
+                    delay: 0.3,
+                  })}
+                >
+                  <AppInput
+                    name="confirmPassword"
+                    placeholder="Confirmar senha"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={loading}
+                  />
+                </motion.div>
+              )}
+            </div>
 
-        <div className="relative hidden min-h-0 w-full overflow-hidden lg:block lg:h-full lg:w-1/2 lg:flex-1">
-          <div
-            className={`absolute inset-0 z-10 bg-gradient-to-br from-black/40 via-transparent to-black/40 ${
-              isRegister ? 'animate-in fade-in duration-500' : ''
-            }`}
-          />
-          <NeuralBackground
-            className="absolute inset-0 z-0"
-            color="#c7d1db"
-            trailOpacity={0.2}
-            particleCount={650}
-            speed={0.85}
-          />
-          <div className="relative z-20 flex h-full w-full items-center justify-center px-8">
+            {!isRegister && (
+              <motion.div
+                className="mt-4 flex w-full max-w-[360px] flex-col items-center gap-3 sm:mt-6"
+                {...authEnterProps(reduceMotion, { y: 14, delay: 0.28 })}
+              >
+                <ul className="flex gap-3 md:gap-4">
+                  {socialIcons.map((social, index) => (
+                    <motion.li
+                      key={index}
+                      className="list-none"
+                      initial={
+                        reduceMotion
+                          ? false
+                          : { opacity: 0, y: 12, scale: 0.88 }
+                      }
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{
+                        duration: AUTH_IN_DURATION * 0.85,
+                        delay: 0.32 + index * 0.06,
+                        ease: AUTH_EASE,
+                      }}
+                    >
+                      <a
+                        href={social.href}
+                        className="group relative z-[1] flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full border-2 border-[var(--color-text-primary)] bg-[var(--color-bg-2)] transition-all duration-300 md:h-[3rem] md:w-[3rem]"
+                      >
+                        <div className="absolute inset-0 h-full w-full origin-bottom scale-y-0 bg-[var(--color-bg)] transition-transform duration-500 ease-in-out group-hover:scale-y-100" />
+                        <span className="relative z-[2] text-[var(--color-border)] transition-all duration-500 group-hover:text-[var(--color-text-primary)]">
+                          {social.icon}
+                        </span>
+                      </a>
+                    </motion.li>
+                  ))}
+                </ul>
+
+                <motion.div
+                  className="text-sm font-light text-[var(--color-text-primary)] md:text-base"
+                  {...authEnterProps(reduceMotion, { y: 8, delay: 0.52 })}
+                >
+                  <Link
+                    href="/forgot-password"
+                    className="transition hover:opacity-80"
+                  >
+                    Esqueceu sua senha?
+                  </Link>
+                </motion.div>
+              </motion.div>
+            )}
+
             <motion.div
-              key={isRegister ? 'logo-reg' : 'logo-login'}
-              className="flex items-center justify-center"
+              className="flex w-full max-w-[360px] items-center justify-center"
               {...authEnterProps(reduceMotion, {
-                scale: 0.88,
-                y: 24,
-                delay: 0.1,
+                y: 16,
+                scale: 0.97,
+                delay: isRegister ? 0.34 : 0.36,
               })}
             >
-              <Image
-                src="/Logo.png"
-                alt="Fifth Task"
-                width={360}
-                height={360}
-                priority
-                className="brightness-0 invert h-40 w-auto animate-floaty drop-shadow-[0_0_14px_rgba(255,255,255,0.28)] sm:h-48"
-              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="group/button relative w-full inline-flex cursor-pointer items-center justify-center overflow-hidden rounded-md bg-[var(--color-border)] px-5 py-2 text-white transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-text-primary)] disabled:pointer-events-none disabled:opacity-60"
+              >
+                <span className="px-2 py-1 text-sm">
+                  {loading ? "Aguarde…" : isRegister ? "Cadastrar" : "Entrar"}
+                </span>
+                <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-13deg)_translateX(-100%)] group-hover/button:duration-1000 group-hover/button:[transform:skew(-13deg)_translateX(100%)]">
+                  <div className="relative h-full w-8 bg-white/20" />
+                </div>
+              </button>
             </motion.div>
-          </div>
+
+            <motion.div
+              className="text-sm text-[var(--color-text-secondary)]"
+              {...authEnterProps(reduceMotion, {
+                y: 10,
+                delay: isRegister ? 0.42 : 0.44,
+              })}
+            >
+              {isRegister ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
+              <Link
+                href={isRegister ? "/login" : "/register"}
+                className="font-medium text-[var(--color-text-primary)] transition hover:opacity-80"
+              >
+                {isRegister ? "Entrar" : "Cadastrar"}
+              </Link>
+            </motion.div>
+          </motion.div>
+        </form>
+      </div>
+
+      <div className="relative hidden min-h-0 w-full overflow-hidden lg:block lg:h-full lg:w-1/2 lg:flex-1">
+        <div
+          className={`absolute inset-0 z-10 bg-gradient-to-br from-black/40 via-transparent to-black/40 ${
+            isRegister ? "animate-in fade-in duration-500" : ""
+          }`}
+        />
+        <NeuralBackground
+          className="absolute inset-0 z-0"
+          color="#c7d1db"
+          trailOpacity={0.2}
+          particleCount={650}
+          speed={0.85}
+        />
+        <div className="relative z-20 flex h-full w-full items-center justify-center px-8">
+          <motion.div
+            key={isRegister ? "logo-reg" : "logo-login"}
+            className="flex items-center justify-center"
+            {...authEnterProps(reduceMotion, {
+              scale: 0.88,
+              y: 24,
+              delay: 0.1,
+            })}
+          >
+            <Image
+              src="/Logo.png"
+              alt="Fifth Task"
+              width={360}
+              height={360}
+              priority
+              className="brightness-0 invert h-40 w-auto animate-floaty drop-shadow-[0_0_14px_rgba(255,255,255,0.28)] sm:h-48"
+            />
+          </motion.div>
         </div>
+      </div>
     </>
   )
 }

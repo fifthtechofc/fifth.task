@@ -20,7 +20,9 @@ function cleanText(v: unknown) {
   return typeof v === "string" ? v.trim() : ""
 }
 
-export async function fetchCardComments(cardId: string): Promise<CardComment[]> {
+export async function fetchCardComments(
+  cardId: string,
+): Promise<CardComment[]> {
   const { data, error } = await supabase
     .from("card_comments")
     .select(
@@ -82,7 +84,10 @@ export async function fetchUnreadCardCommentsCount(args: {
   return count ?? 0
 }
 
-export async function createCardComment(args: { cardId: string; body: string }) {
+export async function createCardComment(args: {
+  cardId: string
+  body: string
+}) {
   const {
     data: { user },
     error: userError,
@@ -100,7 +105,9 @@ export async function createCardComment(args: { cardId: string; body: string }) 
 }
 
 export async function deleteCardComment(commentId: string) {
-  const { error } = await supabase.from("card_comments").delete().eq("id", commentId)
+  const { error } = await supabase
+    .from("card_comments")
+    .delete()
+    .eq("id", commentId)
   if (error) throw new Error(error.message)
 }
-

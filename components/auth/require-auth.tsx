@@ -1,17 +1,19 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-
-import { supabase } from '@/lib/supabase'
-import { isMyDeviceSessionActive } from '@/lib/device-session'
+import { usePathname, useRouter } from "next/navigation"
+import * as React from "react"
+import { isMyDeviceSessionActive } from "@/lib/device-session"
+import { supabase } from "@/lib/supabase"
 
 type RequireAuthProps = {
   children: React.ReactNode
   redirectTo?: string
 }
 
-export function RequireAuth({ children, redirectTo = '/login' }: RequireAuthProps) {
+export function RequireAuth({
+  children,
+  redirectTo = "/login",
+}: RequireAuthProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [ready, setReady] = React.useState(false)
@@ -24,7 +26,7 @@ export function RequireAuth({ children, redirectTo = '/login' }: RequireAuthProp
         const { data, error } = await supabase.auth.getUser()
         if (!alive) return
         if (error || !data.user) {
-          const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ''
+          const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ""
           router.replace(`${redirectTo}${next}`)
           return
         }
@@ -37,13 +39,13 @@ export function RequireAuth({ children, redirectTo = '/login' }: RequireAuthProp
           } catch {
             // ignore
           }
-          router.replace('/login')
+          router.replace("/login")
           return
         }
         setReady(true)
       } catch {
         if (!alive) return
-        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ''
+        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ""
         router.replace(`${redirectTo}${next}`)
       }
     }
@@ -53,7 +55,7 @@ export function RequireAuth({ children, redirectTo = '/login' }: RequireAuthProp
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!alive) return
       if (!session?.user) {
-        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ''
+        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : ""
         router.replace(`${redirectTo}${next}`)
         return
       }
@@ -69,4 +71,3 @@ export function RequireAuth({ children, redirectTo = '/login' }: RequireAuthProp
   if (!ready) return null
   return <>{children}</>
 }
-

@@ -1,9 +1,9 @@
 "use client"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { type ReactNode, useState } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 export interface NativeHoverCardProps {
   imageSrc: string
@@ -63,7 +63,10 @@ export function AvatarHoverCard({
 
   const avatarElement = (
     <Avatar className="h-full w-full ring-1 ring-white/10">
-      <AvatarImage src={imageSrc || "/placeholder.svg"} alt={imageAlt || name} />
+      <AvatarImage
+        src={imageSrc || "/placeholder.svg"}
+        alt={imageAlt || name}
+      />
       <AvatarFallback>{getInitials(name)}</AvatarFallback>
     </Avatar>
   )
@@ -83,7 +86,7 @@ export function AvatarHoverCard({
         <motion.div
           className={cn(
             "relative overflow-hidden rounded-full border border-white/10 bg-black/30 shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
-            imageSizeVariants[size]
+            imageSizeVariants[size],
           )}
           animate={{
             scale: isHovered ? 1.08 : 1,
@@ -109,13 +112,15 @@ export function AvatarHoverCard({
             className={cn(
               "absolute top-[calc(100%-1rem)] left-1/2 z-20 -translate-x-1/2 overflow-hidden rounded-2xl px-4 py-3 text-center shadow-[0_20px_40px_rgba(0,0,0,0.35)]",
               hoverPanelWidthVariants[size],
-              getVariantStyles()
+              getVariantStyles(),
             )}
           >
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_45%)]" />
             <div className="relative space-y-1.5">
               <div>
-                <h3 className="text-sm font-bold leading-tight text-foreground">{name}</h3>
+                <h3 className="text-sm font-bold leading-tight text-foreground">
+                  {name}
+                </h3>
               </div>
             </div>
           </motion.div>

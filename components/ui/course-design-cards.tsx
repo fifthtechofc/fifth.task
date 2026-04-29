@@ -1,6 +1,5 @@
 "use client"
 
-import React from "react"
 import { MoreHorizontal, Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -76,7 +75,7 @@ export default function CourseDesignCard({ data }: CardProps) {
     <article
       className={cn(
         "group flex min-h-[320px] flex-col justify-between rounded-[28px] border border-white/8 bg-black/35 p-6 text-[var(--color-white)] backdrop-blur-xl transition-transform duration-300 hover:-translate-y-1",
-        ringClassMap[colorClass]
+        ringClassMap[colorClass],
       )}
     >
       <div className="space-y-6">
@@ -85,7 +84,7 @@ export default function CourseDesignCard({ data }: CardProps) {
             <span
               className={cn(
                 "inline-flex rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-black",
-                accentClassMap[colorClass]
+                accentClassMap[colorClass],
               )}
             >
               {description}
@@ -107,19 +106,24 @@ export default function CourseDesignCard({ data }: CardProps) {
             {title}
           </h3>
           <p className="max-w-[28ch] text-sm leading-6 text-[var(--color-gray-light)]/75">
-            Projeto em andamento com foco na entrega visual, validacao do fluxo e
-            consistencia da experiencia.
+            Projeto em andamento com foco na entrega visual, validacao do fluxo
+            e consistencia da experiencia.
           </p>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-[var(--color-gray-light)]/80">
             <span>Progress</span>
-            <span className="font-semibold text-[var(--color-white)]">{progressValue}</span>
+            <span className="font-semibold text-[var(--color-white)]">
+              {progressValue}
+            </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
             <div
-              className={cn("h-full rounded-full transition-[width] duration-500", progressClassMap[colorClass])}
+              className={cn(
+                "h-full rounded-full transition-[width] duration-500",
+                progressClassMap[colorClass],
+              )}
               style={{ width: progressPercent }}
             />
           </div>
@@ -128,13 +132,16 @@ export default function CourseDesignCard({ data }: CardProps) {
 
       <div className="mt-8 flex items-center justify-between gap-4 border-t border-white/8 pt-5">
         <ul className="flex items-center">
-          {imgSrc1 && <TeamAvatar src={imgSrc1} alt={imgAlt1 || "User avatar"} />}
-          {imgSrc2 && <TeamAvatar src={imgSrc2} alt={imgAlt2 || "User avatar"} />}
+          {imgSrc1 && (
+            <TeamAvatar src={imgSrc1} alt={imgAlt1 || "User avatar"} />
+          )}
+          {imgSrc2 && (
+            <TeamAvatar src={imgSrc2} alt={imgAlt2 || "User avatar"} />
+          )}
           <li className="-ml-2">
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--bg-dark)] bg-white text-black transition-transform hover:scale-105"
-              
               aria-label={`Adicionar membro ao projeto ${title}`}
             >
               <Plus className="h-5 w-5" />
@@ -145,7 +152,7 @@ export default function CourseDesignCard({ data }: CardProps) {
         <span
           className={cn(
             "rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-black",
-            accentClassMap[colorClass]
+            accentClassMap[colorClass],
           )}
         >
           {countdownText}

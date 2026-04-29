@@ -1,8 +1,10 @@
 "use client"
 
-import * as React from "react"
 import { Plus } from "lucide-react"
+import * as React from "react"
+import { Button } from "@/components/ui/button"
 import { ColorPicker } from "@/components/ui/color-picker"
+import { Input } from "@/components/ui/input"
 import {
   Sheet,
   SheetContent,
@@ -11,8 +13,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 
 interface AddColumnFormProps {
   isOpen: boolean
@@ -43,10 +43,10 @@ export function AddColumnForm({
 }: AddColumnFormProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const safeColor = React.useMemo(() => {
-    const c = (color ?? '').trim()
+    const c = (color ?? "").trim()
     if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c as `#${string}`
     if (/^[0-9a-fA-F]{3,8}$/.test(c)) return `#${c}` as `#${string}`
-    return '#64748b' as `#${string}`
+    return "#64748b" as `#${string}`
   }, [color])
 
   React.useEffect(() => {
@@ -90,7 +90,9 @@ export function AddColumnForm({
 
           <div className="mt-4 space-y-4 px-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Nome da coluna</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                Nome da coluna
+              </p>
               <Input
                 ref={inputRef}
                 value={title}
@@ -109,7 +111,9 @@ export function AddColumnForm({
                 type="button"
                 className="flex w-full items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-card-foreground"
               >
-                <span className="text-xs font-medium text-muted-foreground">Cor da coluna</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  Cor da coluna
+                </span>
                 <span
                   className="h-4 w-4 rounded-md border border-border"
                   style={{ backgroundColor: safeColor }}
@@ -130,11 +134,7 @@ export function AddColumnForm({
             >
               Cancelar
             </Button>
-            <Button
-              type="button"
-              onClick={onSubmit}
-              className="flex-1"
-            >
+            <Button type="button" onClick={onSubmit} className="flex-1">
               {submitLabel}
             </Button>
           </SheetFooter>

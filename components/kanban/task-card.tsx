@@ -1,35 +1,41 @@
 "use client"
 
-import * as React from "react"
-import { AlertTriangle, MessageSquareText, Pencil, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { KanbanTask } from "@/types/kanban"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { AnimatePresence, motion } from "framer-motion"
+import { AlertTriangle, MessageSquareText, Pencil, Trash2 } from "lucide-react"
+import * as React from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { createCardComment, deleteCardComment, fetchCardComments, fetchUnreadCardCommentsCount, type CardComment } from "@/lib/card-comments"
-import { supabase } from "@/lib/supabase"
 import { useAppNotifications } from "@/lib/app-notifications-context"
+import {
+  type CardComment,
+  createCardComment,
+  deleteCardComment,
+  fetchCardComments,
+  fetchUnreadCardCommentsCount,
+} from "@/lib/card-comments"
+import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+import type { KanbanTask } from "@/types/kanban"
 
 interface TaskCardProps {
   task: KanbanTask
@@ -96,7 +102,9 @@ function CommentAuthorAvatar({
       >
         <Avatar className="h-7 w-7 ring-1 ring-white/10">
           <AvatarImage src={avatarUrl || undefined} alt={name} />
-          <AvatarFallback className="text-[8px]">{initials(name)}</AvatarFallback>
+          <AvatarFallback className="text-[8px]">
+            {initials(name)}
+          </AvatarFallback>
         </Avatar>
       </motion.div>
 
@@ -138,11 +146,18 @@ function CompactTaskPreview({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="mt-1 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-            <h3 className="truncate text-sm font-semibold text-white">{title}</h3>
+            <span
+              className="mt-1 h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+            <h3 className="truncate text-sm font-semibold text-white">
+              {title}
+            </h3>
           </div>
           {description ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-300">{description}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-300">
+              {description}
+            </p>
           ) : (
             <p className="mt-1 text-xs text-zinc-500">Sem descrição.</p>
           )}
@@ -151,13 +166,23 @@ function CompactTaskPreview({
         {assignees && assignees.length > 0 && (
           <div className="flex items-center">
             {assignees.slice(0, 3).map((a, idx) => (
-              <Avatar key={a.id} className={cn("h-7 w-7 border border-white/10", idx > 0 && "-ml-2")}>
+              <Avatar
+                key={a.id}
+                className={cn(
+                  "h-7 w-7 border border-white/10",
+                  idx > 0 && "-ml-2",
+                )}
+              >
                 <AvatarImage src={a.imageSrc || undefined} alt={a.name} />
-                <AvatarFallback className="text-[10px]">{initials(a.name)}</AvatarFallback>
+                <AvatarFallback className="text-[10px]">
+                  {initials(a.name)}
+                </AvatarFallback>
               </Avatar>
             ))}
             {assignees.length > 3 && (
-              <div className="ml-2 text-[10px] font-semibold text-zinc-300">+{assignees.length - 3}</div>
+              <div className="ml-2 text-[10px] font-semibold text-zinc-300">
+                +{assignees.length - 3}
+              </div>
             )}
           </div>
         )}
@@ -201,8 +226,11 @@ export function TaskCard({
   const meDisplayName = React.useMemo(() => {
     if (!meProfile) return ""
     return (
-      (meProfile.full_name || meProfile.display_name || meProfile.email || "").trim()
-    )
+      meProfile.full_name ||
+      meProfile.display_name ||
+      meProfile.email ||
+      ""
+    ).trim()
   }, [meProfile])
 
   // localStorage is shared across accounts, so "seen" must be per-user
@@ -250,7 +278,11 @@ export function TaskCard({
       const rows = await fetchCardComments(task.id)
       setComments(rows)
     } catch (e) {
-      setCommentsError(e instanceof Error ? e.message : "Não foi possível carregar comentários.")
+      setCommentsError(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível carregar comentários.",
+      )
     } finally {
       setCommentsLoading(false)
     }
@@ -260,7 +292,7 @@ export function TaskCard({
     if (!openComments) return
     void loadComments()
     markCommentsSeenNow()
-  }, [openComments, loadComments])
+  }, [openComments, loadComments, markCommentsSeenNow])
 
   React.useEffect(() => {
     let alive = true
@@ -319,7 +351,7 @@ export function TaskCard({
         className={cn(
           "cursor-grab rounded-lg border p-3 shadow-sm transition-all duration-150",
           "hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
-          isDragging && "rotate-2 opacity-50"
+          isDragging && "rotate-2 opacity-50",
         )}
         style={{
           backgroundColor: hexToRgba(cardColor, 0.22),
@@ -336,7 +368,7 @@ export function TaskCard({
                     key={label}
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white",
-                      getLabelColor(label)
+                      getLabelColor(label),
                     )}
                   >
                     {label}
@@ -348,7 +380,7 @@ export function TaskCard({
             <h3
               className={cn(
                 "text-sm font-medium text-card-foreground",
-                task.description && "mb-1"
+                task.description && "mb-1",
               )}
             >
               {task.title}
@@ -369,7 +401,9 @@ export function TaskCard({
               }}
               className="rounded-md p-1.5 transition-all duration-200"
               style={{
-                backgroundColor: isEditHovered ? "rgba(59, 130, 246, 0.12)" : "transparent",
+                backgroundColor: isEditHovered
+                  ? "rgba(59, 130, 246, 0.12)"
+                  : "transparent",
               }}
               aria-label="Editar tarefa"
             >
@@ -412,7 +446,9 @@ export function TaskCard({
                   onMouseLeave={() => setIsDeleteHovered(false)}
                   className="rounded-md p-1.5 transition-all duration-200"
                   style={{
-                    backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
+                    backgroundColor: isDeleteHovered
+                      ? "rgba(239, 68, 68, 0.12)"
+                      : "transparent",
                   }}
                   aria-label="Remover tarefa"
                   title="Remover tarefa"
@@ -423,38 +459,39 @@ export function TaskCard({
                   />
                 </button>
               </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
-                      <AlertTriangle className="h-6 w-6 text-red-400" />
-                    </div>
-                    <DialogHeader className="flex-1 space-y-2 text-left">
-                      <DialogTitle>Excluir tarefa</DialogTitle>
-                      <DialogDescription>
-                        Tem certeza que deseja excluir esta tarefa? Essa ação não pode ser desfeita.
-                      </DialogDescription>
-                    </DialogHeader>
+              <DialogContent className="sm:max-w-lg">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                    <AlertTriangle className="h-6 w-6 text-red-400" />
                   </div>
-                  <DialogFooter className="mt-4">
-                    <DialogClose asChild>
-                      <Button type="button" variant="outline">
-                        Cancelar
-                      </Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onRemove()
-                        }}
-                      >
-                        Excluir
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
+                  <DialogHeader className="flex-1 space-y-2 text-left">
+                    <DialogTitle>Excluir tarefa</DialogTitle>
+                    <DialogDescription>
+                      Tem certeza que deseja excluir esta tarefa? Essa ação não
+                      pode ser desfeita.
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+                <DialogFooter className="mt-4">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancelar
+                    </Button>
+                  </DialogClose>
+                  <DialogClose asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRemove()
+                      }}
+                    >
+                      Excluir
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
             </Dialog>
           </div>
         </div>
@@ -509,13 +546,17 @@ export function TaskCard({
 
           {task.description && (
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <p className="text-sm leading-relaxed text-zinc-200">{task.description}</p>
+              <p className="text-sm leading-relaxed text-zinc-200">
+                {task.description}
+              </p>
             </div>
           )}
 
           {task.assignees && task.assignees.length > 0 && (
             <div className="mt-6">
-              <p className="mb-2 text-xs font-medium text-zinc-400">Responsáveis</p>
+              <p className="mb-2 text-xs font-medium text-zinc-400">
+                Responsáveis
+              </p>
               <MembersSelect
                 members={task.assignees.map((a) => ({
                   id: a.id,
@@ -541,10 +582,14 @@ export function TaskCard({
           }
         }}
       >
-        <SheetContent side="right" showClose className="border-l border-border bg-zinc-950/95 text-foreground">
+        <SheetContent
+          side="right"
+          showClose
+          className="border-l border-border bg-zinc-950/95 text-foreground"
+        >
           <SheetHeader>
             <SheetTitle>Comentários</SheetTitle>
-          <SheetDescription>Discussão da tarefa</SheetDescription>
+            <SheetDescription>Discussão da tarefa</SheetDescription>
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-3">
@@ -567,12 +612,14 @@ export function TaskCard({
               {commentsLoading ? (
                 <p className="text-sm text-zinc-400">Carregando…</p>
               ) : comments.length === 0 ? (
-                <p className="text-sm text-zinc-400">Ainda não há comentários.</p>
+                <p className="text-sm text-zinc-400">
+                  Ainda não há comentários.
+                </p>
               ) : (
                 comments.map((c) => (
                   <div
                     key={c.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 overflow-hidden"
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 overflow-hidden"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -586,64 +633,71 @@ export function TaskCard({
                         jobTitle={c.author?.jobTitle || null}
                       />
                     </div>
-                  <div className="mt-3 border-t border-white/10 pt-3">
-                    <p className="whitespace-pre-wrap break-words text-sm text-zinc-200">{c.body}</p>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className="text-[10px] text-zinc-500">
-                        {c.createdAt ? new Date(c.createdAt).toLocaleString() : ""}
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <p className="whitespace-pre-wrap break-words text-sm text-zinc-200">
+                        {c.body}
                       </p>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <button
-                            type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-300 transition hover:bg-red-500/10 hover:text-red-400"
-                            aria-label="Excluir comentário"
-                            title="Excluir comentário"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg">
-                          <div className="flex items-start gap-4">
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
-                              <AlertTriangle className="h-6 w-6 text-red-400" />
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-[10px] text-zinc-500">
+                          {c.createdAt
+                            ? new Date(c.createdAt).toLocaleString()
+                            : ""}
+                        </p>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-300 transition hover:bg-red-500/10 hover:text-red-400"
+                              aria-label="Excluir comentário"
+                              title="Excluir comentário"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-lg">
+                            <div className="flex items-start gap-4">
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                                <AlertTriangle className="h-6 w-6 text-red-400" />
+                              </div>
+                              <DialogHeader className="flex-1 space-y-2 text-left">
+                                <DialogTitle>Excluir comentário</DialogTitle>
+                                <DialogDescription>
+                                  Tem certeza que deseja excluir este
+                                  comentário? Essa ação não pode ser desfeita.
+                                </DialogDescription>
+                              </DialogHeader>
                             </div>
-                            <DialogHeader className="flex-1 space-y-2 text-left">
-                              <DialogTitle>Excluir comentário</DialogTitle>
-                              <DialogDescription>
-                                Tem certeza que deseja excluir este comentário? Essa ação não pode ser desfeita.
-                              </DialogDescription>
-                            </DialogHeader>
-                          </div>
-                          <DialogFooter className="mt-4">
-                            <DialogClose asChild>
-                              <Button type="button" variant="outline">
-                                Cancelar
-                              </Button>
-                            </DialogClose>
-                            <DialogClose asChild>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={async () => {
-                                  try {
-                                    await deleteCardComment(c.id)
-                                    await loadComments()
-                                  } catch (e) {
-                                    setCommentsError(
-                                      e instanceof Error ? e.message : "Não foi possível excluir o comentário.",
-                                    )
-                                  }
-                                }}
-                              >
-                                Excluir
-                              </Button>
-                            </DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                            <DialogFooter className="mt-4">
+                              <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                  Cancelar
+                                </Button>
+                              </DialogClose>
+                              <DialogClose asChild>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    try {
+                                      await deleteCardComment(c.id)
+                                      await loadComments()
+                                    } catch (e) {
+                                      setCommentsError(
+                                        e instanceof Error
+                                          ? e.message
+                                          : "Não foi possível excluir o comentário.",
+                                      )
+                                    }
+                                  }}
+                                >
+                                  Excluir
+                                </Button>
+                              </DialogClose>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
-                  </div>
                   </div>
                 ))
               )}
@@ -692,7 +746,11 @@ export function TaskCard({
                         actorName: meDisplayName || undefined,
                       })
                     } catch (e) {
-                      setCommentsError(e instanceof Error ? e.message : "Não foi possível enviar comentário.")
+                      setCommentsError(
+                        e instanceof Error
+                          ? e.message
+                          : "Não foi possível enviar comentário.",
+                      )
                     } finally {
                       setPosting(false)
                     }

@@ -1,5 +1,5 @@
 import { Menu } from "@ark-ui/react/menu"
-import { ChevronDown, User } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 const menuGroups = [
   {
@@ -48,4 +48,3 @@ export const Basic = () => (
     </Menu.Root>
   </div>
 )
-

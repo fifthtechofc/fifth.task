@@ -1,6 +1,5 @@
 "use client"
 
-import React from "react"
 import { motion } from "framer-motion"
 import {
   AlertCircle,
@@ -11,6 +10,7 @@ import {
   Minus,
   Users,
 } from "lucide-react"
+import type React from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -72,7 +72,12 @@ const DashboardMetricCard: React.FC<DashboardMetricCardProps> = ({
         <CardContent>
           <div className="mb-2 text-2xl font-bold text-foreground">{value}</div>
           {trendChange && (
-            <p className={cn("flex items-center text-xs font-medium", trendColorClass)}>
+            <p
+              className={cn(
+                "flex items-center text-xs font-medium",
+                trendColorClass,
+              )}
+            >
               <TrendIcon className="mr-1 h-3 w-3" aria-hidden="true" />
               {trendChange}{" "}
               {trendType === "up"

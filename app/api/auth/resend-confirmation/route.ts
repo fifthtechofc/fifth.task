@@ -1,21 +1,20 @@
-import { NextResponse } from 'next/server'
-
-import { getClientIp, rateLimit } from '@/lib/server/rate-limit'
-import { sendMail } from '@/lib/server/mailer'
-import { getPendingEmailConfirmation } from '@/lib/server/pending-email-confirmations'
+import { NextResponse } from "next/server"
+import { sendMail } from "@/lib/server/mailer"
+import { getPendingEmailConfirmation } from "@/lib/server/pending-email-confirmations"
+import { getClientIp, rateLimit } from "@/lib/server/rate-limit"
 
 function escapeHtml(input: string) {
   return input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;")
 }
 
 function buildConfirmEmailHtml({ actionLink }: { actionLink: string }) {
   const logoUrl =
-    'https://ryovcwvpeekcequwbpqn.supabase.co/storage/v1/object/public/Logo.fft/logo.png'
+    "https://ryovcwvpeekcequwbpqn.supabase.co/storage/v1/object/public/Logo.fft/logo.png"
   const safeUrl = escapeHtml(actionLink)
   const plusPatternSvg =
     "data:image/svg+xml,%3Csvg%20width%3D%2760%27%20height%3D%2760%27%20viewBox%3D%270%200%2060%2060%27%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%3E%3Cg%20fill%3D%27none%27%20fill-rule%3D%27evenodd%27%3E%3Cg%20fill%3D%27%23ffffff22%27%20fill-opacity%3D%271%27%3E%3Cpath%20d%3D%27M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"
@@ -62,10 +61,13 @@ function buildConfirmEmailHtml({ actionLink }: { actionLink: string }) {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req.headers)
-  const rl = rateLimit(`auth:resend-confirm:${ip}`, { limit: 6, windowMs: 60_000 })
+  const rl = rateLimit(`auth:resend-confirm:${ip}`, {
+    limit: 6,
+    windowMs: 60_000,
+  })
   if (!rl.ok) {
     return NextResponse.json(
-      { ok: false, error: 'Muitas tentativas. Tente novamente em instantes.' },
+      { ok: false, error: "Muitas tentativas. Tente novamente em instantes." },
       { status: 429 },
     )
   }
@@ -77,9 +79,12 @@ export async function POST(req: Request) {
     body = {}
   }
 
-  const email = body.email?.trim() ?? ''
+  const email = body.email?.trim() ?? ""
   if (!email) {
-    return NextResponse.json({ ok: false, error: 'Informe seu e-mail.' }, { status: 400 })
+    return NextResponse.json(
+      { ok: false, error: "Informe seu e-mail." },
+      { status: 400 },
+    )
   }
 
   try {
@@ -87,7 +92,7 @@ export async function POST(req: Request) {
     if (entry?.actionLink) {
       await sendMail({
         to: email,
-        subject: 'Confirme seu e-mail — Fifth Task',
+        subject: "Confirme seu e-mail — Fifth Task",
         html: buildConfirmEmailHtml({ actionLink: entry.actionLink }),
         text: `Confirme seu e-mail para ativar sua conta: ${entry.actionLink}`,
       })
@@ -98,4 +103,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true })
 }
-

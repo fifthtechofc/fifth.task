@@ -1,7 +1,32 @@
 "use client"
 
+import { AlertTriangle, Pencil, Trash2 } from "lucide-react"
 import * as React from "react"
-import { supabase } from "@/lib/supabase"
+import { Board } from "@/components/kanban/board"
+import { Button } from "@/components/ui/button"
+import { ColorPicker } from "@/components/ui/color-picker"
+import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { GlowCard } from "@/components/ui/spotlight-card"
+import { Textarea } from "@/components/ui/textarea"
 import {
   fetchBoardById,
   fetchBoardBySlug,
@@ -10,35 +35,10 @@ import {
   getBoardDisplayTitle,
   getOrCreateBoardByTitle,
   isUuidLike,
-  updateBoard,
   removeBoard,
+  updateBoard,
 } from "@/lib/kanban"
-import { Board } from "@/components/kanban/board"
-import { GlowCard } from "@/components/ui/spotlight-card"
-import { Pencil, Trash2, AlertTriangle } from "lucide-react"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { ColorPicker } from "@/components/ui/color-picker"
-import { Button } from "@/components/ui/button"
-import { useDashboardLoading } from "@/components/ui/dashboard-shell"
+import { supabase } from "@/lib/supabase"
 
 function formatProjectName(value: string) {
   return value
@@ -53,13 +53,18 @@ export function ProjectBoard({ project }: { project: string }) {
   const [boardId, setBoardId] = React.useState<string | null>(null)
   const [userId, setUserId] = React.useState<string | null>(null)
   const [boardTitle, setBoardTitle] = React.useState<string | null>(null)
-  const [boardDescription, setBoardDescription] = React.useState<string | null>(null)
-  const [backgroundColor, setBackgroundColor] = React.useState<string | null>(null)
+  const [boardDescription, setBoardDescription] = React.useState<string | null>(
+    null,
+  )
+  const [backgroundColor, setBackgroundColor] = React.useState<string | null>(
+    null,
+  )
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
   const [editingBoard, setEditingBoard] = React.useState(false)
   const [boardTitleDraft, setBoardTitleDraft] = React.useState("")
   const [boardDescriptionDraft, setBoardDescriptionDraft] = React.useState("")
-  const [backgroundColorDraft, setBackgroundColorDraft] = React.useState("#0f172a")
+  const [backgroundColorDraft, setBackgroundColorDraft] =
+    React.useState("#0f172a")
   const [logoUrlDraft, setLogoUrlDraft] = React.useState<string | null>(null)
   const [savingBoard, setSavingBoard] = React.useState(false)
   const [deletingBoard, setDeletingBoard] = React.useState(false)
@@ -145,10 +150,13 @@ export function ProjectBoard({ project }: { project: string }) {
         setLogoUrl(board.logo_url ?? null)
       } catch (e) {
         if (!alive) return
-        setError(e instanceof Error ? e.message : "Não foi possível carregar o board.")
+        setError(
+          e instanceof Error ? e.message : "Não foi possível carregar o board.",
+        )
       } finally {
-        if (!alive) return
-        setLoading(false)
+        if (alive) {
+          setLoading(false)
+        }
       }
     }
 
@@ -167,7 +175,9 @@ export function ProjectBoard({ project }: { project: string }) {
   }
 
   if (!boardId || !userId) {
-    return <p className="text-sm text-muted-foreground">Board não disponível.</p>
+    return (
+      <p className="text-sm text-muted-foreground">Board não disponível.</p>
+    )
   }
 
   // Persist last accessed board for sidebar/home.
@@ -178,7 +188,10 @@ export function ProjectBoard({ project }: { project: string }) {
       window.localStorage.setItem("kanban:lastBoardId", boardId)
       window.localStorage.setItem("kanban:lastBoardAt", String(Date.now()))
       // per-board timestamp for sorting
-      window.localStorage.setItem(`kanban:boardLastAt:${boardId}`, String(Date.now()))
+      window.localStorage.setItem(
+        `kanban:boardLastAt:${boardId}`,
+        String(Date.now()),
+      )
     }
   } catch {
     // ignore storage errors
@@ -298,7 +311,11 @@ export function ProjectBoard({ project }: { project: string }) {
           if (!open) setEditingBoard(false)
         }}
       >
-        <SheetContent side="right" showClose className="border-l border-border bg-zinc-950/95 text-foreground">
+        <SheetContent
+          side="right"
+          showClose
+          className="border-l border-border bg-zinc-950/95 text-foreground"
+        >
           <SheetHeader>
             <SheetTitle>Editar quadro</SheetTitle>
             <SheetDescription>
@@ -308,7 +325,10 @@ export function ProjectBoard({ project }: { project: string }) {
 
           <div className="space-y-4 px-4 py-3">
             <div className="space-y-2">
-              <label htmlFor="board-title-edit" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="board-title-edit"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Nome do quadro
               </label>
               <Input
@@ -321,7 +341,10 @@ export function ProjectBoard({ project }: { project: string }) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="board-desc-edit" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="board-desc-edit"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Descrição
               </label>
               <Textarea
@@ -335,7 +358,9 @@ export function ProjectBoard({ project }: { project: string }) {
             </div>
 
             <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground">Cor de fundo</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Cor de fundo
+              </span>
               <div className="flex items-center gap-3">
                 <ColorPicker
                   value={backgroundColorDraft}
@@ -361,7 +386,9 @@ export function ProjectBoard({ project }: { project: string }) {
             </div>
 
             <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground">Logo do quadro</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Logo do quadro
+              </span>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/20 bg-black/40 shadow-[0_0_18px_rgba(255,255,255,0.35)]">
                   <img
@@ -387,7 +414,9 @@ export function ProjectBoard({ project }: { project: string }) {
                           .upload(path, file, { upsert: true })
                         if (uploadError) throw uploadError
 
-                        const { data } = supabase.storage.from("board-logos").getPublicUrl(path)
+                        const { data } = supabase.storage
+                          .from("board-logos")
+                          .getPublicUrl(path)
                         if (data?.publicUrl) {
                           setLogoUrlDraft(data.publicUrl)
                         }
@@ -433,8 +462,9 @@ export function ProjectBoard({ project }: { project: string }) {
                     <DialogHeader className="flex-1 space-y-2 text-left">
                       <DialogTitle>Excluir quadro</DialogTitle>
                       <DialogDescription>
-                        Tem certeza que deseja excluir este quadro? Todas as colunas e tarefas serão removidas.
-                        Essa ação não pode ser desfeita.
+                        Tem certeza que deseja excluir este quadro? Todas as
+                        colunas e tarefas serão removidas. Essa ação não pode
+                        ser desfeita.
                       </DialogDescription>
                     </DialogHeader>
                   </div>
@@ -470,7 +500,11 @@ export function ProjectBoard({ project }: { project: string }) {
               >
                 Cancelar
               </Button>
-              <Button type="button" onClick={handleSaveBoard} disabled={savingBoard}>
+              <Button
+                type="button"
+                onClick={handleSaveBoard}
+                disabled={savingBoard}
+              >
                 {savingBoard ? "Salvando..." : "Salvar"}
               </Button>
             </div>
@@ -480,4 +514,3 @@ export function ProjectBoard({ project }: { project: string }) {
     </div>
   )
 }
-

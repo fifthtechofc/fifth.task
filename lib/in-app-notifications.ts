@@ -46,14 +46,19 @@ export type AppNotificationDbRow = {
 function actorNameFromProfile(p: ActorProfileRow | null | undefined) {
   if (!p) return ""
   return (
-    cleanText(p.full_name) || cleanText(p.display_name) || cleanText(p.email) || ""
+    cleanText(p.full_name) ||
+    cleanText(p.display_name) ||
+    cleanText(p.email) ||
+    ""
   )
 }
 
 type DbRow = AppNotificationDbRow
 
 /** PostgREST quando a tabela ainda não existe ou não está exposta ao API. */
-function isAppNotificationsUnavailable(error: { message?: string; code?: string } | null) {
+function isAppNotificationsUnavailable(
+  error: { message?: string; code?: string } | null,
+) {
   if (!error) return false
   const code = String(error.code ?? "")
   const msg = String(error.message ?? "").toLowerCase()
@@ -68,7 +73,9 @@ function isAppNotificationsUnavailable(error: { message?: string; code?: string 
 }
 
 /** Erros temporários do PostgREST / rede — voltar a tentar em vez de rebentar a UI. */
-function isRetryableAppNotificationsError(error: { message?: string; code?: string } | null) {
+function isRetryableAppNotificationsError(
+  error: { message?: string; code?: string } | null,
+) {
   if (!error) return false
   const msg = String(error.message ?? "").toLowerCase()
   const code = String(error.code ?? "")
@@ -137,7 +144,9 @@ const APP_NOTIFICATIONS_SELECT_PLAIN =
   "id,user_id,type,title,body,href,image_src,actor_id,card_id,read_at,created_at"
 
 /** Uma linha com join ao perfil do ator (útil após insert ou Realtime). */
-export async function fetchAppNotificationWithActor(id: string): Promise<AppNotification | null> {
+export async function fetchAppNotificationWithActor(
+  id: string,
+): Promise<AppNotification | null> {
   const first = await supabase
     .from("app_notifications")
     .select(APP_NOTIFICATIONS_SELECT_WITH_ACTOR)
@@ -150,7 +159,9 @@ export async function fetchAppNotificationWithActor(id: string): Promise<AppNoti
       warnOnceSchemaMissing("fetch one")
       return null
     }
-    if (/relationship|schema cache|foreign key/i.test(String(first.error.message))) {
+    if (
+      /relationship|schema cache|foreign key/i.test(String(first.error.message))
+    ) {
       const plain = await supabase
         .from("app_notifications")
         .select(APP_NOTIFICATIONS_SELECT_PLAIN)
@@ -202,7 +213,9 @@ async function fetchAppNotificationsAttempt(limit: number): Promise<{
   return { rows: rows.map(mapDbRowToAppNotification), error: null }
 }
 
-export async function fetchAppNotifications(limit = 80): Promise<AppNotification[]> {
+export async function fetchAppNotifications(
+  limit = 80,
+): Promise<AppNotification[]> {
   const maxAttempts = 4
   let lastError: { message?: string; code?: string } | null = null
 
@@ -226,7 +239,10 @@ export async function fetchAppNotifications(limit = 80): Promise<AppNotification
         return []
       }
 
-      if (isRetryableAppNotificationsError(error) && attempt < maxAttempts - 1) {
+      if (
+        isRetryableAppNotificationsError(error) &&
+        attempt < maxAttempts - 1
+      ) {
         continue
       }
 
@@ -235,7 +251,11 @@ export async function fetchAppNotifications(limit = 80): Promise<AppNotification
     } catch (e) {
       const name = e instanceof Error ? e.name : ""
       const msg = e instanceof Error ? e.message : String(e)
-      if (name === "AbortError" || msg.includes("AbortError") || msg.includes("steal")) {
+      if (
+        name === "AbortError" ||
+        msg.includes("AbortError") ||
+        msg.includes("steal")
+      ) {
         if (attempt < maxAttempts - 1) {
           lastError = { message: msg }
           continue
@@ -247,7 +267,10 @@ export async function fetchAppNotifications(limit = 80): Promise<AppNotification
   }
 
   if (lastError?.message) {
-    console.warn("[in-app-notifications] fetch exhausted retries:", lastError.message)
+    console.warn(
+      "[in-app-notifications] fetch exhausted retries:",
+      lastError.message,
+    )
   }
   return []
 }
@@ -331,7 +354,10 @@ export async function markAllAppNotificationsRead(): Promise<boolean> {
       appNotificationsDbAvailable = false
       warnOnceSchemaMissing("mark all read")
     } else {
-      console.error("[in-app-notifications] mark all read failed", error.message)
+      console.error(
+        "[in-app-notifications] mark all read failed",
+        error.message,
+      )
     }
     return false
   }

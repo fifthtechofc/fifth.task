@@ -4,7 +4,10 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MembersSelect, type MemberOption } from "@/components/ui/members-select"
+import {
+  type MemberOption,
+  MembersSelect,
+} from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -19,7 +22,13 @@ import type { Project } from "@/lib/projects"
 type ProjectEditSheetProps = {
   memberOptions: MemberOption[]
   onOpenChange: (open: boolean) => void
-  onSave: (params: { id: string; title: string; description: string; memberIds: string[]; progress: number }) => Promise<void>
+  onSave: (params: {
+    id: string
+    title: string
+    description: string
+    memberIds: string[]
+    progress: number
+  }) => Promise<void>
   open: boolean
   project: Project | null
 }
@@ -69,7 +78,11 @@ export function ProjectEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" showClose className="border-l border-border bg-zinc-950/95 text-foreground">
+      <SheetContent
+        side="right"
+        showClose
+        className="border-l border-border bg-zinc-950/95 text-foreground"
+      >
         <SheetHeader>
           <SheetTitle>Editar projeto</SheetTitle>
           <SheetDescription>
@@ -79,7 +92,10 @@ export function ProjectEditSheet({
 
         <div className="space-y-4 px-4 py-3">
           <div className="space-y-2">
-            <label htmlFor="project-title-edit" className="text-xs font-medium text-muted-foreground">
+            <label
+              htmlFor="project-title-edit"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Título
             </label>
             <Input
@@ -92,7 +108,10 @@ export function ProjectEditSheet({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="project-desc-edit" className="text-xs font-medium text-muted-foreground">
+            <label
+              htmlFor="project-desc-edit"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Descrição
             </label>
             <Textarea
@@ -114,7 +133,10 @@ export function ProjectEditSheet({
           />
 
           <div className="space-y-2">
-            <label htmlFor="project-progress-edit" className="text-xs font-medium text-muted-foreground">
+            <label
+              htmlFor="project-progress-edit"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Progresso
             </label>
             <div className="flex items-center gap-3">
@@ -124,7 +146,11 @@ export function ProjectEditSheet({
                 min={0}
                 max={100}
                 value={progress}
-                onChange={(e) => setProgress(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                onChange={(e) =>
+                  setProgress(
+                    Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                  )
+                }
                 className="w-24 border-white/15 bg-black/40"
               />
               <span className="text-xs text-muted-foreground">%</span>
@@ -143,7 +169,12 @@ export function ProjectEditSheet({
         </div>
 
         <SheetFooter className="flex-row items-center justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancelar
           </Button>
           <Button type="button" onClick={handleSave} disabled={saving}>

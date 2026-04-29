@@ -1,19 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { getSupabaseSessionSnapshot, supabase } from "@/lib/supabase"
 import {
+  type AppNotification,
+  type AppNotificationDbRow,
   fetchAppNotifications,
   fetchAppNotificationWithActor,
   insertMyAppNotification,
+  isAppNotificationsDbAvailable,
+  mapDbRowToAppNotification,
   markAllAppNotificationsRead,
   markAppNotificationRead,
-  mapDbRowToAppNotification,
   resetAppNotificationsDbAvailability,
-  isAppNotificationsDbAvailable,
-  type AppNotification,
-  type AppNotificationDbRow,
 } from "@/lib/in-app-notifications"
+import { getSupabaseSessionSnapshot, supabase } from "@/lib/supabase"
 
 export type { AppNotification }
 
@@ -54,7 +54,10 @@ function loadLocalNotifications(userId: string): AppNotification[] {
 
 function saveLocalNotifications(userId: string, items: AppNotification[]) {
   try {
-    localStorage.setItem(localStorageKey(userId), JSON.stringify(items.slice(0, MAX_ITEMS)))
+    localStorage.setItem(
+      localStorageKey(userId),
+      JSON.stringify(items.slice(0, MAX_ITEMS)),
+    )
   } catch {
     // ignore
   }
@@ -77,11 +80,19 @@ function mergeIncoming(prev: AppNotification[], next: AppNotification) {
   return [next, ...prev].slice(0, MAX_ITEMS)
 }
 
-export function AppNotificationsProvider({ children }: { children: React.ReactNode }) {
+export function AppNotificationsProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [userId, setUserId] = React.useState<string | null>(null)
   const [items, setItems] = React.useState<AppNotification[]>([])
-  const [feedSource, setFeedSource] = React.useState<"pending" | "db" | "local">("pending")
-  const refreshDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [feedSource, setFeedSource] = React.useState<
+    "pending" | "db" | "local"
+  >("pending")
+  const refreshDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   React.useEffect(() => {
     let cancelled = false
@@ -104,7 +115,7 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
   React.useEffect(() => {
     resetAppNotificationsDbAvailability()
     setFeedSource("pending")
-  }, [userId])
+  }, [])
 
   React.useEffect(() => {
     return () => {
@@ -161,7 +172,9 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
           void (async () => {
             try {
               const enriched = await fetchAppNotificationWithActor(id)
-              const row = enriched ?? mapDbRowToAppNotification(raw as AppNotificationDbRow)
+              const row =
+                enriched ??
+                mapDbRowToAppNotification(raw as AppNotificationDbRow)
               setItems((prev) => mergeIncoming(prev, row))
             } catch {
               void refresh()
@@ -181,43 +194,40 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
     saveLocalNotifications(userId, items)
   }, [items, userId, feedSource])
 
-  const pushNotification = React.useCallback(
-    async (n: PushInput) => {
-      const row = await insertMyAppNotification({
+  const pushNotification = React.useCallback(async (n: PushInput) => {
+    const row = await insertMyAppNotification({
+      title: n.title,
+      body: n.body,
+      href: n.href,
+      imageSrc: n.imageSrc,
+      cardId: n.cardId,
+      notificationType: n.notificationType ?? n.type,
+    })
+    if (row) {
+      setFeedSource("db")
+      setItems((prev) => mergeIncoming(prev, row))
+      return
+    }
+    if (!isAppNotificationsDbAvailable()) {
+      const localRow: AppNotification = {
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `local-${Date.now()}`,
         title: n.title,
         body: n.body,
-        href: n.href,
+        createdAt: n.createdAt ?? Date.now(),
+        read: n.read ?? false,
         imageSrc: n.imageSrc,
-        cardId: n.cardId,
+        href: n.href,
         notificationType: n.notificationType ?? n.type,
-      })
-      if (row) {
-        setFeedSource("db")
-        setItems((prev) => mergeIncoming(prev, row))
-        return
+        actorName: n.actorName,
+        cardId: n.cardId ?? null,
       }
-      if (!isAppNotificationsDbAvailable()) {
-        const localRow: AppNotification = {
-          id:
-            typeof crypto !== "undefined" && "randomUUID" in crypto
-              ? crypto.randomUUID()
-              : `local-${Date.now()}`,
-          title: n.title,
-          body: n.body,
-          createdAt: n.createdAt ?? Date.now(),
-          read: n.read ?? false,
-          imageSrc: n.imageSrc,
-          href: n.href,
-          notificationType: n.notificationType ?? n.type,
-          actorName: n.actorName,
-          cardId: n.cardId ?? null,
-        }
-        setFeedSource("local")
-        setItems((prev) => mergeIncoming(prev, localRow))
-      }
-    },
-    [],
-  )
+      setFeedSource("local")
+      setItems((prev) => mergeIncoming(prev, localRow))
+    }
+  }, [])
 
   const markAllRead = React.useCallback(() => {
     setItems((prev) => prev.map((x) => ({ ...x, read: true })))
@@ -228,7 +238,9 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
 
   const markRead = React.useCallback(
     (id: string) => {
-      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)))
+      setItems((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, read: true } : x)),
+      )
       if (feedSource === "db") {
         void markAppNotificationRead(id)
       }
@@ -236,7 +248,10 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
     [feedSource],
   )
 
-  const unreadCount = React.useMemo(() => items.filter((x) => !x.read).length, [items])
+  const unreadCount = React.useMemo(
+    () => items.filter((x) => !x.read).length,
+    [items],
+  )
 
   const refreshNotifications = React.useCallback(() => {
     if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current)
@@ -255,10 +270,21 @@ export function AppNotificationsProvider({ children }: { children: React.ReactNo
       markRead,
       refreshNotifications,
     }),
-    [items, unreadCount, pushNotification, markAllRead, markRead, refreshNotifications],
+    [
+      items,
+      unreadCount,
+      pushNotification,
+      markAllRead,
+      markRead,
+      refreshNotifications,
+    ],
   )
 
-  return <AppNotificationsContext.Provider value={value}>{children}</AppNotificationsContext.Provider>
+  return (
+    <AppNotificationsContext.Provider value={value}>
+      {children}
+    </AppNotificationsContext.Provider>
+  )
 }
 
 export function useAppNotifications(): Ctx {

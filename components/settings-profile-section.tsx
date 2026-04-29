@@ -1,13 +1,7 @@
 "use client"
 
+import { CalendarDays, Clock3, Mail, Pencil, UserRound } from "lucide-react"
 import * as React from "react"
-import {
-  CalendarDays,
-  Clock3,
-  Mail,
-  Pencil,
-  UserRound,
-} from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -95,7 +89,9 @@ export function SettingsProfileSection({
   const [savingDetails, setSavingDetails] = React.useState(false)
   const [detailsError, setDetailsError] = React.useState<string | null>(null)
   const [editorOpen, setEditorOpen] = React.useState(false)
-  const [status, setStatus] = React.useState<"online" | "focus" | "offline">("offline")
+  const [status, setStatus] = React.useState<"online" | "focus" | "offline">(
+    "offline",
+  )
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -118,7 +114,11 @@ export function SettingsProfileSection({
         "Sem nome",
       )
       const title = pickString(profile.job_title, profile.role)
-      let url = pickString(profile.avatar_url, profile.avatarUrl, profile.avatar)
+      let url = pickString(
+        profile.avatar_url,
+        profile.avatarUrl,
+        profile.avatar,
+      )
 
       if (!url) {
         try {
@@ -182,7 +182,9 @@ export function SettingsProfileSection({
     setDashboardLoading(loading)
   }, [loading, setDashboardLoading])
 
-  async function onAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function onAvatarFileChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file || !userId) return
@@ -200,7 +202,9 @@ export function SettingsProfileSection({
       setAvatarSrc(`${publicUrl}?t=${Date.now()}`)
     } catch (uploadErr) {
       setUploadError(
-        uploadErr instanceof Error ? uploadErr.message : "Falha no envio da imagem.",
+        uploadErr instanceof Error
+          ? uploadErr.message
+          : "Falha no envio da imagem.",
       )
     } finally {
       setUploading(false)
@@ -285,13 +289,17 @@ export function SettingsProfileSection({
 
             <div className="flex min-w-0 flex-1 flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
               <div className="min-w-0">
-                <p className="text-lg font-semibold text-white">{displayName}</p>
+                <p className="text-lg font-semibold text-white">
+                  {displayName}
+                </p>
                 {jobTitle && (
                   <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
                     {jobTitle}
                   </p>
                 )}
-                {uploadError && <p className="mt-2 text-xs text-red-400">{uploadError}</p>}
+                {uploadError && (
+                  <p className="mt-2 text-xs text-red-400">{uploadError}</p>
+                )}
               </div>
 
               <div className="flex flex-col items-center gap-3 sm:items-end">
@@ -325,31 +333,48 @@ export function SettingsProfileSection({
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Nome</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{displayName}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Nome
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {displayName}
+              </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">E-mail</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{email || "-"}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                E-mail
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {email || "-"}
+              </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Cargo</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{jobTitle}</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Cargo
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {jobTitle}
+              </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Ultimo acesso
               </p>
-              <p className="mt-2 text-sm font-medium text-foreground">{lastAccess}</p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {lastAccess}
+              </p>
             </div>
           </div>
 
           <section className="mt-6 rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)_42%,rgba(0,0,0,0.15)_100%)] p-5 backdrop-blur-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Visão geral do perfil</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Visão geral do perfil
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  As alterações agora abrem em um painel lateral, sem tirar você do contexto.
+                  As alterações agora abrem em um painel lateral, sem tirar você
+                  do contexto.
                 </p>
               </div>
               <Button
@@ -366,7 +391,9 @@ export function SettingsProfileSection({
               <div className="rounded-3xl border border-white/10 bg-black/25 px-4 py-4">
                 <div className="flex items-center gap-2 text-zinc-300">
                   <CalendarDays className="h-4 w-4" />
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Nascimento</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Nascimento
+                  </p>
                 </div>
                 <p className="mt-3 text-sm font-medium text-foreground">
                   {birthday || "Não informado"}
@@ -375,7 +402,9 @@ export function SettingsProfileSection({
               <div className="rounded-3xl border border-white/10 bg-black/25 px-4 py-4">
                 <div className="flex items-center gap-2 text-zinc-300">
                   <Clock3 className="h-4 w-4" />
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Jornada</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Jornada
+                  </p>
                 </div>
                 <p className="mt-3 text-sm font-medium text-foreground">
                   {workHours || "Não informado"}
@@ -384,7 +413,9 @@ export function SettingsProfileSection({
               <div className="rounded-3xl border border-white/10 bg-black/25 px-4 py-4">
                 <div className="flex items-center gap-2 text-zinc-300">
                   <Mail className="h-4 w-4" />
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Contato</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Contato
+                  </p>
                 </div>
                 <p className="mt-3 truncate text-sm font-medium text-foreground">
                   {email || "Não informado"}
@@ -393,9 +424,12 @@ export function SettingsProfileSection({
             </div>
 
             <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Bio</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Bio
+              </p>
               <p className="mt-2 text-sm leading-6 text-zinc-200">
-                {bio || "Adicione uma breve descricao para contextualizar seu papel no time."}
+                {bio ||
+                  "Adicione uma breve descricao para contextualizar seu papel no time."}
               </p>
             </div>
           </section>
@@ -403,7 +437,9 @@ export function SettingsProfileSection({
           {showSummary && (
             <section className="mt-4 rounded-[28px] border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-foreground">Resumo rapido</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Resumo rapido
+                </h3>
                 <p className="text-xs text-muted-foreground">
                   Algumas informações úteis do seu workspace.
                 </p>
@@ -419,7 +455,9 @@ export function SettingsProfileSection({
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Idioma</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Idioma
+                  </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     Portugues (Brasil)
                   </p>
@@ -445,7 +483,10 @@ export function SettingsProfileSection({
                 <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-white/[0.03] p-4">
                   <div className="relative">
                     <Avatar className="h-20 w-20 border border-white/20 bg-black/60">
-                      <AvatarImage src={avatarSrc || undefined} alt={displayName} />
+                      <AvatarImage
+                        src={avatarSrc || undefined}
+                        alt={displayName}
+                      />
                       <AvatarFallback className="text-lg">
                         {initials(displayName || "SN")}
                       </AvatarFallback>
@@ -461,11 +502,16 @@ export function SettingsProfileSection({
                     </label>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Foto do perfil</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      O painel lateral segue o mesmo padrão de edição usado em outras áreas.
+                    <p className="text-sm font-semibold text-foreground">
+                      Foto do perfil
                     </p>
-                    {uploadError && <p className="mt-2 text-xs text-red-400">{uploadError}</p>}
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      O painel lateral segue o mesmo padrão de edição usado em
+                      outras áreas.
+                    </p>
+                    {uploadError && (
+                      <p className="mt-2 text-xs text-red-400">{uploadError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -476,7 +522,9 @@ export function SettingsProfileSection({
                 )}
 
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-zinc-300">Nome completo</p>
+                  <p className="text-xs font-medium text-zinc-300">
+                    Nome completo
+                  </p>
                   <Input
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
@@ -496,7 +544,9 @@ export function SettingsProfileSection({
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-zinc-300">Data de nascimento</p>
+                    <p className="text-xs font-medium text-zinc-300">
+                      Data de nascimento
+                    </p>
                     <Input
                       type="date"
                       value={birthday}
@@ -505,7 +555,9 @@ export function SettingsProfileSection({
                     />
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-zinc-300">Horário de trabalho</p>
+                    <p className="text-xs font-medium text-zinc-300">
+                      Horário de trabalho
+                    </p>
                     <Input
                       placeholder="Ex: 09h as 18h"
                       value={workHours}

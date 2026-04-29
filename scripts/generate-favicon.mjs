@@ -30,4 +30,3 @@ const ico = await pngToIco(pngs)
 await fs.writeFile(output, ico)
 
 console.log("Wrote", output)
-

@@ -1,17 +1,17 @@
-import { getSupabaseUserId, supabase } from './supabase'
-import { getAvatarPublicUrl } from './storage'
-import { getJobTitleDescription } from './job-titles'
+import { getJobTitleDescription } from "./job-titles"
+import { getAvatarPublicUrl } from "./storage"
+import { getSupabaseUserId, supabase } from "./supabase"
 
 export async function getMyProfile() {
   const userId = await getSupabaseUserId()
   if (!userId) {
-    throw new Error('Usuário não autenticado.')
+    throw new Error("Usuário não autenticado.")
   }
 
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
     .single()
 
   if (error) {
@@ -24,13 +24,13 @@ export async function getMyProfile() {
 export async function updateMyProfileAvatar(avatarUrl: string) {
   const userId = await getSupabaseUserId()
   if (!userId) {
-    throw new Error('Usuário não autenticado.')
+    throw new Error("Usuário não autenticado.")
   }
 
   const { error } = await supabase
-    .from('profiles')
+    .from("profiles")
     .update({ avatar_url: avatarUrl })
-    .eq('id', userId)
+    .eq("id", userId)
 
   if (error) {
     throw new Error(error.message)
@@ -46,7 +46,7 @@ export async function updateMyProfileDetails(params: {
 }) {
   const userId = await getSupabaseUserId()
   if (!userId) {
-    throw new Error('Usuário não autenticado.')
+    throw new Error("Usuário não autenticado.")
   }
 
   const payload: Record<string, unknown> = {}
@@ -58,7 +58,10 @@ export async function updateMyProfileDetails(params: {
 
   if (Object.keys(payload).length === 0) return
 
-  const { error } = await supabase.from('profiles').update(payload).eq('id', userId)
+  const { error } = await supabase
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId)
   if (error) {
     throw new Error(error.message)
   }
@@ -120,14 +123,18 @@ export async function updateMyNotificationSettings(
 
   if (Object.keys(payload).length === 0) return
 
-  const { error } = await supabase.from("profiles").update(payload).eq("id", userId)
+  const { error } = await supabase
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId)
   if (error) {
     const message = error.message ?? ""
     const missingColumn =
       (message.includes("notify_daily_summary") ||
         message.includes("notify_deadline_alerts") ||
         message.includes("notify_team_updates")) &&
-      (message.toLowerCase().includes("column") || message.toLowerCase().includes("schema"))
+      (message.toLowerCase().includes("column") ||
+        message.toLowerCase().includes("schema"))
 
     if (missingColumn) {
       throw new Error(
@@ -150,18 +157,18 @@ export async function touchMyPresence() {
   // Try to write activity timestamp if the column exists.
   {
     const { error } = await supabase
-      .from('profiles')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from("profiles")
       .update({ last_seen_at: now } as any)
-      .eq('id', userId)
+      .eq("id", userId)
 
     if (!error) return
 
     // If the column doesn't exist, fall back to updating status.
-    const msg = (error as { message?: string }).message ?? ''
+    const msg = (error as { message?: string }).message ?? ""
     const missingLastSeen =
-      msg.toLowerCase().includes('last_seen_at') &&
-      (msg.toLowerCase().includes('column') || msg.toLowerCase().includes('schema'))
+      msg.toLowerCase().includes("last_seen_at") &&
+      (msg.toLowerCase().includes("column") ||
+        msg.toLowerCase().includes("schema"))
 
     if (!missingLastSeen) {
       return
@@ -169,10 +176,9 @@ export async function touchMyPresence() {
   }
 
   await supabase
-    .from('profiles')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ status: 'online' } as any)
-    .eq('id', userId)
+    .from("profiles")
+    .update({ status: "online" } as any)
+    .eq("id", userId)
 }
 
 export async function setMyStatusOffline() {
@@ -183,10 +189,9 @@ export async function setMyStatusOffline() {
 
   // Marca explicitamente como offline; deriveStatusFromActivity respeita isso.
   await supabase
-    .from('profiles')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ status: 'offline' } as any)
-    .eq('id', userId)
+    .from("profiles")
+    .update({ status: "offline" } as any)
+    .eq("id", userId)
 }
 
 export type TeamMember = {
@@ -196,7 +201,7 @@ export type TeamMember = {
   imageSrc: string
   description?: string
   role?: string
-  status?: 'online' | 'focus' | 'offline'
+  status?: "online" | "focus" | "offline"
   birthday?: string | null
   workHours?: string | null
   bio?: string | null
@@ -204,24 +209,26 @@ export type TeamMember = {
 
 function coalesceString(...values: Array<unknown>) {
   for (const v of values) {
-    if (typeof v === 'string' && v.trim()) return v.trim()
+    if (typeof v === "string" && v.trim()) return v.trim()
   }
-  return ''
+  return ""
 }
 
 function parseDateMaybe(value: unknown): Date | null {
-  if (typeof value !== 'string' || !value.trim()) return null
+  if (typeof value !== "string" || !value.trim()) return null
   const d = new Date(value)
   return Number.isFinite(d.getTime()) ? d : null
 }
 
-function deriveStatusFromActivity(row: Record<string, unknown>): TeamMember['status'] | undefined {
+function deriveStatusFromActivity(
+  row: Record<string, unknown>,
+): TeamMember["status"] | undefined {
   const explicit = coalesceString(row.status).toLowerCase()
   // Tratamos apenas "online" e "focus" como estados explícitos fortes.
   // "offline" não bloqueia o cálculo por atividade – isso permite que o
   // usuário volte a ficar online após logar novamente.
-  if (explicit === 'online' || explicit === 'focus') {
-    return explicit as TeamMember['status']
+  if (explicit === "online" || explicit === "focus") {
+    return explicit as TeamMember["status"]
   }
 
   const activity =
@@ -230,19 +237,19 @@ function deriveStatusFromActivity(row: Record<string, unknown>): TeamMember['sta
     parseDateMaybe(row.last_sign_in_at) ??
     parseDateMaybe(row.updated_at)
 
-  if (!activity) return 'offline'
+  if (!activity) return "offline"
 
   const minutes = (Date.now() - activity.getTime()) / 60000
   // Até 1 minuto desde a última atividade: online (verde)
-  if (minutes <= 1) return 'online'
+  if (minutes <= 1) return "online"
   // Entre 1 minuto e 2 horas: foco (amarelo)
-  if (minutes <= 120) return 'focus'
+  if (minutes <= 120) return "focus"
   // Acima de 2 horas ou sem atividade: offline (cinza)
-  return 'offline'
+  return "offline"
 }
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
-  const { data, error } = await supabase.from('profiles').select('*')
+  const { data, error } = await supabase.from("profiles").select("*")
 
   if (error) {
     throw new Error(error.message)
@@ -252,26 +259,36 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 
   const mapped = await Promise.all(
     rows.map(async (row) => {
-      const id = String(row.id ?? '')
-      const name = coalesceString(row.full_name, row.name, row.display_name, row.email, 'Sem nome')
+      const id = String(row.id ?? "")
+      const name = coalesceString(
+        row.full_name,
+        row.name,
+        row.display_name,
+        row.email,
+        "Sem nome",
+      )
       const username = coalesceString(row.username)
 
-      const directAvatar = coalesceString(row.avatar_url, row.avatarUrl, row.avatar)
+      const directAvatar = coalesceString(
+        row.avatar_url,
+        row.avatarUrl,
+        row.avatar,
+      )
       let imageSrc = directAvatar
 
       if (!imageSrc && id) {
         try {
           const { publicUrl } = await getAvatarPublicUrl(id)
-          imageSrc = publicUrl ?? ''
+          imageSrc = publicUrl ?? ""
         } catch {
-          imageSrc = ''
+          imageSrc = ""
         }
       }
 
       const role = coalesceString(row.job_title, row.role)
       // Descrição exibida na tela de Times deve refletir o cargo,
       // e não a bio pessoal (que é mostrada apenas no modal/perfil).
-      const description = getJobTitleDescription(role) || ''
+      const description = getJobTitleDescription(role) || ""
       const status = deriveStatusFromActivity(row)
       const birthday = coalesceString(row.birthday)
       const workHours = coalesceString(row.work_hours)
@@ -295,15 +312,15 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   const cleaned = mapped.filter((m) => m.id)
 
   // Ordena por status: online > focus > offline, depois por nome.
-  const statusWeight: Record<NonNullable<TeamMember['status']>, number> = {
+  const statusWeight: Record<NonNullable<TeamMember["status"]>, number> = {
     online: 0,
     focus: 1,
     offline: 2,
   }
 
   cleaned.sort((a, b) => {
-    const wa = statusWeight[a.status ?? 'offline']
-    const wb = statusWeight[b.status ?? 'offline']
+    const wa = statusWeight[a.status ?? "offline"]
+    const wb = statusWeight[b.status ?? "offline"]
     if (wa !== wb) return wa - wb
     return a.name.localeCompare(b.name)
   })

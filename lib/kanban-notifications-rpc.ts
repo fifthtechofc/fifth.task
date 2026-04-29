@@ -1,7 +1,10 @@
 import { supabase } from "@/lib/supabase"
 
 function logRpcFailure(name: string, error: string) {
-  console.warn(`[kanban-notifications] ${name} falhou (aplica supabase/kanban_activity_notifications_rpc.sql se necessário):`, error)
+  console.warn(
+    `[kanban-notifications] ${name} falhou (aplica supabase/kanban_activity_notifications_rpc.sql se necessário):`,
+    error,
+  )
 }
 
 export async function rpcNotifyBoardCreated(args: {

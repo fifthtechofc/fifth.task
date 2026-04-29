@@ -1,21 +1,18 @@
 "use client"
-
+import { Plus } from "lucide-react"
 import * as React from "react"
-import { Plus, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Menu } from "@ark-ui/react/menu"
-import { ChevronDown } from "lucide-react"
+import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet"
-import { MembersSelect } from "@/components/ui/members-select"
-import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 
 interface AddTaskFormProps {
   isOpen: boolean
@@ -34,7 +31,7 @@ interface AddTaskFormProps {
   onSubmit: () => void
 }
 
-function initials(name: string) {
+function _initials(name: string) {
   return name
     .split(/\s+/)
     .map((p) => p[0])
@@ -60,12 +57,12 @@ export function AddTaskForm({
   onSubmit,
 }: AddTaskFormProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
-  const [isMembersMenuOpen, setIsMembersMenuOpen] = React.useState(false)
+  const [_isMembersMenuOpen, _setIsMembersMenuOpen] = React.useState(false)
   const safeColor = React.useMemo(() => {
-    const c = (color ?? '').trim()
+    const c = (color ?? "").trim()
     if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c as `#${string}`
     if (/^[0-9a-fA-F]{3,8}$/.test(c)) return `#${c}` as `#${string}`
-    return '#64748b' as `#${string}`
+    return "#64748b" as `#${string}`
   }, [color])
 
   React.useEffect(() => {
@@ -75,7 +72,7 @@ export function AddTaskForm({
   }, [isOpen])
 
   if (isOpen) {
-    const selected = assignees.filter((a) => assigneeIds.includes(a.id))
+    const _selected = assignees.filter((a) => assigneeIds.includes(a.id))
     return (
       <Sheet
         open={isOpen}
@@ -91,7 +88,8 @@ export function AddTaskForm({
           <SheetHeader>
             <SheetTitle>{heading}</SheetTitle>
             <SheetDescription>
-              Defina os detalhes da tarefa, como título, descrição e responsáveis.
+              Defina os detalhes da tarefa, como título, descrição e
+              responsáveis.
             </SheetDescription>
           </SheetHeader>
 
@@ -115,7 +113,9 @@ export function AddTaskForm({
             />
 
             <div className="flex w-full items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-card-foreground">
-              <span className="text-xs font-medium text-muted-foreground">Cor</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Cor
+              </span>
               <span
                 className="h-4 w-4 rounded-md border border-border"
                 style={{ backgroundColor: safeColor }}
@@ -143,11 +143,7 @@ export function AddTaskForm({
             >
               Cancelar
             </Button>
-            <Button
-              type="button"
-              onClick={onSubmit}
-              className="flex-1"
-            >
+            <Button type="button" onClick={onSubmit} className="flex-1">
               {submitLabel}
             </Button>
           </SheetFooter>

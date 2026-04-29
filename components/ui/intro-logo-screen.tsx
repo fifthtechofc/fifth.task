@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
-import Image from 'next/image'
+import Image from "next/image"
 
-import NeuralBackground from '@/components/ui/flow-field-background'
-import { IntroTimedProgressBar } from '@/components/ui/intro-timed-progress-bar'
-import { cn } from '@/lib/utils'
+import NeuralBackground from "@/components/ui/flow-field-background"
+import { IntroTimedProgressBar } from "@/components/ui/intro-timed-progress-bar"
+import { cn } from "@/lib/utils"
 
 /** Logo centralizada + barra (fundo preto, asset `public/logo-task.PNG`). */
 export function IntroLogoScreen({
@@ -19,7 +19,7 @@ export function IntroLogoScreen({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[300] overflow-hidden bg-black',
+        "fixed inset-0 z-[300] overflow-hidden bg-black",
         className,
       )}
       aria-busy="true"

@@ -11,7 +11,10 @@ function key(email: string) {
   return email.trim().toLowerCase()
 }
 
-export function savePendingEmailConfirmation(email: string, actionLink: string) {
+export function savePendingEmailConfirmation(
+  email: string,
+  actionLink: string,
+) {
   const k = key(email)
   if (!k || !actionLink) return
   pending.set(k, { actionLink, createdAt: Date.now() })
@@ -27,4 +30,3 @@ export function getPendingEmailConfirmation(email: string) {
   }
   return v
 }
-

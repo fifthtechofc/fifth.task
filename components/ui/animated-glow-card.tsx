@@ -1,4 +1,4 @@
-import * as React from "react"
+import type * as React from "react"
 import { cn } from "@/lib/utils"
 
 interface CardCanvasProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -21,5 +21,4 @@ const Card: React.FC<CardProps> = ({ className, ...props }) => {
   )
 }
 
-export { CardCanvas, Card }
-
+export { Card, CardCanvas }

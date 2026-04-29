@@ -1,12 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? ""
 
 function isValidHttpUrl(s: string): boolean {
   try {
     const u = new URL(s)
-    return u.protocol === 'http:' || u.protocol === 'https:'
+    return u.protocol === "http:" || u.protocol === "https:"
   } catch {
     return false
   }
@@ -15,12 +15,12 @@ function isValidHttpUrl(s: string): boolean {
 function assertSupabaseEnv() {
   if (!isValidHttpUrl(supabaseUrl)) {
     throw new Error(
-      'NEXT_PUBLIC_SUPABASE_URL inválida ou ausente. Use a Project URL (https://…) em Settings → API no .env.local ou .env.',
+      "NEXT_PUBLIC_SUPABASE_URL inválida ou ausente. Use a Project URL (https://…) em Settings → API no .env.local ou .env.",
     )
   }
   if (!supabaseAnonKey) {
     throw new Error(
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY ausente. Copie a anon public key em Settings → API no Supabase.',
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY ausente. Copie a anon public key em Settings → API no Supabase.",
     )
   }
 }
@@ -33,11 +33,11 @@ function isAuthLockAbort(error: unknown) {
   const message =
     error instanceof Error
       ? error.message
-      : typeof error === 'object' && error !== null && 'message' in error
+      : typeof error === "object" && error !== null && "message" in error
         ? String(error.message)
-        : String(error ?? '')
+        : String(error ?? "")
 
-  return message.includes('AbortError') || message.includes('steal')
+  return message.includes("AbortError") || message.includes("steal")
 }
 
 function sleep(ms: number) {

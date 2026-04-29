@@ -69,7 +69,8 @@ export async function httpNotifyTaskAssigned(args: {
     )
   }
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession()
   if (sessionError || !sessionData.session?.access_token) {
     if (inApp.ok) {
       return { ok: true, sent: 0, attempted: 0, inAppInserted: inApp.inserted }

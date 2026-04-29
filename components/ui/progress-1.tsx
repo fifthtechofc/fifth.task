@@ -1,12 +1,12 @@
-'use client'
+"use client"
 
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils"
 
 export type LinearBasicProps = {
   className?: string
   value?: number | null
   defaultValue?: number
-  size?: 'sm' | 'md'
+  size?: "sm" | "md"
   light?: boolean
   /** Trilha escura sobre fundo claro (ex.: splash com logo em PNG claro). */
   onLight?: boolean
@@ -18,7 +18,7 @@ export default function LinearBasic({
   className,
   value,
   defaultValue = 65,
-  size = 'md',
+  size = "md",
   light = false,
   onLight = false,
   glow = false,
@@ -30,41 +30,47 @@ export default function LinearBasic({
   return (
     <div
       className={cn(
-        'mx-auto w-full',
-        size === 'sm' ? 'max-w-[200px]' : 'max-w-sm',
-        glow && 'py-1.5',
+        "mx-auto w-full",
+        size === "sm" ? "max-w-[200px]" : "max-w-sm",
+        glow && "py-1.5",
         className,
       )}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={isIndeterminate ? undefined : clampedValue}
-      aria-valuetext={isIndeterminate ? 'Carregando' : `${Math.round(clampedValue)}%`}
+      aria-valuetext={
+        isIndeterminate ? "Carregando" : `${Math.round(clampedValue)}%`
+      }
     >
       <div
         className={cn(
-          'w-full rounded-full',
-          size === 'sm' ? 'h-0.5' : 'h-2',
-          glow ? 'overflow-visible' : 'overflow-hidden',
+          "w-full rounded-full",
+          size === "sm" ? "h-0.5" : "h-2",
+          glow ? "overflow-visible" : "overflow-hidden",
           onLight
-            ? 'bg-neutral-200'
+            ? "bg-neutral-200"
             : light
               ? glow
-                ? 'bg-white/30'
-                : 'bg-white/20'
-              : 'bg-[var(--color-muted-surface)]',
+                ? "bg-white/30"
+                : "bg-white/20"
+              : "bg-[var(--color-muted-surface)]",
         )}
       >
         <div
           className={cn(
-            'h-full rounded-full',
-            onLight ? 'bg-neutral-600' : light ? 'bg-white' : 'bg-[var(--color-text-primary)]',
+            "h-full rounded-full",
+            onLight
+              ? "bg-neutral-600"
+              : light
+                ? "bg-white"
+                : "bg-[var(--color-text-primary)]",
             glow &&
               light &&
-              'shadow-[0_0_5px_1px_rgba(255,255,255,0.4),0_0_12px_rgba(255,255,255,0.15)]',
+              "shadow-[0_0_5px_1px_rgba(255,255,255,0.4),0_0_12px_rgba(255,255,255,0.15)]",
             isIndeterminate
-              ? 'w-[40%] min-w-[40%] animate-pulse'
-              : 'transition-[width] duration-150 ease-linear',
+              ? "w-[40%] min-w-[40%] animate-pulse"
+              : "transition-[width] duration-150 ease-linear",
           )}
           style={isIndeterminate ? undefined : { width: `${clampedValue}%` }}
         />

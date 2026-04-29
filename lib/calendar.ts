@@ -49,7 +49,10 @@ type CalendarSchemaConfig = {
   name: string
   selectColumns: string
   orderColumn: string
-  buildInsertPayload: (input: CalendarEventInput, userId: string) => Record<string, unknown>
+  buildInsertPayload: (
+    input: CalendarEventInput,
+    userId: string,
+  ) => Record<string, unknown>
   buildUpdatePayload: (input: CalendarEventInput) => Record<string, unknown>
   readStartAt: (row: CalendarEventDbRow) => string
   readEndAt: (row: CalendarEventDbRow) => string | null
@@ -63,7 +66,8 @@ type CalendarEventAssigneeRow = {
 const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
   {
     name: "event_date/start_time/end_time",
-    selectColumns: "id,workspace_id,created_by,title,description,event_date,start_time,end_time",
+    selectColumns:
+      "id,workspace_id,created_by,title,description,event_date,start_time,end_time",
     orderColumn: "event_date",
     buildInsertPayload: (input, userId) => ({
       workspace_id: input.workspaceId,
@@ -82,12 +86,14 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       start_time: toTimeOnly(input.startAt),
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
-    readStartAt: (row) => combineDateAndTime(row.event_date, row.start_time) ?? "",
+    readStartAt: (row) =>
+      combineDateAndTime(row.event_date, row.start_time) ?? "",
     readEndAt: (row) => combineDateAndTime(row.event_date, row.end_time),
   },
   {
     name: "date/start_time/end_time",
-    selectColumns: "id,workspace_id,created_by,title,description,date,start_time,end_time",
+    selectColumns:
+      "id,workspace_id,created_by,title,description,date,start_time,end_time",
     orderColumn: "date",
     buildInsertPayload: (input, userId) => ({
       workspace_id: input.workspaceId,
@@ -111,7 +117,8 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
   },
   {
     name: "start_at/end_at",
-    selectColumns: "id,workspace_id,created_by,title,description,start_at,end_at",
+    selectColumns:
+      "id,workspace_id,created_by,title,description,start_at,end_at",
     orderColumn: "start_at",
     buildInsertPayload: (input, userId) => ({
       workspace_id: input.workspaceId,
@@ -133,7 +140,8 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
   },
   {
     name: "datetime/end_datetime",
-    selectColumns: "id,workspace_id,created_by,title,description,datetime,end_datetime",
+    selectColumns:
+      "id,workspace_id,created_by,title,description,datetime,end_datetime",
     orderColumn: "datetime",
     buildInsertPayload: (input, userId) => ({
       workspace_id: input.workspaceId,
@@ -155,7 +163,8 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
   },
   {
     name: "start_time/end_time",
-    selectColumns: "id,workspace_id,created_by,title,description,start_time,end_time",
+    selectColumns:
+      "id,workspace_id,created_by,title,description,start_time,end_time",
     orderColumn: "start_time",
     buildInsertPayload: (input, userId) => ({
       workspace_id: input.workspaceId,
@@ -173,8 +182,12 @@ const CALENDAR_SCHEMA_CANDIDATES: CalendarSchemaConfig[] = [
       end_time: input.endAt ? toTimeOnly(input.endAt) : null,
     }),
     readStartAt: (row) =>
-      combineDateAndTime(new Date().toISOString().slice(0, 10), row.start_time) ?? "",
-    readEndAt: (row) => combineDateAndTime(new Date().toISOString().slice(0, 10), row.end_time),
+      combineDateAndTime(
+        new Date().toISOString().slice(0, 10),
+        row.start_time,
+      ) ?? "",
+    readEndAt: (row) =>
+      combineDateAndTime(new Date().toISOString().slice(0, 10), row.end_time),
   },
 ]
 
@@ -222,7 +235,9 @@ type CalendarDescriptionMeta = {
   meetingLink: string | null
 }
 
-export function parseCalendarDescription(raw: string | null | undefined): CalendarDescriptionMeta {
+export function parseCalendarDescription(
+  raw: string | null | undefined,
+): CalendarDescriptionMeta {
   const value = pickString(raw)
   if (!value) {
     return { description: null, isMeeting: false, meetingLink: null }
@@ -401,7 +416,8 @@ async function fetchCalendarEventAssigneeIds(eventIds: string[]) {
       .in("event_id", ids)
 
     if (error) {
-      if (isMissingColumnError(error) || isMissingTableError(error)) return result
+      if (isMissingColumnError(error) || isMissingTableError(error))
+        return result
       return result
     }
 
@@ -425,7 +441,9 @@ async function fetchCalendarEventAssigneeIds(eventIds: string[]) {
  * resultado vazio quando o ID do auth estava noutra coluna (ex.: user_id vs profile_id).
  * Ordem: user_id (auth) primeiro, depois profile_id e member_id.
  */
-async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMemberRow[]> {
+async function fetchWorkspaceMemberRows(
+  userId: string,
+): Promise<WorkspaceMemberRow[]> {
   const memberColumns = ["user_id", "profile_id", "member_id"]
   const byWorkspaceId = new Map<string, WorkspaceMemberRow>()
   let anyQuerySucceeded = false
@@ -454,14 +472,19 @@ async function fetchWorkspaceMemberRows(userId: string): Promise<WorkspaceMember
   }
 
   if (!anyQuerySucceeded) {
-    throw lastError ?? new Error("Não foi possível verificar os workspaces do usuário.")
+    throw (
+      lastError ??
+      new Error("Não foi possível verificar os workspaces do usuário.")
+    )
   }
 
   return [...byWorkspaceId.values()]
 }
 
 /** Workspaces criados pelo utilizador (ex.: conta sem linha em workspace_members). */
-async function fetchWorkspacesCreatedByUser(userId: string): Promise<WorkspaceRow[]> {
+async function fetchWorkspacesCreatedByUser(
+  userId: string,
+): Promise<WorkspaceRow[]> {
   try {
     const { data, error } = await supabase
       .from("workspaces")
@@ -544,12 +567,17 @@ async function detectCalendarSchema() {
   )
 }
 
-function mapCalendarEventRow(row: CalendarEventDbRow, schema: CalendarSchemaConfig): CalendarEventRecord {
+function mapCalendarEventRow(
+  row: CalendarEventDbRow,
+  schema: CalendarSchemaConfig,
+): CalendarEventRecord {
   const id = pickString(row.id)
   const workspaceId = pickString(row.workspace_id)
   const createdBy = pickString(row.created_by)
   const title = pickString(row.title, row.name)
-  const parsedDescription = parseCalendarDescription(pickString(row.description, row.details) || null)
+  const parsedDescription = parseCalendarDescription(
+    pickString(row.description, row.details) || null,
+  )
   const startAt = schema.readStartAt(row)
   const endAt = schema.readEndAt(row)
 
@@ -574,7 +602,9 @@ function mapCalendarEventRow(row: CalendarEventDbRow, schema: CalendarSchemaConf
 /**
  * Workspaces via API Next + service role (ignora RLS). Requer SUPABASE_SERVICE_ROLE_KEY no .env do servidor.
  */
-async function fetchWorkspacesFromServerRoute(): Promise<WorkspaceOption[] | null> {
+async function fetchWorkspacesFromServerRoute(): Promise<
+  WorkspaceOption[] | null
+> {
   if (typeof window === "undefined") return null
 
   try {
@@ -597,7 +627,9 @@ async function fetchWorkspacesFromServerRoute(): Promise<WorkspaceOption[] | nul
   }
 }
 
-async function collectCalendarWorkspacesFromSupabaseClient(userId: string): Promise<WorkspaceOption[]> {
+async function collectCalendarWorkspacesFromSupabaseClient(
+  userId: string,
+): Promise<WorkspaceOption[]> {
   let memberRows: WorkspaceMemberRow[] = []
   try {
     memberRows = await fetchWorkspaceMemberRows(userId)
@@ -631,7 +663,9 @@ async function collectCalendarWorkspacesFromSupabaseClient(userId: string): Prom
   const labelsByWorkspaceId = await fetchWorkspaceLabels(workspaceIds)
 
   return workspaceIds.map((workspaceId, index) => {
-    const memberRow = memberRows.find((row) => pickString(row.workspace_id) === workspaceId)
+    const memberRow = memberRows.find(
+      (row) => pickString(row.workspace_id) === workspaceId,
+    )
     const createdRow =
       createdRows.find((row) => pickString(row.id) === workspaceId) ||
       rlsVisibleRows.find((row) => pickString(row.id) === workspaceId)
@@ -647,7 +681,9 @@ async function collectCalendarWorkspacesFromSupabaseClient(userId: string): Prom
           memberRow?.name,
           memberRow?.title,
         ) ||
-        (workspaceIds.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
+        (workspaceIds.length === 1
+          ? "Workspace Geral"
+          : `Workspace ${index + 1}`),
     }
   })
 }
@@ -710,7 +746,9 @@ export async function fetchCalendarEvents(workspaceIds: string[]) {
 
   const rows = (data ?? []) as unknown as CalendarEventDbRow[]
   const events = rows.map((row) => mapCalendarEventRow(row, schema))
-  const assigneeIdsByEventId = await fetchCalendarEventAssigneeIds(events.map((event) => event.id))
+  const assigneeIdsByEventId = await fetchCalendarEventAssigneeIds(
+    events.map((event) => event.id),
+  )
   const allAssigneeIds = uniqueIds(Object.values(assigneeIdsByEventId).flat())
   const profilesById = await fetchProfilesMap(allAssigneeIds)
 
@@ -736,7 +774,10 @@ export async function createCalendarEvent(input: CalendarEventInput) {
     throw new Error(error.message)
   }
 
-  const created = mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  const created = mapCalendarEventRow(
+    data as unknown as CalendarEventDbRow,
+    schema,
+  )
   await setCalendarEventAssignees({
     eventId: created.id,
     userIds: input.assigneeIds ?? [],
@@ -751,7 +792,10 @@ export async function createCalendarEvent(input: CalendarEventInput) {
   }
 }
 
-export async function updateCalendarEvent(eventId: string, input: CalendarEventInput) {
+export async function updateCalendarEvent(
+  eventId: string,
+  input: CalendarEventInput,
+) {
   const schema = await detectCalendarSchema()
   const { data, error } = await supabase
     .from("calendar_events")
@@ -764,7 +808,10 @@ export async function updateCalendarEvent(eventId: string, input: CalendarEventI
     throw new Error(error.message)
   }
 
-  const updated = mapCalendarEventRow(data as unknown as CalendarEventDbRow, schema)
+  const updated = mapCalendarEventRow(
+    data as unknown as CalendarEventDbRow,
+    schema,
+  )
   await setCalendarEventAssignees({
     eventId,
     userIds: input.assigneeIds ?? [],
@@ -780,7 +827,10 @@ export async function updateCalendarEvent(eventId: string, input: CalendarEventI
 }
 
 export async function deleteCalendarEvent(eventId: string) {
-  const { error } = await supabase.from("calendar_events").delete().eq("id", eventId)
+  const { error } = await supabase
+    .from("calendar_events")
+    .delete()
+    .eq("id", eventId)
 
   if (error) {
     throw new Error(error.message)
@@ -800,7 +850,10 @@ export function formatEventTimeRange(startAt: string, endAt: string | null) {
   return `${startLabel} - ${format(end, "HH:mm")}`
 }
 
-export async function setCalendarEventAssignees(params: { eventId: string; userIds: string[] }) {
+export async function setCalendarEventAssignees(params: {
+  eventId: string
+  userIds: string[]
+}) {
   const uniqueUserIds = uniqueIds(params.userIds)
 
   try {
@@ -820,13 +873,17 @@ export async function setCalendarEventAssignees(params: { eventId: string; userI
       user_id: userId,
     }))
 
-    const { error } = await supabase.from("calendar_event_assignees").insert(payload)
+    const { error } = await supabase
+      .from("calendar_event_assignees")
+      .insert(payload)
     if (error) {
       throw new Error(error.message)
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Falha ao salvar participantes do evento."
+      error instanceof Error
+        ? error.message
+        : "Falha ao salvar participantes do evento."
     throw new Error(
       `${message}\n\nVerifique se a tabela 'calendar_event_assignees' usa as colunas event_id e user_id e se as policies/RLS permitem insert/delete.`,
     )

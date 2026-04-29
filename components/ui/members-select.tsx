@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { Check, ChevronDown } from "lucide-react"
-
-import { cn } from "@/lib/utils"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserAvatars } from "@/components/ui/user-avatars"
+import { cn } from "@/lib/utils"
 
 export type MemberOption = {
   id: string
@@ -34,14 +33,18 @@ export function MembersSelect({
 
   function toggle(id: string) {
     const checked = selectedIds.includes(id)
-    const next = checked ? selectedIds.filter((v) => v !== id) : [...selectedIds, id]
+    const next = checked
+      ? selectedIds.filter((v) => v !== id)
+      : [...selectedIds, id]
     onChange(next)
   }
 
   return (
     <div className="space-y-3 rounded-md border border-border bg-muted/30 px-3 py-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {label}
+        </span>
       </div>
 
       <button
@@ -107,7 +110,9 @@ export function MembersSelect({
                         .slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate text-card-foreground">{m.name}</span>
+                  <span className="truncate text-card-foreground">
+                    {m.name}
+                  </span>
                 </button>
               )
             })}
@@ -134,4 +139,3 @@ export function MembersSelect({
     </div>
   )
 }
-

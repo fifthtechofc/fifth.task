@@ -1,32 +1,31 @@
-import { NextResponse } from 'next/server'
-
-import { getClientIp, rateLimit } from '@/lib/server/rate-limit'
-import { sendMail } from '@/lib/server/mailer'
-import { getSupabaseAdmin } from '@/lib/server/supabase-admin'
+import { NextResponse } from "next/server"
+import { sendMail } from "@/lib/server/mailer"
+import { getClientIp, rateLimit } from "@/lib/server/rate-limit"
+import { getSupabaseAdmin } from "@/lib/server/supabase-admin"
 
 function getBaseUrl(req: Request) {
   const h = req.headers
-  const proto = h.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'http'
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http"
   const host =
-    h.get('x-forwarded-host')?.split(',')[0]?.trim() ||
-    h.get('host')?.split(',')[0]?.trim() ||
-    ''
-  if (!host) return ''
+    h.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    h.get("host")?.split(",")[0]?.trim() ||
+    ""
+  if (!host) return ""
   return `${proto}://${host}`
 }
 
 function escapeHtml(s: string) {
   return s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
 }
 
 function buildForgotPasswordEmailHtml({ actionLink }: { actionLink: string }) {
   const logoUrl =
-    'https://ryovcwvpeekcequwbpqn.supabase.co/storage/v1/object/public/Logo.fft/logo.png'
+    "https://ryovcwvpeekcequwbpqn.supabase.co/storage/v1/object/public/Logo.fft/logo.png"
   const safeUrl = escapeHtml(actionLink)
   // same pattern as task email (email-safe)
   const plusPatternSvg =
@@ -77,7 +76,7 @@ export async function POST(req: Request) {
   const rl = rateLimit(`auth:forgot:${ip}`, { limit: 6, windowMs: 60_000 })
   if (!rl.ok) {
     return NextResponse.json(
-      { ok: false, error: 'Muitas tentativas. Tente novamente em instantes.' },
+      { ok: false, error: "Muitas tentativas. Tente novamente em instantes." },
       { status: 429 },
     )
   }
@@ -89,9 +88,12 @@ export async function POST(req: Request) {
     body = {}
   }
 
-  const email = body.email?.trim() ?? ''
+  const email = body.email?.trim() ?? ""
   if (!email) {
-    return NextResponse.json({ ok: false, error: 'Informe seu e-mail.' }, { status: 400 })
+    return NextResponse.json(
+      { ok: false, error: "Informe seu e-mail." },
+      { status: 400 },
+    )
   }
 
   try {
@@ -101,7 +103,7 @@ export async function POST(req: Request) {
 
     // Gera link de recuperação pelo Supabase (sem depender do template de e-mail do Supabase).
     const { data, error } = await admin.auth.admin.generateLink({
-      type: 'recovery',
+      type: "recovery",
       email,
       options: redirectTo ? { redirectTo } : undefined,
     })
@@ -111,7 +113,7 @@ export async function POST(req: Request) {
       const actionLink = data.properties.action_link
       await sendMail({
         to: email,
-        subject: 'Redefinir senha — Fifth Task',
+        subject: "Redefinir senha — Fifth Task",
         html: buildForgotPasswordEmailHtml({ actionLink }),
         text: `Para redefinir sua senha, acesse: ${actionLink}`,
       })
@@ -120,6 +122,8 @@ export async function POST(req: Request) {
     // Sempre resposta genérica.
   }
 
-  return NextResponse.json({ ok: true, message: 'Se este e-mail existir, enviaremos um link.' })
+  return NextResponse.json({
+    ok: true,
+    message: "Se este e-mail existir, enviaremos um link.",
+  })
 }
-

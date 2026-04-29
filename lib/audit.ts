@@ -1,12 +1,12 @@
-import { supabase } from '@/lib/supabase'
+import { supabase } from "@/lib/supabase"
 
 export type AuditAction =
-  | 'auth.login'
-  | 'auth.logout'
-  | 'auth.password_change'
-  | 'auth.2fa_enable_start'
-  | 'auth.2fa_enable_complete'
-  | 'auth.2fa_disable'
+  | "auth.login"
+  | "auth.logout"
+  | "auth.password_change"
+  | "auth.2fa_enable_start"
+  | "auth.2fa_enable_complete"
+  | "auth.2fa_disable"
 
 export async function logAuditEvent(params: {
   action: AuditAction
@@ -16,7 +16,7 @@ export async function logAuditEvent(params: {
   ip?: string | null
   userAgent?: string | null
 }) {
-  const { error } = await supabase.rpc('log_audit_event', {
+  const { error } = await supabase.rpc("log_audit_event", {
     p_action: params.action,
     p_metadata: params.metadata ?? {},
     p_resource_type: params.resourceType ?? null,
@@ -31,4 +31,3 @@ export async function logAuditEvent(params: {
   }
   return { ok: true as const }
 }
-

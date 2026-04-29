@@ -1,21 +1,15 @@
 "use client"
 
-import * as React from "react"
+import { Bell, ShieldCheck, Sparkles, UserRound } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import {
-  Bell,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-} from "lucide-react"
-
-import { SettingsProfileSection } from "@/components/settings-profile-section"
+import * as React from "react"
 import { LoginInfoCard } from "@/components/settings/login-info-card"
+import { SettingsProfileSection } from "@/components/settings-profile-section"
 import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import {
   getMyNotificationSettings,
-  updateMyNotificationSettings,
   type MyNotificationSettings,
+  updateMyNotificationSettings,
 } from "@/lib/profile"
 import { cn } from "@/lib/utils"
 
@@ -56,7 +50,8 @@ const initialNotifications: NotificationSetting[] = [
   {
     id: "daily-summary",
     title: "Resumo diário",
-    description: "Receba um consolidado com tarefas, entregas e eventos do dia.",
+    description:
+      "Receba um consolidado com tarefas, entregas e eventos do dia.",
     enabled: true,
   },
   {
@@ -68,7 +63,8 @@ const initialNotifications: NotificationSetting[] = [
   {
     id: "team-updates",
     title: "Atualizações da equipe",
-    description: "Notifique quando houver nova atividade relevante no workspace.",
+    description:
+      "Notifique quando houver nova atividade relevante no workspace.",
     enabled: false,
   },
 ]
@@ -94,7 +90,9 @@ function SettingToggle({
     <div className="flex items-start justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4">
       <div className="max-w-xl">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
       </div>
 
       <button
@@ -103,7 +101,9 @@ function SettingToggle({
         onClick={onToggle}
         className={cn(
           "relative mt-1 inline-flex h-7 w-12 shrink-0 rounded-full border transition-colors",
-          enabled ? "border-emerald-300/30 bg-emerald-200/90" : "border-white/10 bg-white/10",
+          enabled
+            ? "border-emerald-300/30 bg-emerald-200/90"
+            : "border-white/10 bg-white/10",
         )}
       >
         <span
@@ -207,7 +207,9 @@ function NotificationsSection() {
             <Bell className="h-5 w-5 text-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              Notificações
+            </h2>
             <p className="text-sm text-muted-foreground">
               Controle o que chega para você sem poluir a rotina.
             </p>
@@ -261,12 +263,20 @@ function NotificationsSection() {
           </p>
           <div className="mt-5 space-y-3">
             <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Canal principal</p>
-              <p className="mt-2 text-sm font-medium text-foreground">Aplicação</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Canal principal
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                Aplicação
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Persistência</p>
-              <p className="mt-2 text-sm font-medium text-foreground">Local nesta etapa</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Persistência
+              </p>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                Local nesta etapa
+              </p>
             </div>
           </div>
         </div>
@@ -308,23 +318,23 @@ export function SettingsWorkspaceShell() {
         </div>
 
         <div className="min-w-0 space-y-6">
-            <section className="rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_55%,_transparent_100%)] p-4 sm:rounded-[30px] sm:p-6">
-              <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
-                {activeMeta.eyebrow}
-              </p>
-              <h2 className="mt-2 text-xl font-semibold text-foreground sm:text-2xl">
-                {activeMeta.title}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {activeMeta.description}
-              </p>
-            </section>
+          <section className="rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_rgba(255,255,255,0.02)_55%,_transparent_100%)] p-4 sm:rounded-[30px] sm:p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+              {activeMeta.eyebrow}
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-foreground sm:text-2xl">
+              {activeMeta.title}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {activeMeta.description}
+            </p>
+          </section>
 
-            {activeSection === "profile" && (
-              <SettingsProfileSection showSummary={false} />
-            )}
-            {activeSection === "notifications" && <NotificationsSection />}
-            {activeSection === "security" && <SecuritySection />}
+          {activeSection === "profile" && (
+            <SettingsProfileSection showSummary={false} />
+          )}
+          {activeSection === "notifications" && <NotificationsSection />}
+          {activeSection === "security" && <SecuritySection />}
         </div>
       </div>
     </section>

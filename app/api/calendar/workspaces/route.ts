@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-
-import { getSupabaseAnon } from "@/lib/server/supabase-auth"
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin"
+import { getSupabaseAnon } from "@/lib/server/supabase-auth"
 
 function isMissingColumnOrRelationError(message: string) {
   const m = message.toLowerCase()
@@ -20,7 +19,9 @@ function isMissingColumnOrRelationError(message: string) {
  */
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization") ?? ""
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : ""
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : ""
   if (!token) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   }
@@ -45,14 +46,20 @@ export async function GET(req: Request) {
   const workspaceIds = new Set<string>()
 
   for (const col of ["user_id", "profile_id", "member_id"] as const) {
-    const { data, error } = await admin.from("workspace_members").select("workspace_id").eq(col, userId)
+    const { data, error } = await admin
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq(col, userId)
 
     if (error) {
       if (isMissingColumnOrRelationError(error.message)) continue
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     for (const row of data ?? []) {
-      const w = row && typeof row === "object" && "workspace_id" in row ? row.workspace_id : null
+      const w =
+        row && typeof row === "object" && "workspace_id" in row
+          ? row.workspace_id
+          : null
       if (typeof w === "string" && w.trim()) workspaceIds.add(w.trim())
     }
   }
@@ -77,7 +84,8 @@ export async function GET(req: Request) {
 
   /** Ambiente interno: sem linha em workspace_members e created_by errado — lista todos os workspaces (max 50). */
   const allowAll =
-    ids.length === 0 && String(process.env.CALENDAR_FALLBACK_ALL_WORKSPACES ?? "").trim() === "1"
+    ids.length === 0 &&
+    String(process.env.CALENDAR_FALLBACK_ALL_WORKSPACES ?? "").trim() === "1"
 
   if (allowAll) {
     const { data: allWs, error: allErr } = await admin
@@ -99,7 +107,9 @@ export async function GET(req: Request) {
       const name = typeof row.name === "string" ? row.name.trim() : ""
       return {
         id,
-        label: name || (list.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
+        label:
+          name ||
+          (list.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
       }
     })
 
@@ -110,7 +120,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ workspaces: [] })
   }
 
-  const { data: wsRows, error: wsErr } = await admin.from("workspaces").select("id,name").in("id", ids)
+  const { data: wsRows, error: wsErr } = await admin
+    .from("workspaces")
+    .select("id,name")
+    .in("id", ids)
 
   if (wsErr) {
     return NextResponse.json({ error: wsErr.message }, { status: 500 })
@@ -121,7 +134,9 @@ export async function GET(req: Request) {
     const name = typeof row.name === "string" ? row.name.trim() : ""
     return {
       id,
-      label: name || (ids.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
+      label:
+        name ||
+        (ids.length === 1 ? "Workspace Geral" : `Workspace ${index + 1}`),
     }
   })
 
