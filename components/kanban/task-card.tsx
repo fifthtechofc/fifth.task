@@ -34,6 +34,7 @@ import {
   fetchUnreadCardCommentsCount,
 } from "@/lib/card-comments"
 import { supabase } from "@/lib/supabase"
+import { formatDueAtLabel } from "@/lib/task-deadlines"
 import { cn } from "@/lib/utils"
 import type { KanbanTask } from "@/types/kanban"
 
@@ -222,6 +223,10 @@ export function TaskCard({
   } | null>(null)
   const { pushNotification } = useAppNotifications()
   const cardColor = task.color ?? columnColor
+  const dueDateLabel = React.useMemo(
+    () => formatDueAtLabel(task.dueAt ?? task.dueDate),
+    [task.dueAt, task.dueDate],
+  )
 
   const meDisplayName = React.useMemo(() => {
     if (!meProfile) return ""
@@ -502,6 +507,12 @@ export function TaskCard({
           </p>
         )}
 
+        {dueDateLabel && (
+          <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-200">
+            Entrega {dueDateLabel}
+          </div>
+        )}
+
         {task.assignees && task.assignees.length > 0 && (
           <div className="flex justify-end">
             <div className="flex items-center">
@@ -566,6 +577,17 @@ export function TaskCard({
                 selectedIds={task.assignees.map((a) => a.id)}
                 onChange={() => undefined}
               />
+            </div>
+          )}
+
+          {dueDateLabel && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-medium text-zinc-400">
+                Data de entrega
+              </p>
+              <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-zinc-200">
+                {dueDateLabel}
+              </div>
             </div>
           )}
         </DialogContent>

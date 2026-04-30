@@ -23,6 +23,10 @@ export interface KanbanTask {
   title: string
   color?: string
   description?: string
+  dueDate?: string
+  dueAt?: string
+  dueTimezone?: string
+  deadlineEventId?: string
   labels?: string[]
   assignees?: KanbanAssignee[]
   position?: number

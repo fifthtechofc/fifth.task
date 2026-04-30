@@ -68,6 +68,10 @@ export interface CalendarEventItem {
   description?: string
   isMeeting?: boolean
   meetingLink?: string
+  sourceType?: "default" | "task_deadline"
+  taskCardId?: string
+  taskBoardId?: string
+  taskHref?: string
   workspaceId: string
   assignees: MemberOption[]
 }
@@ -129,6 +133,10 @@ function buildLocalDateTime(dateValue: string, timeValue: string) {
   return `${dateValue}T${timeValue}`
 }
 
+function isTaskDeadlineEvent(event: CalendarEventItem) {
+  return event.sourceType === "task_deadline"
+}
+
 function safeParseDateTime(value: string) {
   const parsed = new Date(value.trim().replace(" ", "T"))
   return Number.isFinite(parsed.getTime()) ? parsed : null
@@ -185,6 +193,8 @@ export function FullScreenCalendar({
   const [saving, setSaving] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
   const [eventsDialogOpen, setEventsDialogOpen] = React.useState(false)
+  const [taskDeadlineDialogEvent, setTaskDeadlineDialogEvent] =
+    React.useState<CalendarEventItem | null>(null)
 
   const handledFocusEventIdRef = React.useRef<string | null>(null)
   const openEditEventRef = React.useRef<
@@ -267,6 +277,10 @@ export function FullScreenCalendar({
 
   const openEditEvent = React.useCallback(
     (event: CalendarEventItem) => {
+      if (isTaskDeadlineEvent(event)) {
+        setTaskDeadlineDialogEvent(event)
+        return
+      }
       const startDate = safeParseDateTime(event.datetime)
       const endDate = event.endDatetime
         ? safeParseDateTime(event.endDatetime)
@@ -481,6 +495,50 @@ export function FullScreenCalendar({
     )
   }
 
+  function renderCalendarCard(event: CalendarEventItem, compact = false) {
+    if (isTaskDeadlineEvent(event)) {
+      return (
+        <div
+          className={cn(
+            "rounded-lg border px-2 py-2 text-xs transition-colors",
+            compact
+              ? "border-amber-400/20 bg-amber-500/8 hover:bg-amber-500/12"
+              : "border-amber-400/20 bg-amber-500/8 hover:bg-amber-500/12",
+          )}
+        >
+          <p className="font-medium leading-none text-amber-100">
+            Entrega de tarefa
+          </p>
+          <p className="mt-1 line-clamp-2 text-[11px] text-amber-50/90">
+            {event.name.replace(/^Entrega:\s*/i, "")}
+          </p>
+          {event.time ? (
+            <p className="mt-1 leading-none text-amber-200/80">{event.time}</p>
+          ) : null}
+        </div>
+      )
+    }
+
+    return (
+      <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs transition-colors hover:bg-white/10">
+        <p className="font-medium leading-none">{event.name}</p>
+        <p className="mt-1 leading-none text-muted-foreground">{event.time}</p>
+        {event.isMeeting && event.meetingLink ? (
+          <a
+            href={event.meetingLink}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(clickEvent) => clickEvent.stopPropagation()}
+            className="mt-2 inline-flex text-[11px] font-medium text-emerald-300 underline underline-offset-2"
+          >
+            Abrir reunião
+          </a>
+        ) : null}
+        {renderAssigneeSummary(event.assignees, 3)}
+      </div>
+    )
+  }
+
   return (
     <div className="relative pt-5">
       <div className="mb-3 flex items-center justify-end gap-2">
@@ -691,15 +749,26 @@ export function FullScreenCalendar({
                                 clickEvent.stopPropagation()
                                 openEditEvent(event)
                               }}
-                              className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs transition-colors hover:bg-white/10"
+                              className={cn(
+                                "rounded-lg border p-2 text-xs transition-colors",
+                                isTaskDeadlineEvent(event)
+                                  ? "border-amber-400/20 bg-amber-500/8 hover:bg-amber-500/12"
+                                  : "border-white/10 bg-white/5 hover:bg-white/10",
+                              )}
                             >
                               <p className="font-medium leading-none">
-                                {event.name}
+                                {isTaskDeadlineEvent(event)
+                                  ? "Entrega de tarefa"
+                                  : event.name}
                               </p>
                               <p className="mt-1 leading-none text-muted-foreground">
-                                {event.time}
+                                {isTaskDeadlineEvent(event)
+                                  ? event.name.replace(/^Entrega:\s*/i, "")
+                                  : event.time}
                               </p>
-                              {event.isMeeting && event.meetingLink ? (
+                              {!isTaskDeadlineEvent(event) &&
+                              event.isMeeting &&
+                              event.meetingLink ? (
                                 <a
                                   href={event.meetingLink}
                                   target="_blank"
@@ -712,7 +781,9 @@ export function FullScreenCalendar({
                                   Abrir reunião
                                 </a>
                               ) : null}
-                              {renderAssigneeSummary(event.assignees, 3)}
+                              {!isTaskDeadlineEvent(event)
+                                ? renderAssigneeSummary(event.assignees, 3)
+                                : null}
                             </div>
                           ))}
                           {calendarDay.events.length > 1 && (
@@ -772,6 +843,94 @@ export function FullScreenCalendar({
           </div>
         </div>
 
+        <Dialog
+          open={taskDeadlineDialogEvent !== null}
+          onOpenChange={(open) => {
+            if (!open) setTaskDeadlineDialogEvent(null)
+          }}
+        >
+          <DialogContent className="border-white/10 bg-zinc-950/95 text-foreground backdrop-blur-xl sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Entrega de tarefa</DialogTitle>
+              <DialogDescription>
+                Prazo vinculado a uma tarefa do Kanban.
+              </DialogDescription>
+            </DialogHeader>
+
+            {taskDeadlineDialogEvent ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-500/8 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-amber-200/80">
+                    Tarefa
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-amber-50">
+                    {taskDeadlineDialogEvent.name.replace(/^Entrega:\s*/i, "")}
+                  </p>
+                  <p className="mt-2 text-sm text-amber-100/80">
+                    Entrega em {taskDeadlineDialogEvent.time}
+                  </p>
+                </div>
+
+                {taskDeadlineDialogEvent.description ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Descrição
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground">
+                      {taskDeadlineDialogEvent.description}
+                    </p>
+                  </div>
+                ) : null}
+
+                {taskDeadlineDialogEvent.assignees.length > 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Responsáveis
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {taskDeadlineDialogEvent.assignees.map((assignee) => (
+                        <div
+                          key={assignee.id}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-foreground"
+                        >
+                          <Avatar className="h-6 w-6 border border-white/10">
+                            <AvatarImage
+                              src={assignee.imageSrc || undefined}
+                              alt={assignee.name}
+                            />
+                            <AvatarFallback className="text-[10px]">
+                              {assignee.name
+                                .split(/\s+/)
+                                .map((part) => part[0] || "")
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{assignee.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {taskDeadlineDialogEvent.taskHref ? (
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = taskDeadlineDialogEvent.taskHref as string
+                      }}
+                    >
+                      Abrir tarefa
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={eventsDialogOpen} onOpenChange={setEventsDialogOpen}>
           <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden border-white/10 bg-zinc-950/95 text-foreground backdrop-blur-xl sm:max-w-3xl">
             <DialogHeader>
@@ -816,12 +975,19 @@ export function FullScreenCalendar({
                             setEventsDialogOpen(false)
                             openEditEvent(event)
                           }}
-                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:bg-white/10"
+                          className={cn(
+                            "rounded-xl border px-4 py-3 transition-colors",
+                            isTaskDeadlineEvent(event)
+                              ? "border-amber-400/20 bg-amber-500/8 hover:bg-amber-500/12"
+                              : "border-white/10 bg-white/5 hover:bg-white/10",
+                          )}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-foreground">
-                                {event.name}
+                                {isTaskDeadlineEvent(event)
+                                  ? "Entrega de tarefa"
+                                  : event.name}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {format(
@@ -833,7 +999,14 @@ export function FullScreenCalendar({
                               </p>
                             </div>
                           </div>
-                          {event.isMeeting && event.meetingLink ? (
+                          {isTaskDeadlineEvent(event) ? (
+                            <p className="mt-1 text-xs text-amber-100/90">
+                              {event.name.replace(/^Entrega:\s*/i, "")}
+                            </p>
+                          ) : null}
+                          {!isTaskDeadlineEvent(event) &&
+                          event.isMeeting &&
+                          event.meetingLink ? (
                             <a
                               href={event.meetingLink}
                               target="_blank"
@@ -851,7 +1024,9 @@ export function FullScreenCalendar({
                               {event.description}
                             </p>
                           ) : null}
-                          {renderAssigneeSummary(event.assignees, 4)}
+                          {!isTaskDeadlineEvent(event)
+                            ? renderAssigneeSummary(event.assignees, 4)
+                            : null}
                         </div>
                       ))
                     ) : (

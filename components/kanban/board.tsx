@@ -6,6 +6,12 @@ import { useDashboardLoading } from "@/components/ui/dashboard-shell"
 import { GlowCard } from "@/components/ui/spotlight-card"
 import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  fetchCalendarAccess,
+  updateCalendarEvent,
+} from "@/lib/calendar"
+import {
   buildKanbanColumns,
   createBoardCard,
   createBoardColumn,
@@ -26,6 +32,14 @@ import {
 import { rpcNotifyTaskCreated } from "@/lib/kanban-notifications-rpc"
 import { httpNotifyTaskAssigned } from "@/lib/notifications-http"
 import { getTeamMembers } from "@/lib/profile"
+import {
+  buildCalendarLocalDateTime,
+  combineDueDateTimeToIso,
+  extractDueDateInput,
+  extractDueTimeInput,
+  normalizeDueDateInput,
+  normalizeDueTimeInput,
+} from "@/lib/task-deadlines"
 import { cn } from "@/lib/utils"
 import type { ColumnType, KanbanColumn, KanbanTask } from "@/types/kanban"
 import { AddColumnForm } from "./add-column-form"
@@ -87,6 +101,30 @@ function formatAssigneeNames(
   return names.length > 0 ? names.join(", ") : "Utilizador"
 }
 
+function resolveKanbanAssignees(
+  ids: string[],
+  teamMembers: Array<{ id: string; name: string; imageSrc: string }>,
+) {
+  const assignees = ids
+    .map((id) => teamMembers.find((member) => member.id === id))
+    .filter(
+      (
+        member,
+      ): member is {
+        id: string
+        name: string
+        imageSrc: string
+      } => Boolean(member),
+    )
+    .map((member) => ({
+      id: member.id,
+      name: member.name,
+      imageSrc: member.imageSrc,
+    }))
+
+  return assignees.length > 0 ? assignees : undefined
+}
+
 function boardNotificationHref(
   boardProjectSlug: string | undefined,
   boardId: string,
@@ -97,6 +135,15 @@ function boardNotificationHref(
       ? `/boards/${encodeURIComponent(boardProjectSlug)}?id=${encodeURIComponent(boardId)}`
       : `/boards/board?id=${encodeURIComponent(boardId)}`
   return `${base}&card=${encodeURIComponent(cardId)}`
+}
+
+function boardHref(
+  boardProjectSlug: string | undefined,
+  boardId: string,
+) {
+  return boardProjectSlug && boardProjectSlug.length > 0
+    ? `/boards/${encodeURIComponent(boardProjectSlug)}?id=${encodeURIComponent(boardId)}`
+    : `/boards/board?id=${encodeURIComponent(boardId)}`
 }
 
 export function Board({
@@ -147,11 +194,14 @@ export function Board({
   const editingTaskOriginalAssigneesRef = React.useRef<string[]>([])
   const [taskTitleDraft, setTaskTitleDraft] = React.useState("")
   const [taskDescriptionDraft, setTaskDescriptionDraft] = React.useState("")
+  const [taskDueDateDraft, setTaskDueDateDraft] = React.useState("")
+  const [taskDueTimeDraft, setTaskDueTimeDraft] = React.useState("")
   const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
   const [taskAssigneeIdsDraft, setTaskAssigneeIdsDraft] = React.useState<
     string[]
   >([])
   const [newChecklistTitleDraft, setNewChecklistTitleDraft] = React.useState("")
+  const calendarWorkspaceIdRef = React.useRef<string | null>(null)
 
   const [isAddingColumn, setIsAddingColumn] = React.useState(false)
   const [editingColumnId, setEditingColumnId] = React.useState<string | null>(
@@ -165,11 +215,22 @@ export function Board({
   const { setLoading: setDashboardLoading, showAlert } = useDashboardLoading()
   const { pushNotification, refreshNotifications } = useAppNotifications()
 
+  const ensureCalendarWorkspaceId = React.useCallback(async () => {
+    if (calendarWorkspaceIdRef.current) return calendarWorkspaceIdRef.current
+    const access = await fetchCalendarAccess()
+    const workspaceId =
+      access.defaultWorkspaceId ?? access.workspaces[0]?.id ?? null
+    calendarWorkspaceIdRef.current = workspaceId
+    return workspaceId
+  }, [])
+
   const resetTaskForm = () => {
     setAddingCardTo(null)
     setEditingTask(null)
     setTaskTitleDraft("")
     setTaskDescriptionDraft("")
+    setTaskDueDateDraft("")
+    setTaskDueTimeDraft("")
     setTaskColorDraft(defaultColumnPalette.todo)
     setTaskAssigneeIdsDraft([])
     setNewChecklistTitleDraft("")
@@ -181,6 +242,66 @@ export function Board({
     setColumnTitleDraft("")
     setColumnColorDraft(defaultColumnPalette.custom)
   }
+
+  const handleTaskDueDateChange = React.useCallback((value: string) => {
+    setTaskDueDateDraft(value)
+    if (!normalizeDueDateInput(value)) {
+      setTaskDueTimeDraft("")
+    }
+  }, [])
+
+  const syncTaskDeadlineEvent = React.useCallback(
+    async (params: {
+      cardId: string
+      currentEventId?: string
+      title: string
+      description?: string
+      dueDate?: string
+      dueTime?: string
+      assigneeIds: string[]
+    }) => {
+      const dueDate = normalizeDueDateInput(params.dueDate)
+      const dueTime = normalizeDueTimeInput(params.dueTime)
+      if (!dueDate || !dueTime) {
+        if (params.currentEventId) {
+          await deleteCalendarEvent(params.currentEventId)
+        }
+        return null
+      }
+
+      const workspaceId = await ensureCalendarWorkspaceId()
+      if (!workspaceId) {
+        throw new Error(
+          "Não foi possível sincronizar o prazo no calendário porque nenhum workspace está disponível.",
+        )
+      }
+
+      const input = {
+        workspaceId,
+        title: `Entrega: ${params.title.trim()}`,
+        description: params.description?.trim() || "Prazo de tarefa do Kanban.",
+        startAt:
+          buildCalendarLocalDateTime(dueDate, dueTime) ??
+          `${dueDate}T${dueTime}:00`,
+        endAt: null,
+        assigneeIds: params.assigneeIds,
+        hideTime: false,
+        sourceType: "task_deadline" as const,
+        taskCardId: params.cardId,
+        taskBoardId: boardId,
+        taskHref: boardHref(boardProjectSlug, boardId),
+      }
+
+      if (params.currentEventId) {
+        await updateCalendarEvent(params.currentEventId, input)
+        return params.currentEventId
+      }
+
+      const created = await createCalendarEvent(input)
+      return created.id
+    },
+    [ensureCalendarWorkspaceId],
+  )
 
   const handleDragStart = (task: KanbanTask, columnId: string) => {
     setDraggedTask({ task, sourceColumnId: columnId })
@@ -348,6 +469,8 @@ export function Board({
     setAddingCardTo(columnId)
     setTaskTitleDraft("")
     setTaskDescriptionDraft("")
+    setTaskDueDateDraft("")
+    setTaskDueTimeDraft("")
     setTaskColorDraft(columnColor)
     setTaskAssigneeIdsDraft([])
   }
@@ -361,6 +484,8 @@ export function Board({
     setEditingTask({ columnId, taskId: task.id })
     setTaskTitleDraft(task.title)
     setTaskDescriptionDraft(task.description ?? "")
+    setTaskDueDateDraft(extractDueDateInput(task.dueAt ?? task.dueDate))
+    setTaskDueTimeDraft(extractDueTimeInput(task.dueAt))
     setTaskColorDraft(task.color ?? columnColor)
     {
       const ids = task.assignees?.map((a) => a.id) ?? []
@@ -390,9 +515,29 @@ export function Board({
 
   const handleSubmitTask = async (columnId: string) => {
     if (!taskTitleDraft.trim()) return
+    const normalizedDueDate = normalizeDueDateInput(taskDueDateDraft) || null
+    const normalizedDueTime = normalizeDueTimeInput(taskDueTimeDraft) || null
+    if (normalizedDueDate && !normalizedDueTime) {
+      setError("Defina o horário de entrega da tarefa.")
+      return
+    }
+    const dueAtIso = normalizedDueDate
+      ? combineDueDateTimeToIso(
+          normalizedDueDate,
+          normalizedDueTime ?? undefined,
+        )
+      : null
+    const dueTimezone =
+      normalizedDueDate && normalizedDueTime
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+        : null
 
     if (editingTask?.columnId === columnId) {
       const cardId = editingTask.taskId
+      const currentTask =
+        columns
+          .find((column) => column.id === columnId)
+          ?.tasks.find((task) => task.id === cardId) ?? null
       const prevAssigneeIds = editingTaskOriginalAssigneesRef.current ?? []
       const nextAssigneeIds = taskAssigneeIdsDraft
       setColumns((prev) =>
@@ -406,20 +551,14 @@ export function Board({
                         ...task,
                         title: taskTitleDraft.trim(),
                         description: taskDescriptionDraft.trim() || undefined,
+                        dueDate: normalizedDueDate ?? undefined,
+                        dueAt: dueAtIso ?? undefined,
+                        dueTimezone: dueTimezone ?? undefined,
                         color: taskColorDraft,
-                        assignees:
-                          taskAssigneeIdsDraft.length > 0
-                            ? taskAssigneeIdsDraft
-                                .map((id) =>
-                                  teamMembers.find((x) => x.id === id),
-                                )
-                                .filter(Boolean)
-                                .map((m) => ({
-                                  id: m?.id,
-                                  name: m?.name,
-                                  imageSrc: m?.imageSrc,
-                                }))
-                            : undefined,
+                        assignees: resolveKanbanAssignees(
+                          taskAssigneeIdsDraft,
+                          teamMembers,
+                        ),
                       }
                     : task,
                 ),
@@ -428,12 +567,45 @@ export function Board({
         ),
       )
       try {
+        const deadlineEventId = await syncTaskDeadlineEvent({
+          cardId,
+          currentEventId: currentTask?.deadlineEventId,
+          title: taskTitleDraft,
+          description: taskDescriptionDraft,
+          dueDate: normalizedDueDate ?? undefined,
+          dueTime: normalizedDueTime ?? undefined,
+          assigneeIds: taskAssigneeIdsDraft,
+        })
         await updateBoardCard({
           id: cardId,
           title: taskTitleDraft,
           description: taskDescriptionDraft,
+          dueDate: normalizedDueDate,
+          dueAt: dueAtIso,
+          dueTimezone,
+          deadlineEventId,
           assignedTo: taskAssigneeIdsDraft[0] || null,
         })
+        setColumns((prev) =>
+          prev.map((column) =>
+            column.id !== columnId
+              ? column
+              : {
+                  ...column,
+                  tasks: column.tasks.map((task) =>
+                    task.id === cardId
+                      ? {
+                          ...task,
+                          dueDate: normalizedDueDate ?? undefined,
+                          dueAt: dueAtIso ?? undefined,
+                          dueTimezone: dueTimezone ?? undefined,
+                          deadlineEventId: deadlineEventId ?? undefined,
+                        }
+                      : task,
+                  ),
+                },
+          ),
+        )
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao salvar card.")
       }
@@ -455,14 +627,7 @@ export function Board({
         const ids = map[cardId] ?? []
         const assignees =
           ids.length > 0
-            ? ids
-                .map((id) => teamMembers.find((x) => x.id === id))
-                .filter(Boolean)
-                .map((m) => ({
-                  id: m?.id,
-                  name: m?.name,
-                  imageSrc: m?.imageSrc,
-                }))
+            ? resolveKanbanAssignees(ids, teamMembers)
             : undefined
         setColumns((prev) =>
           prev.map((col) =>
@@ -531,29 +696,26 @@ export function Board({
           columnId,
           title: taskTitleDraft,
           description: taskDescriptionDraft,
+          dueDate: normalizedDueDate,
+          dueAt: dueAtIso,
+          dueTimezone,
           position: nextPosition,
           createdBy: userId,
           assignedTo: taskAssigneeIdsDraft[0] || null,
         })
 
-        const ms = taskAssigneeIdsDraft
-          .map((id) => teamMembers.find((x) => x.id === id))
-          .filter(Boolean)
         const newTask: KanbanTask = {
           id: created.id,
           title: created.title,
           description: created.description ?? undefined,
+          dueDate: normalizedDueDate ?? undefined,
+          dueAt: dueAtIso ?? undefined,
+          dueTimezone: dueTimezone ?? undefined,
+          deadlineEventId: created.deadline_event_id ?? undefined,
           labels: [],
           color: taskColorDraft,
           position: created.position,
-          assignees:
-            ms.length > 0
-              ? ms.map((m) => ({
-                  id: m?.id,
-                  name: m?.name,
-                  imageSrc: m?.imageSrc,
-                }))
-              : undefined,
+          assignees: resolveKanbanAssignees(taskAssigneeIdsDraft, teamMembers),
         }
 
         setColumns((prev) =>
@@ -561,6 +723,44 @@ export function Board({
             column.id === columnId
               ? { ...column, tasks: [...column.tasks, newTask] }
               : column,
+          ),
+        )
+
+        const deadlineEventId = await syncTaskDeadlineEvent({
+          cardId: created.id,
+          title: taskTitleDraft,
+          description: taskDescriptionDraft,
+          dueDate: normalizedDueDate ?? undefined,
+          dueTime: normalizedDueTime ?? undefined,
+          assigneeIds: taskAssigneeIdsDraft,
+        })
+
+        await updateBoardCard({
+          id: created.id,
+          title: created.title,
+          description: created.description ?? "",
+          dueDate: normalizedDueDate,
+          dueAt: dueAtIso,
+          dueTimezone,
+          deadlineEventId,
+          assignedTo: taskAssigneeIdsDraft[0] || null,
+        })
+
+        setColumns((prev) =>
+          prev.map((column) =>
+            column.id !== columnId
+              ? column
+              : {
+                  ...column,
+                  tasks: column.tasks.map((task) =>
+                    task.id === created.id
+                      ? {
+                          ...task,
+                          deadlineEventId: deadlineEventId ?? undefined,
+                        }
+                      : task,
+                  ),
+                },
           ),
         )
 
@@ -583,10 +783,7 @@ export function Board({
           const map = await fetchCardAssignees([created.id])
           const ids = map[created.id] ?? []
           if (ids.length > 0) {
-            const assignees = ids
-              .map((id) => teamMembers.find((x) => x.id === id))
-              .filter(Boolean)
-              .map((m) => ({ id: m?.id, name: m?.name, imageSrc: m?.imageSrc }))
+            const resolved = resolveKanbanAssignees(ids, teamMembers)
             setColumns((prev) =>
               prev.map((col) =>
                 col.id !== columnId
@@ -594,7 +791,7 @@ export function Board({
                   : {
                       ...col,
                       tasks: col.tasks.map((t) =>
-                        t.id === created.id ? { ...t, assignees } : t,
+                        t.id === created.id ? { ...t, assignees: resolved } : t,
                       ),
                     },
               ),
@@ -668,6 +865,12 @@ export function Board({
   }
 
   const handleRemoveTask = async (columnId: string, taskId: string) => {
+    const previousColumns = columns
+    const taskToRemove =
+      columns
+        .find((column) => column.id === columnId)
+        ?.tasks.find((task) => task.id === taskId) ?? null
+
     setColumns((prev) =>
       prev.map((column) =>
         column.id === columnId
@@ -684,8 +887,22 @@ export function Board({
     }
 
     try {
-      await removeBoardCard(taskId)
+      const removed = await removeBoardCard(taskId)
+      const deadlineEventId =
+        removed.deadlineEventId ?? taskToRemove?.deadlineEventId ?? null
+      if (deadlineEventId) {
+        try {
+          await deleteCalendarEvent(deadlineEventId)
+        } catch (calendarError) {
+          setError(
+            calendarError instanceof Error
+              ? `A tarefa foi removida, mas o evento do calendário não pôde ser apagado: ${calendarError.message}`
+              : "A tarefa foi removida, mas o evento do calendário não pôde ser apagado.",
+          )
+        }
+      }
     } catch (e) {
+      setColumns(previousColumns)
       setError(e instanceof Error ? e.message : "Falha ao remover card.")
     }
   }
@@ -1072,6 +1289,8 @@ export function Board({
                   }
                   taskTitleDraft={taskTitleDraft}
                   taskDescriptionDraft={taskDescriptionDraft}
+                  taskDueDateDraft={taskDueDateDraft}
+                  taskDueTimeDraft={taskDueTimeDraft}
                   taskColorDraft={taskColorDraft}
                   assigneeIdsDraft={taskAssigneeIdsDraft}
                   assignees={teamMembers}
@@ -1089,6 +1308,8 @@ export function Board({
                   onCancelTaskForm={resetTaskForm}
                   onTaskTitleChange={setTaskTitleDraft}
                   onTaskDescriptionChange={setTaskDescriptionDraft}
+                  onTaskDueDateChange={handleTaskDueDateChange}
+                  onTaskDueTimeChange={setTaskDueTimeDraft}
                   onSubmitTask={(colId) => void handleSubmitTask(colId)}
                   onRemoveTask={(colId, taskId) =>
                     void handleRemoveTask(colId, taskId)
