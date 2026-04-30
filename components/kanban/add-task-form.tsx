@@ -18,6 +18,8 @@ interface AddTaskFormProps {
   isOpen: boolean
   title: string
   description: string
+  dueDate?: string
+  dueTime?: string
   color: string
   assigneeIds?: string[]
   assignees?: Array<{ id: string; name: string; imageSrc: string }>
@@ -25,6 +27,8 @@ interface AddTaskFormProps {
   heading?: string
   onTitleChange: (value: string) => void
   onDescriptionChange: (value: string) => void
+  onDueDateChange?: (value: string) => void
+  onDueTimeChange?: (value: string) => void
   onAssigneeIdsChange?: (value: string[]) => void
   onOpen: () => void
   onCancel: () => void
@@ -44,6 +48,8 @@ export function AddTaskForm({
   isOpen,
   title,
   description,
+  dueDate = "",
+  dueTime = "",
   color,
   assigneeIds = [],
   assignees = [],
@@ -51,6 +57,8 @@ export function AddTaskForm({
   heading = "Nova tarefa",
   onTitleChange,
   onDescriptionChange,
+  onDueDateChange,
+  onDueTimeChange,
   onAssigneeIdsChange,
   onOpen,
   onCancel,
@@ -111,6 +119,43 @@ export function AddTaskForm({
               rows={3}
               className="resize-none text-sm transition-all duration-200 focus-visible:ring-primary/40"
             />
+
+            {onDueDateChange && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="task-due-date"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Data de entrega
+                  </label>
+                  <Input
+                    id="task-due-date"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => onDueDateChange(e.target.value)}
+                    className="text-sm transition-all duration-200 focus-visible:ring-primary/40"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="task-due-time"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Horário de entrega
+                  </label>
+                  <Input
+                    id="task-due-time"
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => onDueTimeChange?.(e.target.value)}
+                    disabled={!dueDate}
+                    className="text-sm transition-all duration-200 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="flex w-full items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-card-foreground">
               <span className="text-xs font-medium text-muted-foreground">

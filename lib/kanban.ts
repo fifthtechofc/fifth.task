@@ -97,6 +97,10 @@ type CardRow = {
   column_id: string
   title: string
   description: string | null
+  due_date: string | null
+  due_at: string | null
+  due_timezone: string | null
+  deadline_event_id: string | null
   position: number
   created_by: string
   assigned_to: string | null
@@ -113,6 +117,17 @@ type CardTaskRow = {
   card_id: string
   title: string
   position: number
+}
+
+function isMissingBoardCardColumnError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : ""
+  const lower = message.toLowerCase()
+  return lower.includes("column") || lower.includes("schema cache")
 }
 
 /** Usado para cor padrão da coluna; o nome exibido é sempre o que o usuário digitou. */
@@ -254,16 +269,40 @@ export async function fetchBoardColumns(boardId: string): Promise<ColumnRow[]> {
 }
 
 export async function fetchBoardCards(boardId: string): Promise<CardRow[]> {
-  const { data, error } = await supabase
-    .from("board_cards")
-    .select(
-      "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
-    )
-    .eq("board_id", boardId)
-    .order("position", { ascending: true })
+  try {
+    const { data, error } = await supabase
+      .from("board_cards")
+      .select(
+        "id,board_id,column_id,title,description,due_date,due_at,due_timezone,deadline_event_id,position,created_by,assigned_to,updated_at",
+      )
+      .eq("board_id", boardId)
+      .order("position", { ascending: true })
 
-  if (error) throw new Error(error.message)
-  return (data ?? []) as CardRow[]
+    if (error) throw new Error(error.message)
+    return (data ?? []) as CardRow[]
+  } catch (error) {
+    if (!isMissingBoardCardColumnError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+
+    const { data, error: fallbackError } = await supabase
+      .from("board_cards")
+      .select(
+        "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
+      )
+      .eq("board_id", boardId)
+      .order("position", { ascending: true })
+
+    if (fallbackError) throw new Error(fallbackError.message)
+    return ((data ?? []) as Array<Omit<CardRow, "due_date" | "due_at" | "due_timezone" | "deadline_event_id">>)
+      .map((card) => ({
+        ...card,
+        due_date: null,
+        due_at: null,
+        due_timezone: null,
+        deadline_event_id: null,
+      }))
+  }
 }
 
 export async function fetchCardChecklist(
@@ -313,6 +352,10 @@ export function buildKanbanColumns(params: {
       id: card.id,
       title: card.title,
       description: card.description ?? undefined,
+      dueDate: card.due_date ?? undefined,
+      dueAt: card.due_at ?? undefined,
+      dueTimezone: card.due_timezone ?? undefined,
+      deadlineEventId: card.deadline_event_id ?? undefined,
       position: card.position,
       assignees: assignees.length > 0 ? assignees : undefined,
       checklist,
@@ -380,47 +423,125 @@ export async function createBoardCard(params: {
   columnId: string
   title: string
   description?: string
+  dueDate?: string | null
+  dueAt?: string | null
+  dueTimezone?: string | null
   position: number
   createdBy: string
   assignedTo?: string | null
 }): Promise<CardRow> {
-  const { data, error } = await supabase
-    .from("board_cards")
-    .insert({
-      board_id: params.boardId,
-      column_id: params.columnId,
-      title: params.title.trim(),
-      description: params.description?.trim() || null,
-      position: params.position,
-      created_by: params.createdBy,
-      assigned_to: params.assignedTo ?? null,
-    })
-    .select(
-      "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
-    )
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from("board_cards")
+      .insert({
+        board_id: params.boardId,
+        column_id: params.columnId,
+        title: params.title.trim(),
+        description: params.description?.trim() || null,
+        due_date: params.dueDate ?? null,
+        due_at: params.dueAt ?? null,
+        due_timezone: params.dueTimezone ?? null,
+        position: params.position,
+        created_by: params.createdBy,
+        assigned_to: params.assignedTo ?? null,
+      })
+      .select(
+        "id,board_id,column_id,title,description,due_date,due_at,due_timezone,deadline_event_id,position,created_by,assigned_to,updated_at",
+      )
+      .single()
 
-  if (error) throw new Error(error.message)
-  return data as CardRow
+    if (error) throw new Error(error.message)
+    return data as CardRow
+  } catch (error) {
+    if (!isMissingBoardCardColumnError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+    if (params.dueDate || params.dueAt || params.dueTimezone) {
+      throw new Error(
+        "O banco ainda não tem as colunas de prazo com horário. Execute o script supabase/board_cards_due_at_and_reminders.sql.",
+      )
+    }
+
+    const { data, error: fallbackError } = await supabase
+      .from("board_cards")
+      .insert({
+        board_id: params.boardId,
+        column_id: params.columnId,
+        title: params.title.trim(),
+        description: params.description?.trim() || null,
+        position: params.position,
+        created_by: params.createdBy,
+        assigned_to: params.assignedTo ?? null,
+      })
+      .select(
+        "id,board_id,column_id,title,description,position,created_by,assigned_to,updated_at",
+      )
+      .single()
+
+    if (fallbackError) throw new Error(fallbackError.message)
+    return {
+      ...(data as Omit<CardRow, "due_date" | "due_at" | "due_timezone" | "deadline_event_id">),
+      due_date: null,
+      due_at: null,
+      due_timezone: null,
+      deadline_event_id: null,
+    }
+  }
 }
 
 export async function updateBoardCard(params: {
   id: string
   title: string
   description?: string
+  dueDate?: string | null
+  dueAt?: string | null
+  dueTimezone?: string | null
+  deadlineEventId?: string | null
   assignedTo?: string | null
 }): Promise<void> {
-  const { error } = await supabase
-    .from("board_cards")
-    .update({
-      title: params.title.trim(),
-      description: params.description?.trim() || null,
-      assigned_to: params.assignedTo ?? null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", params.id)
+  try {
+    const { error } = await supabase
+      .from("board_cards")
+      .update({
+        title: params.title.trim(),
+        description: params.description?.trim() || null,
+        due_date: params.dueDate ?? null,
+        due_at: params.dueAt ?? null,
+        due_timezone: params.dueTimezone ?? null,
+        deadline_event_id: params.deadlineEventId ?? null,
+        assigned_to: params.assignedTo ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.id)
 
-  if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message)
+  } catch (error) {
+    if (!isMissingBoardCardColumnError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+    if (
+      params.dueDate ||
+      params.dueAt ||
+      params.dueTimezone ||
+      params.deadlineEventId
+    ) {
+      throw new Error(
+        "O banco ainda não tem as colunas de prazo com horário. Execute o script supabase/board_cards_due_at_and_reminders.sql.",
+      )
+    }
+
+    const { error: fallbackError } = await supabase
+      .from("board_cards")
+      .update({
+        title: params.title.trim(),
+        description: params.description?.trim() || null,
+        assigned_to: params.assignedTo ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.id)
+
+    if (fallbackError) throw new Error(fallbackError.message)
+  }
 }
 
 export async function fetchCardAssignees(
@@ -479,8 +600,55 @@ export async function setCardAssignees(params: {
 }
 
 export async function removeBoardCard(cardId: string) {
+  const { data: cardRow, error: cardFetchError } = await supabase
+    .from("board_cards")
+    .select("deadline_event_id")
+    .eq("id", cardId)
+    .maybeSingle()
+
+  if (cardFetchError) throw new Error(cardFetchError.message)
+
+  const { error: tasksError } = await supabase
+    .from("card_tasks")
+    .delete()
+    .eq("card_id", cardId)
+  if (tasksError && tasksError.code !== "PGRST116") {
+    throw new Error(tasksError.message)
+  }
+
+  try {
+    const { error: assigneesError } = await supabase
+      .from("card_assignees")
+      .delete()
+      .eq("card_id", cardId)
+    if (assigneesError && assigneesError.code !== "PGRST116") {
+      throw new Error(assigneesError.message)
+    }
+  } catch {
+    // optional table / policy shape mismatch: ignore here and let main delete proceed
+  }
+
+  try {
+    const { error: remindersError } = await supabase
+      .from("task_deadline_email_reminders")
+      .delete()
+      .eq("card_id", cardId)
+    if (remindersError && remindersError.code !== "PGRST116") {
+      throw new Error(remindersError.message)
+    }
+  } catch {
+    // optional table may not exist yet in some environments
+  }
+
   const { error } = await supabase.from("board_cards").delete().eq("id", cardId)
   if (error) throw new Error(error.message)
+
+  return {
+    deadlineEventId:
+      typeof cardRow?.deadline_event_id === "string"
+        ? cardRow.deadline_event_id
+        : null,
+  }
 }
 
 export async function removeBoardColumn(columnId: string) {

@@ -86,6 +86,17 @@ function isRetryableAppNotificationsError(
   return false
 }
 
+function isCardIdForeignKeyError(
+  error: { message?: string; code?: string } | null,
+) {
+  if (!error) return false
+  const msg = String(error.message ?? "").toLowerCase()
+  return (
+    msg.includes("app_notifications_card_id_fkey") ||
+    (msg.includes("foreign key") && msg.includes("card_id"))
+  )
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
@@ -303,11 +314,21 @@ export async function insertMyAppNotification(args: {
     card_id: args.cardId?.trim() || null,
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("app_notifications")
     .insert(payload)
     .select(APP_NOTIFICATIONS_SELECT_PLAIN)
     .single()
+
+  if (error && payload.card_id && isCardIdForeignKeyError(error)) {
+    const retry = await supabase
+      .from("app_notifications")
+      .insert({ ...payload, card_id: null })
+      .select(APP_NOTIFICATIONS_SELECT_PLAIN)
+      .single()
+    data = retry.data
+    error = retry.error
+  }
 
   if (error) {
     if (isAppNotificationsUnavailable(error)) {

@@ -23,6 +23,11 @@ export type CalendarEventRecord = {
   description: string | null
   isMeeting: boolean
   meetingLink: string | null
+  hideTime: boolean
+  sourceType?: "default" | "task_deadline"
+  taskCardId?: string | null
+  taskBoardId?: string | null
+  taskHref?: string | null
   startAt: string
   endAt: string | null
   assignees: CalendarEventAssignee[]
@@ -34,6 +39,11 @@ export type CalendarEventInput = {
   description?: string
   isMeeting?: boolean
   meetingLink?: string | null
+  hideTime?: boolean
+  sourceType?: "default" | "task_deadline"
+  taskCardId?: string | null
+  taskBoardId?: string | null
+  taskHref?: string | null
   startAt: string
   endAt?: string | null
   assigneeIds?: string[]
@@ -233,6 +243,11 @@ type CalendarDescriptionMeta = {
   description: string | null
   isMeeting: boolean
   meetingLink: string | null
+  hideTime: boolean
+  sourceType?: "default" | "task_deadline"
+  taskCardId?: string | null
+  taskBoardId?: string | null
+  taskHref?: string | null
 }
 
 export function parseCalendarDescription(
@@ -240,27 +255,65 @@ export function parseCalendarDescription(
 ): CalendarDescriptionMeta {
   const value = pickString(raw)
   if (!value) {
-    return { description: null, isMeeting: false, meetingLink: null }
+    return {
+      description: null,
+      isMeeting: false,
+      meetingLink: null,
+      hideTime: false,
+      sourceType: "default",
+      taskCardId: null,
+      taskBoardId: null,
+      taskHref: null,
+    }
   }
 
   const [firstLine, ...rest] = value.split(/\r?\n/)
   if (!firstLine.startsWith(CALENDAR_META_PREFIX)) {
-    return { description: value, isMeeting: false, meetingLink: null }
+    return {
+      description: value,
+      isMeeting: false,
+      meetingLink: null,
+      hideTime: false,
+      sourceType: "default",
+      taskCardId: null,
+      taskBoardId: null,
+      taskHref: null,
+    }
   }
 
   try {
     const meta = JSON.parse(firstLine.slice(CALENDAR_META_PREFIX.length)) as {
       isMeeting?: boolean
       meetingLink?: string | null
+      hideTime?: boolean
+      sourceType?: "default" | "task_deadline"
+      taskCardId?: string | null
+      taskBoardId?: string | null
+      taskHref?: string | null
     }
     const description = rest.join("\n").trim() || null
     return {
       description,
       isMeeting: Boolean(meta.isMeeting),
       meetingLink: pickString(meta.meetingLink) || null,
+      hideTime: Boolean(meta.hideTime),
+      sourceType:
+        meta.sourceType === "task_deadline" ? "task_deadline" : "default",
+      taskCardId: pickString(meta.taskCardId) || null,
+      taskBoardId: pickString(meta.taskBoardId) || null,
+      taskHref: pickString(meta.taskHref) || null,
     }
   } catch {
-    return { description: value, isMeeting: false, meetingLink: null }
+    return {
+      description: value,
+      isMeeting: false,
+      meetingLink: null,
+      hideTime: false,
+      sourceType: "default",
+      taskCardId: null,
+      taskBoardId: null,
+      taskHref: null,
+    }
   }
 }
 
@@ -268,18 +321,33 @@ export function buildCalendarDescription(input: {
   description?: string | null
   isMeeting?: boolean
   meetingLink?: string | null
+  hideTime?: boolean
+  sourceType?: "default" | "task_deadline"
+  taskCardId?: string | null
+  taskBoardId?: string | null
+  taskHref?: string | null
 }) {
   const description = pickString(input.description) || null
   const isMeeting = Boolean(input.isMeeting)
   const meetingLink = pickString(input.meetingLink) || null
+  const hideTime = Boolean(input.hideTime)
+  const sourceType = input.sourceType === "task_deadline" ? "task_deadline" : "default"
+  const taskCardId = pickString(input.taskCardId) || null
+  const taskBoardId = pickString(input.taskBoardId) || null
+  const taskHref = pickString(input.taskHref) || null
 
-  if (!isMeeting && !meetingLink) {
+  if (!isMeeting && !meetingLink && !hideTime && sourceType === "default") {
     return description
   }
 
   const meta = `${CALENDAR_META_PREFIX}${JSON.stringify({
     isMeeting,
     meetingLink,
+    hideTime,
+    sourceType,
+    taskCardId,
+    taskBoardId,
+    taskHref,
   })}`
 
   return description ? `${meta}\n${description}` : meta
@@ -593,6 +661,11 @@ function mapCalendarEventRow(
     description: parsedDescription.description,
     isMeeting: parsedDescription.isMeeting,
     meetingLink: parsedDescription.meetingLink,
+    hideTime: parsedDescription.hideTime,
+    sourceType: parsedDescription.sourceType ?? "default",
+    taskCardId: parsedDescription.taskCardId ?? null,
+    taskBoardId: parsedDescription.taskBoardId ?? null,
+    taskHref: parsedDescription.taskHref ?? null,
     startAt,
     endAt,
     assignees: [],

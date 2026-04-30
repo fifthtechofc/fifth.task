@@ -34,11 +34,15 @@ function buildCalendarData(events: CalendarEventRecord[]): CalendarData[] {
     list.push({
       id: event.id,
       name: event.title,
-      time: formatEventTimeRange(event.startAt, event.endAt),
+      time: event.hideTime ? "" : formatEventTimeRange(event.startAt, event.endAt),
       datetime: event.startAt,
       description: event.description ?? undefined,
       isMeeting: event.isMeeting,
       meetingLink: event.meetingLink ?? undefined,
+      sourceType: event.sourceType,
+      taskCardId: event.taskCardId ?? undefined,
+      taskBoardId: event.taskBoardId ?? undefined,
+      taskHref: event.taskHref ?? undefined,
       workspaceId: event.workspaceId,
       endDatetime: event.endAt ?? undefined,
       assignees: event.assignees.map((assignee) => ({

@@ -33,6 +33,8 @@ interface ColumnProps {
   editingCardId: string | null
   taskTitleDraft: string
   taskDescriptionDraft: string
+  taskDueDateDraft: string
+  taskDueTimeDraft: string
   taskColorDraft: string
   assigneeIdsDraft: string[]
   assignees: Array<{ id: string; name: string; imageSrc: string }>
@@ -54,6 +56,8 @@ interface ColumnProps {
   onCancelTaskForm: () => void
   onTaskTitleChange: (value: string) => void
   onTaskDescriptionChange: (value: string) => void
+  onTaskDueDateChange: (value: string) => void
+  onTaskDueTimeChange: (value: string) => void
   onChecklistTitleChange: (value: string) => void
   onAddChecklistItem: (cardId: string) => void
   onSubmitTask: (columnId: string) => void
@@ -79,6 +83,8 @@ export function Column({
   editingCardId,
   taskTitleDraft,
   taskDescriptionDraft,
+  taskDueDateDraft,
+  taskDueTimeDraft,
   taskColorDraft,
   assigneeIdsDraft,
   assignees,
@@ -96,6 +102,8 @@ export function Column({
   onCancelTaskForm,
   onTaskTitleChange,
   onTaskDescriptionChange,
+  onTaskDueDateChange,
+  onTaskDueTimeChange,
   onChecklistTitleChange,
   onAddChecklistItem,
   onSubmitTask,
@@ -280,6 +288,8 @@ export function Column({
                   isOpen
                   title={taskTitleDraft}
                   description={taskDescriptionDraft}
+                  dueDate={taskDueDateDraft}
+                  dueTime={taskDueTimeDraft}
                   color={taskColorDraft}
                   assigneeIds={assigneeIdsDraft}
                   assignees={assignees}
@@ -287,6 +297,8 @@ export function Column({
                   submitLabel="Salvar tarefa"
                   onTitleChange={onTaskTitleChange}
                   onDescriptionChange={onTaskDescriptionChange}
+                  onDueDateChange={onTaskDueDateChange}
+                  onDueTimeChange={onTaskDueTimeChange}
                   onAssigneeIdsChange={onAssigneeIdsChange}
                   onOpen={() => undefined}
                   onCancel={onCancelTaskForm}
@@ -365,6 +377,8 @@ export function Column({
             isOpen
             title={taskTitleDraft}
             description={taskDescriptionDraft}
+            dueDate={taskDueDateDraft}
+            dueTime={taskDueTimeDraft}
             color={taskColorDraft}
             assigneeIds={assigneeIdsDraft}
             assignees={assignees}
@@ -372,6 +386,8 @@ export function Column({
             submitLabel="Adicionar"
             onTitleChange={onTaskTitleChange}
             onDescriptionChange={onTaskDescriptionChange}
+            onDueDateChange={onTaskDueDateChange}
+            onDueTimeChange={onTaskDueTimeChange}
             onAssigneeIdsChange={onAssigneeIdsChange}
             onOpen={() => undefined}
             onCancel={onCancelTaskForm}
