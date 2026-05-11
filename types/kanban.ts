@@ -29,6 +29,8 @@ export interface KanbanTask {
   deadlineEventId?: string
   labels?: string[]
   assignees?: KanbanAssignee[]
+  creator?: KanbanAssignee
+  createdBy?: string
   position?: number
   checklist?: KanbanChecklistItem[]
 }

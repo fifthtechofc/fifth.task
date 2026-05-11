@@ -34,7 +34,9 @@ function buildCalendarData(events: CalendarEventRecord[]): CalendarData[] {
     list.push({
       id: event.id,
       name: event.title,
-      time: event.hideTime ? "" : formatEventTimeRange(event.startAt, event.endAt),
+      time: event.hideTime
+        ? ""
+        : formatEventTimeRange(event.startAt, event.endAt),
       datetime: event.startAt,
       description: event.description ?? undefined,
       isMeeting: event.isMeeting,

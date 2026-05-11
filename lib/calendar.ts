@@ -331,7 +331,8 @@ export function buildCalendarDescription(input: {
   const isMeeting = Boolean(input.isMeeting)
   const meetingLink = pickString(input.meetingLink) || null
   const hideTime = Boolean(input.hideTime)
-  const sourceType = input.sourceType === "task_deadline" ? "task_deadline" : "default"
+  const sourceType =
+    input.sourceType === "task_deadline" ? "task_deadline" : "default"
   const taskCardId = pickString(input.taskCardId) || null
   const taskBoardId = pickString(input.taskBoardId) || null
   const taskHref = pickString(input.taskHref) || null
@@ -948,7 +949,10 @@ export async function setCalendarEventAssignees(params: {
 
     const { error } = await supabase
       .from("calendar_event_assignees")
-      .insert(payload)
+      .upsert(payload, {
+        onConflict: "event_id,user_id",
+        ignoreDuplicates: true,
+      })
     if (error) {
       throw new Error(error.message)
     }

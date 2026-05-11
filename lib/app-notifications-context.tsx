@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   type AppNotification,
   type AppNotificationDbRow,
+  deleteAllMyAppNotifications,
   fetchAppNotifications,
   fetchAppNotificationWithActor,
   insertMyAppNotification,
@@ -69,6 +70,7 @@ type Ctx = {
   pushNotification: (n: PushInput) => Promise<void>
   markAllRead: () => void
   markRead: (id: string) => void
+  clearAllNotifications: () => void
   /** Volta a carregar da base (útil após RPC/trigger se o Realtime não estiver ativo). */
   refreshNotifications: () => void
 }
@@ -236,6 +238,11 @@ export function AppNotificationsProvider({
     }
   }, [feedSource])
 
+  const clearAllNotifications = React.useCallback(() => {
+    setItems([])
+    void deleteAllMyAppNotifications()
+  }, [])
+
   const markRead = React.useCallback(
     (id: string) => {
       setItems((prev) =>
@@ -268,6 +275,7 @@ export function AppNotificationsProvider({
       pushNotification,
       markAllRead,
       markRead,
+      clearAllNotifications,
       refreshNotifications,
     }),
     [
@@ -276,6 +284,7 @@ export function AppNotificationsProvider({
       pushNotification,
       markAllRead,
       markRead,
+      clearAllNotifications,
       refreshNotifications,
     ],
   )
@@ -296,6 +305,7 @@ export function useAppNotifications(): Ctx {
       pushNotification: async () => undefined,
       markAllRead: () => undefined,
       markRead: () => undefined,
+      clearAllNotifications: () => undefined,
       refreshNotifications: () => undefined,
     }
   }

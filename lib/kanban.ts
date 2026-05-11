@@ -294,14 +294,20 @@ export async function fetchBoardCards(boardId: string): Promise<CardRow[]> {
       .order("position", { ascending: true })
 
     if (fallbackError) throw new Error(fallbackError.message)
-    return ((data ?? []) as Array<Omit<CardRow, "due_date" | "due_at" | "due_timezone" | "deadline_event_id">>)
-      .map((card) => ({
-        ...card,
-        due_date: null,
-        due_at: null,
-        due_timezone: null,
-        deadline_event_id: null,
-      }))
+    return (
+      (data ?? []) as Array<
+        Omit<
+          CardRow,
+          "due_date" | "due_at" | "due_timezone" | "deadline_event_id"
+        >
+      >
+    ).map((card) => ({
+      ...card,
+      due_date: null,
+      due_at: null,
+      due_timezone: null,
+      deadline_event_id: null,
+    }))
   }
 }
 
@@ -348,6 +354,10 @@ export function buildKanbanColumns(params: {
       (card.assigned_to ? [card.assigned_to] : [])
     const assignees = ids.map((id) => assigneesById[id]).filter(Boolean)
 
+    const creatorProfile = card.created_by
+      ? assigneesById[card.created_by]
+      : undefined
+
     list.push({
       id: card.id,
       title: card.title,
@@ -358,6 +368,8 @@ export function buildKanbanColumns(params: {
       deadlineEventId: card.deadline_event_id ?? undefined,
       position: card.position,
       assignees: assignees.length > 0 ? assignees : undefined,
+      creator: creatorProfile,
+      createdBy: card.created_by ?? undefined,
       checklist,
       labels: [],
     })
@@ -480,7 +492,10 @@ export async function createBoardCard(params: {
 
     if (fallbackError) throw new Error(fallbackError.message)
     return {
-      ...(data as Omit<CardRow, "due_date" | "due_at" | "due_timezone" | "deadline_event_id">),
+      ...(data as Omit<
+        CardRow,
+        "due_date" | "due_at" | "due_timezone" | "deadline_event_id"
+      >),
       due_date: null,
       due_at: null,
       due_timezone: null,
@@ -589,7 +604,10 @@ export async function setCardAssignees(params: {
     if (rows.length === 0) return
     const { error: insError } = await supabase
       .from("card_assignees")
-      .insert(rows)
+      .upsert(rows, {
+        onConflict: "card_id,profile_id",
+        ignoreDuplicates: true,
+      })
     if (insError) throw new Error(insError.message)
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Falha ao salvar responsáveis."
