@@ -561,7 +561,7 @@ export function TaskCard({
       </div>
 
       <Dialog open={openDetails} onOpenChange={setOpenDetails}>
-        <DialogContent className="w-full max-w-lg overflow-hidden border border-white/10 bg-black/90 p-6 text-white backdrop-blur-xl">
+        <DialogContent className="max-w-lg overflow-hidden border border-white/10 bg-black/90 p-6 text-white backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="truncate">{task.title}</DialogTitle>
             {columnTitle && (
