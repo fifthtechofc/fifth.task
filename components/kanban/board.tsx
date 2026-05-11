@@ -137,10 +137,7 @@ function boardNotificationHref(
   return `${base}&card=${encodeURIComponent(cardId)}`
 }
 
-function boardHref(
-  boardProjectSlug: string | undefined,
-  boardId: string,
-) {
+function boardHref(boardProjectSlug: string | undefined, boardId: string) {
   return boardProjectSlug && boardProjectSlug.length > 0
     ? `/boards/${encodeURIComponent(boardProjectSlug)}?id=${encodeURIComponent(boardId)}`
     : `/boards/board?id=${encodeURIComponent(boardId)}`
@@ -626,9 +623,7 @@ export function Board({
         const map = await fetchCardAssignees([cardId])
         const ids = map[cardId] ?? []
         const assignees =
-          ids.length > 0
-            ? resolveKanbanAssignees(ids, teamMembers)
-            : undefined
+          ids.length > 0 ? resolveKanbanAssignees(ids, teamMembers) : undefined
         setColumns((prev) =>
           prev.map((col) =>
             col.id !== columnId

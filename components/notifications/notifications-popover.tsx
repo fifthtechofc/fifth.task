@@ -2,7 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Bell } from "lucide-react"
+import { Bell, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,8 @@ function timeLabel(ts: number) {
 }
 
 export function NotificationsPopover() {
-  const { items, unreadCount, markAllRead, markRead } = useAppNotifications()
+  const { items, unreadCount, markAllRead, markRead, clearAllNotifications } =
+    useAppNotifications()
 
   return (
     <Popover>
@@ -64,19 +65,31 @@ export function NotificationsPopover() {
         sideOffset={8}
         className="w-80 max-h-[min(420px,var(--radix-popover-content-available-height))] overflow-hidden border border-white/10 bg-zinc-950/95 p-0 text-zinc-100 shadow-2xl shadow-black/40 backdrop-blur-xl"
       >
-        <div className="flex items-baseline justify-between gap-4 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-4 px-3 py-2.5">
           <div className="text-sm font-semibold tracking-tight">
             Notificações
           </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              className="text-xs font-medium text-zinc-400 hover:text-white hover:underline"
-              onClick={markAllRead}
-            >
-              Marcar todas como lidas
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                className="text-xs font-medium text-zinc-400 hover:text-white hover:underline"
+                onClick={markAllRead}
+              >
+                Marcar todas como lidas
+              </button>
+            )}
+            {items.length > 0 && (
+              <button
+                type="button"
+                title="Limpar todas as notificações"
+                className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                onClick={clearAllNotifications}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
         <div
           role="separator"

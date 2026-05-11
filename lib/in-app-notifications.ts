@@ -364,6 +364,31 @@ export async function markAppNotificationRead(id: string): Promise<boolean> {
   return true
 }
 
+export async function deleteAllMyAppNotifications(): Promise<boolean> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+  if (userError || !user) return false
+
+  const { error } = await supabase
+    .from("app_notifications")
+    .delete()
+    .eq("user_id", user.id)
+
+  if (error) {
+    if (isAppNotificationsUnavailable(error)) {
+      appNotificationsDbAvailable = false
+      warnOnceSchemaMissing("delete all")
+    } else {
+      console.error("[in-app-notifications] delete all failed", error.message)
+    }
+    return false
+  }
+  appNotificationsDbAvailable = true
+  return true
+}
+
 export async function markAllAppNotificationsRead(): Promise<boolean> {
   const { error } = await supabase
     .from("app_notifications")

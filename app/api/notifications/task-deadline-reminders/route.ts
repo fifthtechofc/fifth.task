@@ -181,7 +181,10 @@ function buildReminderHtml(args: {
   `
 }
 
-async function fetchCards(admin: ReturnType<typeof getSupabaseAdmin>, nowIso: string) {
+async function fetchCards(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  nowIso: string,
+) {
   const maxDueAt = new Date(
     Date.now() + 73 * 60 * 60 * 1000 + 20 * 60 * 1000,
   ).toISOString()

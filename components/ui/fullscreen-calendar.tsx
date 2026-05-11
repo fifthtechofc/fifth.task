@@ -919,7 +919,8 @@ export function FullScreenCalendar({
                     <Button
                       type="button"
                       onClick={() => {
-                        window.location.href = taskDeadlineDialogEvent.taskHref as string
+                        window.location.href =
+                          taskDeadlineDialogEvent.taskHref as string
                       }}
                     >
                       Abrir tarefa

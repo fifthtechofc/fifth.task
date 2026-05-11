@@ -15,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { MembersSelect } from "@/components/ui/members-select"
 import {
   Sheet,
   SheetContent,
@@ -156,7 +155,7 @@ function CompactTaskPreview({
             </h3>
           </div>
           {description ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-300">
+            <p className="mt-1 line-clamp-2 break-words text-xs leading-relaxed text-zinc-300">
               {description}
             </p>
           ) : (
@@ -350,6 +349,7 @@ export function TaskCard({
     <>
       <div
         draggable
+        data-no-drag-scroll="true"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={() => setOpenDetails(true)}
@@ -502,7 +502,7 @@ export function TaskCard({
         </div>
 
         {task.description && (
-          <p className="mb-2 text-xs text-muted-foreground">
+          <p className="mb-2 line-clamp-3 break-words text-xs text-muted-foreground">
             {task.description}
           </p>
         )}
@@ -513,9 +513,29 @@ export function TaskCard({
           </div>
         )}
 
-        {task.assignees && task.assignees.length > 0 && (
-          <div className="flex justify-end">
-            <div className="flex items-center">
+        <div className="flex items-end justify-between gap-2">
+          {task.creator && (
+            <div
+              className="flex items-center gap-1.5"
+              title={`Criador: ${task.creator.name}`}
+            >
+              <span className="text-[9px] font-medium uppercase tracking-wide text-zinc-500">
+                Criador
+              </span>
+              <Avatar className="h-5 w-5 border border-white/10">
+                <AvatarImage
+                  src={task.creator.imageSrc || undefined}
+                  alt={task.creator.name}
+                />
+                <AvatarFallback className="text-[8px]">
+                  {initials(task.creator.name)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+
+          {task.assignees && task.assignees.length > 0 && (
+            <div className="ml-auto flex items-center">
               {task.assignees.slice(0, 3).map((a, idx) => (
                 <Avatar
                   key={a.id}
@@ -536,12 +556,12 @@ export function TaskCard({
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Dialog open={openDetails} onOpenChange={setOpenDetails}>
-        <DialogContent className="w-full max-w-lg border border-white/10 bg-black/90 p-6 text-white backdrop-blur-xl">
+        <DialogContent className="w-full max-w-lg overflow-hidden border border-white/10 bg-black/90 p-6 text-white backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="truncate">{task.title}</DialogTitle>
             {columnTitle && (
@@ -556,10 +576,30 @@ export function TaskCard({
           </DialogHeader>
 
           {task.description && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <p className="text-sm leading-relaxed text-zinc-200">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <p className="break-all text-sm leading-relaxed text-zinc-200">
                 {task.description}
               </p>
+            </div>
+          )}
+
+          {task.creator && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-medium text-zinc-400">Criador</p>
+              <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
+                <Avatar className="h-5 w-5">
+                  <AvatarImage
+                    src={task.creator.imageSrc || undefined}
+                    alt={task.creator.name}
+                  />
+                  <AvatarFallback className="text-[8px]">
+                    {initials(task.creator.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-zinc-200">
+                  {task.creator.name}
+                </span>
+              </div>
             </div>
           )}
 
@@ -568,15 +608,22 @@ export function TaskCard({
               <p className="mb-2 text-xs font-medium text-zinc-400">
                 Responsáveis
               </p>
-              <MembersSelect
-                members={task.assignees.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  imageSrc: a.imageSrc,
-                }))}
-                selectedIds={task.assignees.map((a) => a.id)}
-                onChange={() => undefined}
-              />
+              <div className="flex flex-wrap gap-2">
+                {task.assignees.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5"
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={a.imageSrc || undefined} alt={a.name} />
+                      <AvatarFallback className="text-[8px]">
+                        {initials(a.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-zinc-200">{a.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
