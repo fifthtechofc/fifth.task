@@ -313,6 +313,7 @@ export function TaskCard({
     <>
       <div
         draggable
+        data-no-drag-scroll="true"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={() => setOpenDetails(true)}
@@ -359,6 +360,7 @@ export function TaskCard({
             <button
               type="button"
               draggable={false}
+              data-no-drag-scroll="true"
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onMouseEnter={() => setIsEditHovered(true)}
@@ -367,7 +369,7 @@ export function TaskCard({
                 e.stopPropagation()
                 onEdit()
               }}
-              className="rounded-md p-1.5 transition-all duration-200"
+              className="rounded-md p-1.5 touch-manipulation transition-all duration-200"
               style={{
                 backgroundColor: isEditHovered ? "rgba(59, 130, 246, 0.12)" : "transparent",
               }}
@@ -382,13 +384,14 @@ export function TaskCard({
             <button
               type="button"
               draggable={false}
+              data-no-drag-scroll="true"
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation()
                 setOpenComments(true)
               }}
-              className="relative rounded-md p-1.5 transition-all duration-200 hover:bg-white/5"
+              className="relative rounded-md p-1.5 touch-manipulation transition-all duration-200 hover:bg-white/5"
               aria-label="Comentários"
               title="Comentários"
             >
@@ -405,12 +408,13 @@ export function TaskCard({
                 <button
                   type="button"
                   draggable={false}
+                  data-no-drag-scroll="true"
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={() => setIsDeleteHovered(true)}
                   onMouseLeave={() => setIsDeleteHovered(false)}
-                  className="rounded-md p-1.5 transition-all duration-200"
+                  className="rounded-md p-1.5 touch-manipulation transition-all duration-200"
                   style={{
                     backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
                   }}

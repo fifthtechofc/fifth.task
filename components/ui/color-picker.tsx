@@ -82,11 +82,16 @@ function ColorPicker({
     value ? getColorAsHsva(value) : { h: 0, s: 0, v: 0, a: 1 },
   );
 
+  React.useEffect(() => {
+    if (value === undefined) return;
+    setColorHsv(getColorAsHsva(value));
+  }, [value]);
+
   const handleValueChange = (color: HsvaColor) => {
     onValueChange?.({
-      hex: hsvaToHex(colorHsv),
-      hsl: hsvaToHsla(colorHsv),
-      rgb: hsvaToRgba(colorHsv),
+      hex: hsvaToHex(color),
+      hsl: hsvaToHsla(color),
+      rgb: hsvaToRgba(color),
     });
 
     setColorHsv(color);
@@ -96,7 +101,10 @@ function ColorPicker({
     <Popover {...props}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className={cn('w-[350px] p-0', className)}
+        className={cn(
+          'w-[350px] border border-white/10 bg-zinc-950/98 p-0 text-zinc-100 shadow-2xl',
+          className,
+        )}
         {...props}
         style={
           {
@@ -104,7 +112,7 @@ function ColorPicker({
           } as React.CSSProperties
         }
       >
-        <div className="space-y-2 p-4">
+        <div className="space-y-3 p-4">
           <Saturation
             hsva={colorHsv}
             onChange={(newColor) => {
@@ -116,14 +124,14 @@ function ColorPicker({
               aspectRatio: '4/2',
               borderRadius: '0.3rem',
             }}
-            className="border border-border"
+            className="overflow-hidden border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
           />
           <Hue
             hue={colorHsv.h}
             onChange={(newHue) => {
               handleValueChange({ ...colorHsv, ...newHue });
             }}
-            className="[&>div:first-child]:overflow-hidden [&>div:first-child]:!rounded"
+            className="[&>div:first-child]:overflow-hidden [&>div:first-child]:!rounded [&>div:first-child]:border [&>div:first-child]:border-white/12"
             style={
               {
                 width: '100%',
@@ -137,7 +145,10 @@ function ColorPicker({
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="shrink-0 justify-between uppercase">
+                <Button
+                  variant="outline"
+                  className="shrink-0 justify-between border-white/12 bg-black/30 uppercase hover:bg-black/50"
+                >
                   {colorType}
                   <ChevronDownIcon
                     className="-me-1 ms-2 opacity-60"
@@ -189,7 +200,7 @@ function ColorPicker({
               )}
               {colorType === 'hex' && (
                 <Input
-                  className="flex"
+                  className="flex border-white/12 bg-black/30 text-zinc-100"
                   value={hsvaToHex(colorHsv)}
                   onChange={(e) => {
                     setColorHsv(hexToHsva(e.target.value));
@@ -344,10 +355,10 @@ function ObjectColorInput({ value, label, onValueChange }: ObjectColorInputProps
     }
   }
   return (
-    <div className="-mt-px flex">
+      <div className="-mt-px flex">
       <div className="relative min-w-0 flex-1 focus-within:z-10">
         <Input
-          className="peer rounded-e-none shadow-none [direction:inherit]"
+          className="peer rounded-e-none border-white/12 bg-black/30 text-zinc-100 shadow-none [direction:inherit]"
           value={label === 'hsl' ? value.h.toFixed(0) : value.r}
           onChange={(e) =>
             handleChange({
@@ -359,7 +370,7 @@ function ObjectColorInput({ value, label, onValueChange }: ObjectColorInputProps
       </div>
       <div className="relative -ms-px min-w-0 flex-1 focus-within:z-10">
         <Input
-          className="peer rounded-none shadow-none [direction:inherit]"
+          className="peer rounded-none border-white/12 bg-black/30 text-zinc-100 shadow-none [direction:inherit]"
           value={label === 'hsl' ? value.s.toFixed(0) : value.g}
           onChange={(e) =>
             handleChange({
@@ -371,7 +382,7 @@ function ObjectColorInput({ value, label, onValueChange }: ObjectColorInputProps
       </div>
       <div className="relative -ms-px min-w-0 flex-1 focus-within:z-10">
         <Input
-          className="peer rounded-s-none shadow-none [direction:inherit]"
+          className="peer rounded-s-none border-white/12 bg-black/30 text-zinc-100 shadow-none [direction:inherit]"
           value={label === 'hsl' ? value.l.toFixed(0) : value.b}
           onChange={(e) =>
             handleChange({

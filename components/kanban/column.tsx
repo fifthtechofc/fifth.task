@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { GripVertical, Pencil, Trash2, AlertTriangle } from "lucide-react"
+import { GripVertical, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KanbanColumn, KanbanTask } from "@/types/kanban"
 import { AddTaskForm } from "./add-task-form"
@@ -34,8 +34,11 @@ interface ColumnProps {
   taskTitleDraft: string
   taskDescriptionDraft: string
   taskColorDraft: string
+  taskColumnId: string
+  taskColumns: Array<{ id: string; title: string }>
   assigneeIdsDraft: string[]
   assignees: Array<{ id: string; name: string; imageSrc: string }>
+  onTaskColumnChange: (value: string) => void
   onAssigneeIdsChange: (value: string[]) => void
   checklistItems: Array<{ id: string; title: string; position: number }>
   checklistTitleDraft: string
@@ -56,6 +59,10 @@ interface ColumnProps {
   onRemoveTask: (columnId: string, taskId: string) => void
   onEditColumn: (column: KanbanColumn) => void
   onRemoveColumn: (columnId: string) => void
+  canMoveLeft?: boolean
+  canMoveRight?: boolean
+  onMoveColumnLeft?: (columnId: string) => void
+  onMoveColumnRight?: (columnId: string) => void
   getLabelColor: (label: string) => string
 }
 
@@ -76,8 +83,11 @@ export function Column({
   taskTitleDraft,
   taskDescriptionDraft,
   taskColorDraft,
+  taskColumnId,
+  taskColumns,
   assigneeIdsDraft,
   assignees,
+  onTaskColumnChange,
   onAssigneeIdsChange,
   checklistItems,
   checklistTitleDraft,
@@ -98,6 +108,10 @@ export function Column({
   onRemoveTask,
   onEditColumn,
   onRemoveColumn,
+  canMoveLeft,
+  canMoveRight,
+  onMoveColumnLeft,
+  onMoveColumnRight,
   getLabelColor,
 }: ColumnProps) {
   const [isDeleteHovered, setIsDeleteHovered] = React.useState(false)
@@ -135,6 +149,7 @@ export function Column({
         <div className="flex items-center gap-2">
           <div
             draggable={Boolean(onColumnDragStart)}
+            data-no-drag-scroll="true"
             onDragStart={(e) => {
               e.stopPropagation()
               onColumnDragStart?.(column.id)
@@ -162,7 +177,7 @@ export function Column({
               onColumnDragEnd?.()
             }}
             className={cn(
-              "mr-1 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground",
+              "mr-1 flex h-7 w-7 touch-manipulation items-center justify-center rounded-md text-muted-foreground",
               onColumnDragStart && "cursor-grab active:cursor-grabbing",
               isColumnDropActive && "ring-2 ring-primary/40",
             )}
@@ -189,10 +204,35 @@ export function Column({
         <div className="flex items-center gap-1">
           <button
             type="button"
+            data-no-drag-scroll="true"
+            onClick={() => onMoveColumnLeft?.(column.id)}
+            disabled={!canMoveLeft}
+            className="rounded-md p-1.5 touch-manipulation transition-all duration-200 disabled:opacity-35"
+            aria-label="Mover coluna para a esquerda"
+            title="Mover coluna para a esquerda"
+          >
+            <ChevronLeft className="h-4 w-4 text-zinc-100" />
+          </button>
+
+          <button
+            type="button"
+            data-no-drag-scroll="true"
+            onClick={() => onMoveColumnRight?.(column.id)}
+            disabled={!canMoveRight}
+            className="rounded-md p-1.5 touch-manipulation transition-all duration-200 disabled:opacity-35"
+            aria-label="Mover coluna para a direita"
+            title="Mover coluna para a direita"
+          >
+            <ChevronRight className="h-4 w-4 text-zinc-100" />
+          </button>
+
+          <button
+            type="button"
+            data-no-drag-scroll="true"
             onMouseEnter={() => setIsEditHovered(true)}
             onMouseLeave={() => setIsEditHovered(false)}
             onClick={() => onEditColumn(column)}
-            className="rounded-md p-1.5 transition-all duration-200"
+            className="rounded-md p-1.5 touch-manipulation transition-all duration-200"
             style={{
               backgroundColor: isEditHovered ? "rgba(59, 130, 246, 0.12)" : "transparent",
             }}
@@ -208,9 +248,10 @@ export function Column({
             <DialogTrigger asChild>
               <button
                 type="button"
+                data-no-drag-scroll="true"
                 onMouseEnter={() => setIsDeleteHovered(true)}
                 onMouseLeave={() => setIsDeleteHovered(false)}
-                className="rounded-md p-1.5 transition-all duration-200"
+                className="rounded-md p-1.5 touch-manipulation transition-all duration-200"
                 style={{
                   backgroundColor: isDeleteHovered ? "rgba(239, 68, 68, 0.12)" : "transparent",
                 }}
@@ -270,12 +311,15 @@ export function Column({
                 title={taskTitleDraft}
                 description={taskDescriptionDraft}
                 color={taskColorDraft}
+                columnId={taskColumnId}
+                availableColumns={taskColumns}
                 assigneeIds={assigneeIdsDraft}
                 assignees={assignees}
                 heading="Editar tarefa"
                 submitLabel="Salvar tarefa"
                 onTitleChange={onTaskTitleChange}
                 onDescriptionChange={onTaskDescriptionChange}
+                onColumnChange={onTaskColumnChange}
                 onAssigneeIdsChange={onAssigneeIdsChange}
                 onOpen={() => undefined}
                 onCancel={onCancelTaskForm}
@@ -350,12 +394,15 @@ export function Column({
             title={taskTitleDraft}
             description={taskDescriptionDraft}
             color={taskColorDraft}
+            columnId={taskColumnId}
+            availableColumns={taskColumns}
             assigneeIds={assigneeIdsDraft}
             assignees={assignees}
             heading="Nova tarefa"
             submitLabel="Adicionar"
             onTitleChange={onTaskTitleChange}
             onDescriptionChange={onTaskDescriptionChange}
+            onColumnChange={onTaskColumnChange}
             onAssigneeIdsChange={onAssigneeIdsChange}
             onOpen={() => undefined}
             onCancel={onCancelTaskForm}

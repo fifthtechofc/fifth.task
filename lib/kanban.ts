@@ -82,6 +82,7 @@ type ColumnRow = {
   board_id: string
   title: string
   position: number
+  color: string | null
 }
 
 type CardRow = {
@@ -226,7 +227,7 @@ export async function updateBoard(params: {
 export async function fetchBoardColumns(boardId: string): Promise<ColumnRow[]> {
   const { data, error } = await supabase
     .from("board_columns")
-    .select("id,board_id,title,position")
+    .select("id,board_id,title,position,color")
     .eq("board_id", boardId)
     .order("position", { ascending: true })
 
@@ -300,6 +301,7 @@ export function buildKanbanColumns(params: {
     id: c.id,
     title: c.title,
     type: inferColumnTypeFromTitle(c.title),
+    color: c.color ?? undefined,
     position: c.position,
     tasks: tasksByColumn.get(c.id) ?? [],
   }))
@@ -309,6 +311,7 @@ export async function createBoardColumn(params: {
   boardId: string
   title: string
   position: number
+  color?: string | null
 }): Promise<ColumnRow> {
   const { data, error } = await supabase
     .from("board_columns")
@@ -316,8 +319,9 @@ export async function createBoardColumn(params: {
       board_id: params.boardId,
       title: params.title.trim(),
       position: params.position,
+      color: params.color ?? null,
     })
-    .select("id,board_id,title,position")
+    .select("id,board_id,title,position,color")
     .single()
 
   if (error) throw new Error(error.message)
@@ -349,6 +353,18 @@ export async function updateBoardColumnsPositions(params: {
       if (updateError) throw new Error(updateError.message)
     }
     return
+  }
+}
+
+export async function persistBoardColumnsPositions(params: {
+  updates: Array<{ id: string; position: number }>
+}) {
+  for (const update of params.updates) {
+    const { error } = await supabase
+      .from("board_columns")
+      .update({ position: update.position })
+      .eq("id", update.id)
+    if (error) throw new Error(error.message)
   }
 }
 
@@ -535,8 +551,17 @@ export async function moveBoardCard(params: {
   if (error) throw new Error(error.message)
 }
 
-export async function updateColumnTitle(params: { id: string; title: string }) {
-  const { error } = await supabase.from("board_columns").update({ title: params.title.trim() }).eq("id", params.id)
+export async function updateColumnTitle(params: {
+  id: string
+  title: string
+  color?: string | null
+}) {
+  const payload: { title: string; color?: string | null } = {
+    title: params.title.trim(),
+  }
+  if (params.color !== undefined) payload.color = params.color
+
+  const { error } = await supabase.from("board_columns").update(payload).eq("id", params.id)
   if (error) throw new Error(error.message)
 }
 

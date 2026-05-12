@@ -43,6 +43,7 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
   const handlePointerDown = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!enableDragScroll) return
+      if (e.pointerType === "touch") return
       if (e.button !== 0) return // only primary click/touch
       if (e.pointerType === "mouse" && (e.ctrlKey || e.metaKey || e.shiftKey)) return
       if (isInteractiveTarget(e.target)) return
@@ -127,8 +128,9 @@ export const HorizontalScroll = React.forwardRef<HTMLDivElement, HorizontalScrol
         className,
       )}
       style={{
-        // Allow vertical scrolling inside columns; we handle horizontal dragging ourselves.
-        touchAction: enableDragScroll ? "pan-y" : undefined,
+        // On touch devices we prefer native scrolling so taps on Android are not swallowed.
+        touchAction: enableDragScroll ? "pan-x pan-y" : undefined,
+        WebkitOverflowScrolling: "touch",
         ...style,
       }}
       onPointerDown={(e) => {
