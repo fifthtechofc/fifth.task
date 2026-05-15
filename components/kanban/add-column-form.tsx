@@ -62,7 +62,7 @@ export function AddColumnForm({
         onClick={onOpen}
         className={
           compact
-            ? "flex h-14 min-w-[280px] max-w-[280px] items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 p-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            ? "flex h-14 min-w-[85vw] max-w-[85vw] items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 p-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-w-[280px] sm:max-w-[280px]"
             : "flex h-full min-h-[420px] w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/35 p-6 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
         }
       >

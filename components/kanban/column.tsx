@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { cn } from "@/lib/utils"
 import type { KanbanColumn, KanbanTask } from "@/types/kanban"
 import { AddTaskForm } from "./add-task-form"
@@ -36,6 +37,7 @@ interface ColumnProps {
   taskDueDateDraft: string
   taskDueTimeDraft: string
   taskColorDraft: string
+  isSubmittingTask: boolean
   assigneeIdsDraft: string[]
   assignees: Array<{ id: string; name: string; imageSrc: string }>
   onAssigneeIdsChange: (value: string[]) => void
@@ -86,6 +88,7 @@ export function Column({
   taskDueDateDraft,
   taskDueTimeDraft,
   taskColorDraft,
+  isSubmittingTask,
   assigneeIdsDraft,
   assignees,
   onAssigneeIdsChange,
@@ -114,6 +117,7 @@ export function Column({
 }: ColumnProps) {
   const [isDeleteHovered, setIsDeleteHovered] = React.useState(false)
   const [isEditHovered, setIsEditHovered] = React.useState(false)
+  const isTouchDevice = useMediaQuery("(pointer: coarse)")
 
   const isDropActive =
     dropTarget === column.id && draggedTask?.sourceColumnId !== column.id
@@ -137,7 +141,7 @@ export function Column({
       }}
       onDragLeave={onDragLeave}
       className={cn(
-        "flex h-full min-h-full min-w-[280px] max-w-[280px] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200 sm:min-w-[320px] sm:max-w-[320px] xl:min-w-[360px] xl:max-w-[360px]",
+        "flex h-full min-h-full min-w-[85vw] max-w-[85vw] flex-1 flex-col rounded-xl border-2 bg-muted/50 p-3 transition-all duration-200 sm:min-w-[320px] sm:max-w-[320px] xl:min-w-[360px] xl:max-w-[360px]",
         isDropActive
           ? "border-primary/50 border-dashed bg-primary/5"
           : "border-transparent",
@@ -146,8 +150,9 @@ export function Column({
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <div
-            draggable={Boolean(onColumnDragStart)}
+            draggable={!isTouchDevice && Boolean(onColumnDragStart)}
             onDragStart={(e) => {
+              if (isTouchDevice) return
               e.stopPropagation()
               onColumnDragStart?.(column.id)
               try {
@@ -158,24 +163,30 @@ export function Column({
               }
             }}
             onDragOver={(e) => {
+              if (isTouchDevice) return
               if (!onColumnDragOver) return
               e.preventDefault()
               e.stopPropagation()
               onColumnDragOver(e, column.id)
             }}
             onDrop={(e) => {
+              if (isTouchDevice) return
               if (!onColumnDrop) return
               e.preventDefault()
               e.stopPropagation()
               onColumnDrop(column.id)
             }}
             onDragEnd={(e) => {
+              if (isTouchDevice) return
               e.stopPropagation()
               onColumnDragEnd?.()
             }}
             className={cn(
-              "mr-1 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground",
-              onColumnDragStart && "cursor-grab active:cursor-grabbing",
+              "mr-1 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground",
+              !isTouchDevice &&
+                onColumnDragStart &&
+                "cursor-grab active:cursor-grabbing",
+              isTouchDevice && "opacity-45",
               isColumnDropActive && "ring-2 ring-primary/40",
             )}
             aria-label="Arrastar coluna"
@@ -206,7 +217,7 @@ export function Column({
             onMouseEnter={() => setIsEditHovered(true)}
             onMouseLeave={() => setIsEditHovered(false)}
             onClick={() => onEditColumn(column)}
-            className="rounded-md p-1.5 transition-all duration-200"
+            className="rounded-md p-2 transition-all duration-200"
             style={{
               backgroundColor: isEditHovered
                 ? "rgba(59, 130, 246, 0.12)"
@@ -226,7 +237,7 @@ export function Column({
                 type="button"
                 onMouseEnter={() => setIsDeleteHovered(true)}
                 onMouseLeave={() => setIsDeleteHovered(false)}
-                className="rounded-md p-1.5 transition-all duration-200"
+                className="rounded-md p-2 transition-all duration-200"
                 style={{
                   backgroundColor: isDeleteHovered
                     ? "rgba(239, 68, 68, 0.12)"
@@ -291,6 +302,7 @@ export function Column({
                   dueDate={taskDueDateDraft}
                   dueTime={taskDueTimeDraft}
                   color={taskColorDraft}
+                  isSubmitting={isSubmittingTask}
                   assigneeIds={assigneeIdsDraft}
                   assignees={assignees}
                   heading="Editar tarefa"
@@ -380,6 +392,7 @@ export function Column({
             dueDate={taskDueDateDraft}
             dueTime={taskDueTimeDraft}
             color={taskColorDraft}
+            isSubmitting={isSubmittingTask}
             assigneeIds={assigneeIdsDraft}
             assignees={assignees}
             heading="Nova tarefa"

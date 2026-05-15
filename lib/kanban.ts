@@ -89,6 +89,7 @@ type ColumnRow = {
   board_id: string
   title: string
   position: number
+  color?: string | null
 }
 
 type CardRow = {
@@ -128,6 +129,17 @@ function isMissingBoardCardColumnError(error: unknown) {
         : ""
   const lower = message.toLowerCase()
   return lower.includes("column") || lower.includes("schema cache")
+}
+
+function isMissingBoardColumnColorError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : ""
+  const lower = message.toLowerCase()
+  return lower.includes("color") || lower.includes("schema cache")
 }
 
 /** Usado para cor padrão da coluna; o nome exibido é sempre o que o usuário digitou. */
@@ -258,14 +270,29 @@ export async function updateBoard(params: {
 }
 
 export async function fetchBoardColumns(boardId: string): Promise<ColumnRow[]> {
-  const { data, error } = await supabase
-    .from("board_columns")
-    .select("id,board_id,title,position")
-    .eq("board_id", boardId)
-    .order("position", { ascending: true })
+  try {
+    const { data, error } = await supabase
+      .from("board_columns")
+      .select("id,board_id,title,position,color")
+      .eq("board_id", boardId)
+      .order("position", { ascending: true })
 
-  if (error) throw new Error(error.message)
-  return (data ?? []) as ColumnRow[]
+    if (error) throw new Error(error.message)
+    return (data ?? []) as ColumnRow[]
+  } catch (error) {
+    if (!isMissingBoardColumnColorError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+
+    const { data, error: fallbackError } = await supabase
+      .from("board_columns")
+      .select("id,board_id,title,position")
+      .eq("board_id", boardId)
+      .order("position", { ascending: true })
+
+    if (fallbackError) throw new Error(fallbackError.message)
+    return (data ?? []) as ColumnRow[]
+  }
 }
 
 export async function fetchBoardCards(boardId: string): Promise<CardRow[]> {
@@ -380,6 +407,7 @@ export function buildKanbanColumns(params: {
     id: c.id,
     title: c.title,
     type: inferColumnTypeFromTitle(c.title),
+    color: c.color ?? undefined,
     position: c.position,
     tasks: tasksByColumn.get(c.id) ?? [],
   }))
@@ -389,19 +417,40 @@ export async function createBoardColumn(params: {
   boardId: string
   title: string
   position: number
+  color?: string | null
 }): Promise<ColumnRow> {
-  const { data, error } = await supabase
-    .from("board_columns")
-    .insert({
-      board_id: params.boardId,
-      title: params.title.trim(),
-      position: params.position,
-    })
-    .select("id,board_id,title,position")
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from("board_columns")
+      .insert({
+        board_id: params.boardId,
+        title: params.title.trim(),
+        position: params.position,
+        color: params.color ?? null,
+      })
+      .select("id,board_id,title,position,color")
+      .single()
 
-  if (error) throw new Error(error.message)
-  return data as ColumnRow
+    if (error) throw new Error(error.message)
+    return data as ColumnRow
+  } catch (error) {
+    if (!isMissingBoardColumnColorError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+
+    const { data, error: fallbackError } = await supabase
+      .from("board_columns")
+      .insert({
+        board_id: params.boardId,
+        title: params.title.trim(),
+        position: params.position,
+      })
+      .select("id,board_id,title,position")
+      .single()
+
+    if (fallbackError) throw new Error(fallbackError.message)
+    return data as ColumnRow
+  }
 }
 
 export async function updateBoardColumnsPositions(params: {
@@ -759,12 +808,31 @@ export async function moveBoardCard(params: {
   if (error) throw new Error(error.message)
 }
 
-export async function updateColumnTitle(params: { id: string; title: string }) {
-  const { error } = await supabase
-    .from("board_columns")
-    .update({ title: params.title.trim() })
-    .eq("id", params.id)
-  if (error) throw new Error(error.message)
+export async function updateColumnTitle(params: {
+  id: string
+  title: string
+  color?: string | null
+}) {
+  try {
+    const { error } = await supabase
+      .from("board_columns")
+      .update({
+        title: params.title.trim(),
+        color: params.color ?? null,
+      })
+      .eq("id", params.id)
+    if (error) throw new Error(error.message)
+  } catch (error) {
+    if (!isMissingBoardColumnColorError(error)) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+
+    const { error: fallbackError } = await supabase
+      .from("board_columns")
+      .update({ title: params.title.trim() })
+      .eq("id", params.id)
+    if (fallbackError) throw new Error(fallbackError.message)
+  }
 }
 
 export async function createChecklistItem(params: {

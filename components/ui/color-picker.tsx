@@ -6,27 +6,13 @@ import {
   type HslaColor,
   type HsvaColor,
   hexToHsva,
-  hslaToHsva,
   hsvaToHex,
   hsvaToHsla,
-  hsvaToHslString,
   hsvaToRgba,
   type RgbaColor,
-  rgbaToHsva,
 } from "@uiw/color-convert"
-import Hue from "@uiw/react-color-hue"
-import Saturation from "@uiw/react-color-saturation"
-import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
 import React from "react"
 
-import { Badge, type BadgeProps } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Popover,
@@ -35,26 +21,6 @@ import {
 } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-
-function getColorAsHsva(
-  color: string | HsvaColor | HslaColor | RgbaColor,
-): HsvaColor {
-  if (typeof color === "string") {
-    const c = color.trim()
-    const hex = c.startsWith("#") ? c : `#${c}`
-    try {
-      return hexToHsva(hex)
-    } catch {
-      return { h: 0, s: 0, v: 0, a: 1 }
-    }
-  } else if ("h" in color && "s" in color && "v" in color) {
-    return color
-  } else if ("r" in color) {
-    return rgbaToHsva(color)
-  } else {
-    return hslaToHsva(color)
-  }
-}
 
 type ColorPickerValue = {
   hex: string
@@ -70,12 +36,87 @@ type ColorPickerProps = {
   hideDefaultSwatches?: boolean
   className?: string
   onValueChange?: (value: ColorPickerValue) => void
+  children: React.ReactNode
 } & PopoverContentProps
+
+const DEFAULT_COLOR = "#6366F1"
+const DEFAULT_SWATCHES = [
+  "#F43F5E",
+  "#F97316",
+  "#EAB308",
+  "#22C55E",
+  "#06B6D4",
+  "#3B82F6",
+  "#6366F1",
+  "#A855F7",
+  "#EC4899",
+  "#71717A",
+] as const
+
+function normalizeHex(value: string | undefined | null): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  const hex = trimmed.startsWith("#") ? trimmed : `#${trimmed}`
+  if (!/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(hex)) return null
+  if (hex.length === 4) {
+    return `#${hex
+      .slice(1)
+      .split("")
+      .map((char) => `${char}${char}`)
+      .join("")}`.toUpperCase()
+  }
+  return hex.toUpperCase()
+}
+
+function getHexFromValue(
+  value: string | HsvaColor | HslaColor | RgbaColor | undefined,
+): string {
+  if (!value) return DEFAULT_COLOR
+  if (typeof value === "string") {
+    return normalizeHex(value) ?? DEFAULT_COLOR
+  }
+  try {
+    return normalizeHex(hsvaToHex(value as HsvaColor)) ?? DEFAULT_COLOR
+  } catch {
+    return DEFAULT_COLOR
+  }
+}
+
+function buildColorValue(hex: string): ColorPickerValue {
+  const hsva = hexToHsva(hex)
+  return {
+    hex,
+    hsl: hsvaToHsla(hsva),
+    rgb: hsvaToRgba(hsva),
+  }
+}
+
+function formatColorType(
+  hex: string,
+  type: "hsl" | "rgb" | "hex",
+): { label: string; value: string } {
+  if (type === "hex") {
+    return { label: "HEX", value: hex }
+  }
+
+  const { hsl, rgb } = buildColorValue(hex)
+  if (type === "rgb") {
+    return {
+      label: "RGB",
+      value: `${rgb.r}, ${rgb.g}, ${rgb.b}`,
+    }
+  }
+
+  return {
+    label: "HSL",
+    value: `${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%`,
+  }
+}
 
 function ColorPicker({
   value,
   children,
-  type = "hsl",
+  type = "hex",
   swatches = [],
   hideContrastRatio,
   hideDefaultSwatches,
@@ -83,349 +124,120 @@ function ColorPicker({
   className,
   ...props
 }: ColorPickerProps) {
-  const [colorType, setColorType] = React.useState(type)
-  const [colorHsv, setColorHsv] = React.useState<HsvaColor>(
-    value ? getColorAsHsva(value) : { h: 0, s: 0, v: 0, a: 1 },
+  const resolvedColor = React.useMemo(() => getHexFromValue(value), [value])
+  const [hexInput, setHexInput] = React.useState(resolvedColor)
+
+  React.useEffect(() => {
+    setHexInput(resolvedColor)
+  }, [resolvedColor])
+
+  const mergedSwatches = React.useMemo(() => {
+    void hideContrastRatio
+    const palette = hideDefaultSwatches
+      ? swatches
+      : [...DEFAULT_SWATCHES, ...swatches]
+
+    return [
+      ...new Set(palette.map((item) => normalizeHex(item) ?? DEFAULT_COLOR)),
+    ]
+  }, [hideDefaultSwatches, swatches])
+
+  const commitColor = React.useCallback(
+    (nextHex: string) => {
+      const normalized = normalizeHex(nextHex)
+      if (!normalized) return
+      setHexInput(normalized)
+      onValueChange?.(buildColorValue(normalized))
+    },
+    [onValueChange],
   )
 
-  const handleValueChange = (color: HsvaColor) => {
-    onValueChange?.({
-      hex: hsvaToHex(colorHsv),
-      hsl: hsvaToHsla(colorHsv),
-      rgb: hsvaToRgba(colorHsv),
-    })
-
-    setColorHsv(color)
-  }
+  const meta = React.useMemo(
+    () => formatColorType(resolvedColor, type),
+    [resolvedColor, type],
+  )
 
   return (
     <Popover {...props}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className={cn("w-[350px] p-0", className)}
         {...props}
-        style={
-          {
-            "--selected-color": hsvaToHslString(colorHsv),
-          } as React.CSSProperties
-        }
+        className={cn(
+          className,
+          "z-[250] w-[320px] border border-white/10 bg-zinc-950/98 p-0 text-zinc-100 shadow-2xl shadow-black/40 backdrop-blur-xl",
+        )}
       >
-        <div className="space-y-2 p-4">
-          <Saturation
-            hsva={colorHsv}
-            onChange={(newColor) => {
-              handleValueChange(newColor)
-            }}
-            style={{
-              width: "100%",
-              height: "auto",
-              aspectRatio: "4/2",
-              borderRadius: "0.3rem",
-            }}
-            className="border border-border"
-          />
-          <Hue
-            hue={colorHsv.h}
-            onChange={(newHue) => {
-              handleValueChange({ ...colorHsv, ...newHue })
-            }}
-            className="[&>div:first-child]:overflow-hidden [&>div:first-child]:!rounded"
-            style={
-              {
-                width: "100%",
-                height: "0.9rem",
-                borderRadius: "0.3rem",
-                "--alpha-pointer-background-color": "hsl(var(--foreground))",
-              } as React.CSSProperties
-            }
-          />
-
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="shrink-0 justify-between uppercase"
-                >
-                  {colorType}
-                  <ChevronDownIcon
-                    className="-me-1 ms-2 opacity-60"
-                    size={16}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuCheckboxItem
-                  checked={colorType === "hex"}
-                  onCheckedChange={() => setColorType("hex")}
-                >
-                  HEX
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={colorType === "hsl"}
-                  onCheckedChange={() => setColorType("hsl")}
-                >
-                  HSL
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={colorType === "rgb"}
-                  onCheckedChange={() => setColorType("rgb")}
-                >
-                  RGB
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="flex grow">
-              {colorType === "hsl" && (
-                <ObjectColorInput
-                  value={hsvaToHsla(colorHsv)}
-                  label="hsl"
-                  onValueChange={(val) => {
-                    setColorHsv(hslaToHsva(val))
-                  }}
-                />
-              )}
-              {colorType === "rgb" && (
-                <ObjectColorInput
-                  value={hsvaToRgba(colorHsv)}
-                  label="rgb"
-                  onValueChange={(val) => {
-                    setColorHsv(rgbaToHsva(val))
-                  }}
-                />
-              )}
-              {colorType === "hex" && (
+        <div className="space-y-4 p-4">
+          <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+            <div
+              className="mb-3 h-24 w-full rounded-lg border border-white/10 shadow-inner"
+              style={{ backgroundColor: resolvedColor }}
+            />
+            <label className="block text-xs font-medium text-zinc-400">
+              Escolher cor
+            </label>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                type="color"
+                value={resolvedColor}
+                onChange={(e) => commitColor(e.target.value)}
+                className="h-10 w-14 cursor-pointer rounded-md border border-white/10 bg-transparent"
+              />
+              <div className="min-w-0 flex-1">
                 <Input
-                  className="flex"
-                  value={hsvaToHex(colorHsv)}
-                  onChange={(e) => {
-                    setColorHsv(hexToHsva(e.target.value))
+                  value={hexInput}
+                  onChange={(e) => setHexInput(e.target.value.toUpperCase())}
+                  onBlur={() => {
+                    const normalized = normalizeHex(hexInput)
+                    setHexInput(normalized ?? resolvedColor)
+                    if (normalized) commitColor(normalized)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      const normalized = normalizeHex(hexInput)
+                      setHexInput(normalized ?? resolvedColor)
+                      if (normalized) commitColor(normalized)
+                    }
+                  }}
+                  className="border-white/10 bg-black/40 text-zinc-100"
                 />
-              )}
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>{meta.label}</span>
+              <span className="font-mono">{meta.value}</span>
             </div>
           </div>
-          {swatches.length > 0 || (!hideDefaultSwatches && <Separator />)}
-          {!hideDefaultSwatches && (
-            <div className="flex flex-wrap justify-start gap-2">
-              {[
-                "#F8371A",
-                "#F97C1B",
-                "#FAC81C",
-                "#3FD0B6",
-                "#2CADF6",
-                "#6462FC",
-                ...swatches,
-              ]
-                .sort((a, b) => hexToHsva(a).h - hexToHsva(b).h)
-                .map((color) => (
-                  <button
-                    type="button"
-                    key={`${color}-swatch`}
-                    style={
-                      {
-                        "--swatch-color": color,
-                      } as React.CSSProperties
-                    }
-                    onClick={() => setColorHsv(hexToHsva(color))}
-                    onKeyUp={(e) =>
-                      e.key === "Enter" ? setColorHsv(hexToHsva(color)) : null
-                    }
-                    aria-label={`Set color to ${color}`}
-                    className="size-5 cursor-pointer rounded bg-[var(--swatch-color)] ring-2 ring-[var(--swatch-color)00] ring-offset-1 ring-offset-background transition-all duration-100 hover:ring-[var(--swatch-color)]"
-                  />
-                ))}
-            </div>
-          )}
-          {!hideContrastRatio && (
+
+          {mergedSwatches.length > 0 && (
             <>
-              <Separator />
-              <ContrastRatio color={colorHsv} />
+              <Separator className="bg-white/10" />
+              <div className="grid grid-cols-5 gap-2">
+                {mergedSwatches.map((color) => {
+                  const isActive = color === resolvedColor
+                  return (
+                    <button
+                      type="button"
+                      key={color}
+                      aria-label={`Selecionar ${color}`}
+                      onClick={() => commitColor(color)}
+                      className={cn(
+                        "h-9 rounded-lg border transition-transform hover:scale-[1.03]",
+                        isActive
+                          ? "border-white/70 ring-2 ring-white/20"
+                          : "border-white/10",
+                      )}
+                      style={{ backgroundColor: color }}
+                    />
+                  )
+                })}
+              </div>
             </>
           )}
         </div>
       </PopoverContent>
     </Popover>
-  )
-}
-
-type ContrastRatioProps = {
-  color: HsvaColor
-}
-
-function ContrastRatio({ color }: ContrastRatioProps) {
-  const [darkModeContrastRatio, setDarkModeContrastValue] = React.useState(0)
-  const [lightModeContrastValue, setLightModeContrastValue] = React.useState(0)
-
-  React.useEffect(() => {
-    const rgb = hsvaToRgba(color)
-
-    const toSRGB = (c: number) => {
-      const channel = c / 255
-      return channel <= 0.03928
-        ? channel / 12.92
-        : ((channel + 0.055) / 1.055) ** 2.4
-    }
-
-    const r = toSRGB(rgb.r)
-    const g = toSRGB(rgb.g)
-    const b = toSRGB(rgb.b)
-
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-    const darkModeRatio = (1.0 + 0.05) / (luminance + 0.05)
-    const lightModeRatio = (luminance + 0.05) / 0.05
-
-    setDarkModeContrastValue(Number(darkModeRatio.toFixed(2)))
-    setLightModeContrastValue(Number(lightModeRatio.toFixed(2)))
-  }, [color])
-
-  const ValidationBadge = ({
-    ratio,
-    ratioLimit,
-    className,
-    children,
-    ...props
-  }: {
-    ratio: number
-    ratioLimit: number
-  } & Omit<BadgeProps, "variant">) => (
-    <Badge
-      variant="outline"
-      className={cn(
-        "gap-2 rounded-full text-muted-foreground",
-        ratio > ratioLimit &&
-          "border-transparent bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-        className,
-      )}
-      {...props}
-    >
-      {ratio > 4.5 ? <CheckIcon size={16} /> : <XIcon size={16} />}
-      {children}
-    </Badge>
-  )
-
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        <div className="flex size-10 items-center justify-center rounded bg-[var(--selected-color)]">
-          <span className="font-medium text-black dark:text-white">A</span>
-        </div>
-        <div className="flex flex-col justify-between">
-          <span className="whitespace-nowrap text-nowrap text-xs text-muted-foreground">
-            Contrast Ratio
-          </span>
-          <span className="hidden text-sm dark:flex">
-            {darkModeContrastRatio}
-          </span>
-          <span className="text-sm dark:hidden">{lightModeContrastValue}</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-1">
-        <ValidationBadge
-          className="dark:hidden"
-          ratio={lightModeContrastValue}
-          ratioLimit={4.5}
-        >
-          AA
-        </ValidationBadge>
-        <ValidationBadge
-          className="dark:hidden"
-          ratio={lightModeContrastValue}
-          ratioLimit={7}
-        >
-          AAA
-        </ValidationBadge>
-        <ValidationBadge
-          className="hidden dark:flex"
-          ratio={darkModeContrastRatio}
-          ratioLimit={4.5}
-        >
-          AA
-        </ValidationBadge>
-        <ValidationBadge
-          className="hidden dark:flex"
-          ratio={darkModeContrastRatio}
-          ratioLimit={7}
-        >
-          AAA
-        </ValidationBadge>
-      </div>
-    </div>
-  )
-}
-
-type ObjectColorInputProps =
-  | {
-      label: "hsl"
-      value: HslaColor
-      onValueChange?: (value: HslaColor) => void
-    }
-  | {
-      label: "rgb"
-      value: RgbaColor
-      onValueChange?: (value: RgbaColor) => void
-    }
-
-function ObjectColorInput({
-  value,
-  label,
-  onValueChange,
-}: ObjectColorInputProps) {
-  function handleChange(val: HslaColor | RgbaColor) {
-    if (onValueChange) {
-      label === "hsl"
-        ? onValueChange({
-            ...value,
-            ...val,
-          })
-        : onValueChange({
-            ...value,
-            ...val,
-          })
-    }
-  }
-  return (
-    <div className="-mt-px flex">
-      <div className="relative min-w-0 flex-1 focus-within:z-10">
-        <Input
-          className="peer rounded-e-none shadow-none [direction:inherit]"
-          value={label === "hsl" ? value.h.toFixed(0) : value.r}
-          onChange={(e) =>
-            handleChange({
-              ...value,
-              [label === "hsl" ? "h" : "r"]: e.target.value,
-            })
-          }
-        />
-      </div>
-      <div className="relative -ms-px min-w-0 flex-1 focus-within:z-10">
-        <Input
-          className="peer rounded-none shadow-none [direction:inherit]"
-          value={label === "hsl" ? value.s.toFixed(0) : value.g}
-          onChange={(e) =>
-            handleChange({
-              ...value,
-              [label === "hsl" ? "s" : "g"]: e.target.value,
-            })
-          }
-        />
-      </div>
-      <div className="relative -ms-px min-w-0 flex-1 focus-within:z-10">
-        <Input
-          className="peer rounded-s-none shadow-none [direction:inherit]"
-          value={label === "hsl" ? value.l.toFixed(0) : value.b}
-          onChange={(e) =>
-            handleChange({
-              ...value,
-              [label === "hsl" ? "l" : "b"]: e.target.value,
-            })
-          }
-        />
-      </div>
-    </div>
   )
 }
 
