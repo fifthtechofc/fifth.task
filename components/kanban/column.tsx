@@ -49,6 +49,8 @@ interface ColumnProps {
   onDragLeave: () => void
   onTaskDragStart: (task: KanbanTask, columnId: string) => void
   onTaskDragEnd: () => void
+  onTaskPointerDragMove: (clientX: number, clientY: number) => void
+  onTaskPointerDragDrop: (clientX: number, clientY: number) => void
   onOpenAddCard: (columnId: string, columnColor: string) => void
   onOpenEditTask: (
     columnId: string,
@@ -100,6 +102,8 @@ export function Column({
   onDragLeave,
   onTaskDragStart,
   onTaskDragEnd,
+  onTaskPointerDragMove,
+  onTaskPointerDragDrop,
   onOpenAddCard,
   onOpenEditTask,
   onCancelTaskForm,
@@ -124,6 +128,7 @@ export function Column({
 
   return (
     <div
+      data-kanban-column-id={column.id}
       onDragOver={(e) => {
         if (isDraggingAnyColumn && onColumnDragOver) {
           e.preventDefault()
@@ -376,6 +381,8 @@ export function Column({
                 isDragging={draggedTask?.task.id === task.id}
                 onDragStart={() => onTaskDragStart(task, column.id)}
                 onDragEnd={onTaskDragEnd}
+                onPointerDragMove={onTaskPointerDragMove}
+                onPointerDragDrop={onTaskPointerDragDrop}
                 onEdit={() => onOpenEditTask(column.id, task, columnColor)}
                 onRemove={() => onRemoveTask(column.id, task.id)}
                 getLabelColor={getLabelColor}

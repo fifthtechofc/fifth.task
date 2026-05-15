@@ -24,7 +24,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
-import { useMediaQuery } from "@/hooks/use-media-query"
 import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
   type CardComment,
@@ -45,10 +44,15 @@ interface TaskCardProps {
   isDragging?: boolean
   onDragStart: () => void
   onDragEnd: () => void
+  onPointerDragMove: (clientX: number, clientY: number) => void
+  onPointerDragDrop: (clientX: number, clientY: number) => void
   onEdit: () => void
   onRemove: () => void
   getLabelColor: (label: string) => string
 }
+
+const LONG_PRESS_DELAY_MS = 220
+const LONG_PRESS_MOVE_TOLERANCE = 8
 
 function hexToRgba(hex: string, alpha: number) {
   const value = hex.replace("#", "")
@@ -199,6 +203,8 @@ export function TaskCard({
   isDragging,
   onDragStart,
   onDragEnd,
+  onPointerDragMove,
+  onPointerDragDrop,
   onEdit,
   onRemove,
   getLabelColor,
@@ -215,7 +221,6 @@ export function TaskCard({
   const [comments, setComments] = React.useState<CardComment[]>([])
   const [commentDraft, setCommentDraft] = React.useState("")
   const [posting, setPosting] = React.useState(false)
-  const isTouchDevice = useMediaQuery("(pointer: coarse)")
   const [meProfile, setMeProfile] = React.useState<{
     full_name: string | null
     display_name: string | null
@@ -228,6 +233,15 @@ export function TaskCard({
     () => formatDueAtLabel(task.dueAt ?? task.dueDate),
     [task.dueAt, task.dueDate],
   )
+  const holdTimerRef = React.useRef<number | null>(null)
+  const pointerSessionRef = React.useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    dragging: boolean
+  } | null>(null)
+  const suppressClickRef = React.useRef(false)
+  const [isPointerDragging, setIsPointerDragging] = React.useState(false)
 
   const meDisplayName = React.useMemo(() => {
     if (!meProfile) return ""
@@ -347,30 +361,127 @@ export function TaskCard({
     void refreshUnreadCount()
   }, [meId, refreshUnreadCount])
 
+  const clearHoldTimer = React.useCallback(() => {
+    if (holdTimerRef.current == null) return
+    window.clearTimeout(holdTimerRef.current)
+    holdTimerRef.current = null
+  }, [])
+
+  const finishPointerSession = React.useCallback(
+    (
+      event: React.PointerEvent<HTMLDivElement>,
+      mode: "drop" | "cancel" | "click",
+    ) => {
+      const session = pointerSessionRef.current
+      if (!session || session.pointerId !== event.pointerId) return
+
+      clearHoldTimer()
+
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        // ignore
+      }
+
+      pointerSessionRef.current = null
+
+      if (session.dragging) {
+        setIsPointerDragging(false)
+        onDragEnd()
+        if (mode === "drop") {
+          onPointerDragDrop(event.clientX, event.clientY)
+        }
+        suppressClickRef.current = true
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+    [clearHoldTimer, onDragEnd, onPointerDragDrop],
+  )
+
+  React.useEffect(
+    () => () => {
+      clearHoldTimer()
+    },
+    [clearHoldTimer],
+  )
+
   return (
     <>
       <div
-        draggable={!isTouchDevice}
         data-no-drag-scroll="true"
-        onDragStart={() => {
-          if (isTouchDevice) return
-          onDragStart()
+        onPointerDown={(event) => {
+          if (event.button !== 0) return
+          const { clientX, clientY } = event
+
+          pointerSessionRef.current = {
+            pointerId: event.pointerId,
+            startX: clientX,
+            startY: clientY,
+            dragging: false,
+          }
+
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId)
+          } catch {
+            // ignore
+          }
+
+          clearHoldTimer()
+          holdTimerRef.current = window.setTimeout(() => {
+            if (!pointerSessionRef.current) return
+            pointerSessionRef.current.dragging = true
+            setIsPointerDragging(true)
+            onDragStart()
+            onPointerDragMove(clientX, clientY)
+          }, LONG_PRESS_DELAY_MS)
         }}
-        onDragEnd={() => {
-          if (isTouchDevice) return
-          onDragEnd()
+        onPointerMove={(event) => {
+          const session = pointerSessionRef.current
+          if (!session || session.pointerId !== event.pointerId) return
+
+          const dx = event.clientX - session.startX
+          const dy = event.clientY - session.startY
+          if (
+            !session.dragging &&
+            Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE
+          ) {
+            clearHoldTimer()
+          }
+
+          if (!session.dragging) return
+
+          onPointerDragMove(event.clientX, event.clientY)
+          event.preventDefault()
+          event.stopPropagation()
         }}
-        onClick={() => setOpenDetails(true)}
+        onPointerUp={(event) => {
+          const session = pointerSessionRef.current
+          finishPointerSession(event, session?.dragging ? "drop" : "click")
+        }}
+        onPointerCancel={(event) => {
+          finishPointerSession(event, "cancel")
+        }}
+        onClick={(event) => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false
+            event.preventDefault()
+            event.stopPropagation()
+            return
+          }
+          setOpenDetails(true)
+        }}
         className={cn(
           "rounded-lg border p-3 shadow-sm transition-all duration-150",
-          !isTouchDevice &&
-            "cursor-grab hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
-          isDragging && "rotate-2 opacity-50",
+          "cursor-grab hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
+          (isDragging || isPointerDragging) && "rotate-2 opacity-50 shadow-md",
         )}
         style={{
           backgroundColor: hexToRgba(cardColor, 0.22),
           borderColor: hexToRgba(cardColor, 0.5),
           boxShadow: `inset 0 1px 0 ${hexToRgba(cardColor, 0.18)}`,
+          touchAction: isPointerDragging ? "none" : "manipulation",
+          userSelect: isPointerDragging ? "none" : undefined,
         }}
       >
         <div className="mb-2 flex items-start justify-between gap-2">
