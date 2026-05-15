@@ -1,4 +1,5 @@
 "use client"
+
 import { Plus } from "lucide-react"
 import * as React from "react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ interface AddTaskFormProps {
   dueDate?: string
   dueTime?: string
   color: string
+  isSubmitting?: boolean
   assigneeIds?: string[]
   assignees?: Array<{ id: string; name: string; imageSrc: string }>
   submitLabel?: string
@@ -51,6 +53,7 @@ export function AddTaskForm({
   dueDate = "",
   dueTime = "",
   color,
+  isSubmitting = false,
   assigneeIds = [],
   assignees = [],
   submitLabel = "Adicionar",
@@ -96,8 +99,8 @@ export function AddTaskForm({
           <SheetHeader>
             <SheetTitle>{heading}</SheetTitle>
             <SheetDescription>
-              Defina os detalhes da tarefa, como título, descrição e
-              responsáveis.
+              Defina os detalhes da tarefa, como titulo, descricao e
+              responsaveis.
             </SheetDescription>
           </SheetHeader>
 
@@ -107,16 +110,20 @@ export function AddTaskForm({
               type="text"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-              placeholder="Digite o título da tarefa…"
+              onKeyDown={(e) =>
+                e.key === "Enter" && !isSubmitting && onSubmit()
+              }
+              placeholder="Digite o titulo da tarefa..."
+              disabled={isSubmitting}
               className="text-sm transition-all duration-200 focus-visible:ring-primary/40"
             />
 
             <Textarea
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
-              placeholder="Descrição da tarefa (opcional)"
+              placeholder="Descricao da tarefa (opcional)"
               rows={3}
+              disabled={isSubmitting}
               className="resize-none text-sm transition-all duration-200 focus-visible:ring-primary/40"
             />
 
@@ -134,7 +141,8 @@ export function AddTaskForm({
                     type="date"
                     value={dueDate}
                     onChange={(e) => onDueDateChange(e.target.value)}
-                    className="text-sm transition-all duration-200 focus-visible:ring-primary/40"
+                    disabled={isSubmitting}
+                    className="cursor-pointer text-sm transition-all duration-200 focus-visible:ring-primary/40 [color-scheme:dark]"
                   />
                 </div>
 
@@ -143,14 +151,14 @@ export function AddTaskForm({
                     htmlFor="task-due-time"
                     className="text-xs font-medium text-muted-foreground"
                   >
-                    Horário de entrega
+                    Horario de entrega
                   </label>
                   <Input
                     id="task-due-time"
                     type="time"
                     value={dueTime}
                     onChange={(e) => onDueTimeChange?.(e.target.value)}
-                    disabled={!dueDate}
+                    disabled={!dueDate || isSubmitting}
                     className="text-sm transition-all duration-200 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
@@ -174,7 +182,7 @@ export function AddTaskForm({
               <MembersSelect
                 members={assignees}
                 selectedIds={assigneeIds}
-                onChange={onAssigneeIdsChange}
+                onChange={isSubmitting ? () => undefined : onAssigneeIdsChange}
               />
             )}
           </div>
@@ -184,12 +192,18 @@ export function AddTaskForm({
               type="button"
               variant="outline"
               onClick={onCancel}
+              disabled={isSubmitting}
               className="flex-1"
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={onSubmit} className="flex-1">
-              {submitLabel}
+            <Button
+              type="button"
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? "Criando..." : submitLabel}
             </Button>
           </SheetFooter>
         </SheetContent>

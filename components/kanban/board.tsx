@@ -38,7 +38,7 @@ import {
   extractDueDateInput,
   extractDueTimeInput,
   normalizeDueDateInput,
-  normalizeDueTimeInput,
+  resolveDueTimeInput,
 } from "@/lib/task-deadlines"
 import { cn } from "@/lib/utils"
 import type { ColumnType, KanbanColumn, KanbanTask } from "@/types/kanban"
@@ -75,7 +75,7 @@ const defaultColumnPalette: Record<ColumnType, string> = {
   "in-progress": "#f59e0b",
   review: "#8b5cf6",
   done: "#10b981",
-  custom: "#71717a",
+  custom: "#6366f1",
 }
 
 function withColumnDefaults(column: KanbanColumn): KanbanColumn {
@@ -194,6 +194,7 @@ export function Board({
   const [taskDueDateDraft, setTaskDueDateDraft] = React.useState("")
   const [taskDueTimeDraft, setTaskDueTimeDraft] = React.useState("")
   const [taskColorDraft, setTaskColorDraft] = React.useState("#3b82f6")
+  const [isSubmittingTask, setIsSubmittingTask] = React.useState(false)
   const [taskAssigneeIdsDraft, setTaskAssigneeIdsDraft] = React.useState<
     string[]
   >([])
@@ -222,6 +223,7 @@ export function Board({
   }, [])
 
   const resetTaskForm = () => {
+    setIsSubmittingTask(false)
     setAddingCardTo(null)
     setEditingTask(null)
     setTaskTitleDraft("")
@@ -258,7 +260,7 @@ export function Board({
       assigneeIds: string[]
     }) => {
       const dueDate = normalizeDueDateInput(params.dueDate)
-      const dueTime = normalizeDueTimeInput(params.dueTime)
+      const dueTime = resolveDueTimeInput(dueDate, params.dueTime)
       if (!dueDate || !dueTime) {
         if (params.currentEventId) {
           await deleteCalendarEvent(params.currentEventId)
@@ -511,23 +513,21 @@ export function Board({
   openEditTaskRef.current = handleOpenEditTask
 
   const handleSubmitTask = async (columnId: string) => {
-    if (!taskTitleDraft.trim()) return
+    if (!taskTitleDraft.trim() || isSubmittingTask) return
+    setIsSubmittingTask(true)
     const normalizedDueDate = normalizeDueDateInput(taskDueDateDraft) || null
-    const normalizedDueTime = normalizeDueTimeInput(taskDueTimeDraft) || null
-    if (normalizedDueDate && !normalizedDueTime) {
-      setError("Defina o horário de entrega da tarefa.")
-      return
-    }
+    const normalizedDueTime =
+      resolveDueTimeInput(normalizedDueDate ?? undefined, taskDueTimeDraft) ||
+      null
     const dueAtIso = normalizedDueDate
       ? combineDueDateTimeToIso(
           normalizedDueDate,
           normalizedDueTime ?? undefined,
         )
       : null
-    const dueTimezone =
-      normalizedDueDate && normalizedDueTime
-        ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-        : null
+    const dueTimezone = normalizedDueDate
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+      : null
 
     if (editingTask?.columnId === columnId) {
       const cardId = editingTask.taskId
@@ -605,6 +605,8 @@ export function Board({
         )
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao salvar card.")
+      } finally {
+        setIsSubmittingTask(false)
       }
 
       // Multi-assign is optional (depends on card_assignees table/policies).
@@ -853,6 +855,8 @@ export function Board({
         })
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao criar card.")
+      } finally {
+        setIsSubmittingTask(false)
       }
     }
 
@@ -941,7 +945,11 @@ export function Board({
         ),
       )
       try {
-        await updateColumnTitle({ id: editingColumnId, title: trimmed })
+        await updateColumnTitle({
+          id: editingColumnId,
+          title: trimmed,
+          color: columnColorDraft,
+        })
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao salvar coluna.")
         return
@@ -956,6 +964,7 @@ export function Board({
           boardId,
           title: columnTitleDraft,
           position: nextPosition,
+          color: columnColorDraft,
         })
 
         const newColumn: KanbanColumn = {
@@ -1287,6 +1296,7 @@ export function Board({
                   taskDueDateDraft={taskDueDateDraft}
                   taskDueTimeDraft={taskDueTimeDraft}
                   taskColorDraft={taskColorDraft}
+                  isSubmittingTask={isSubmittingTask}
                   assigneeIdsDraft={taskAssigneeIdsDraft}
                   assignees={teamMembers}
                   onAssigneeIdsChange={setTaskAssigneeIdsDraft}

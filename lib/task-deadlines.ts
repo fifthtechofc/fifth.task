@@ -12,12 +12,23 @@ export function normalizeDueTimeInput(value: string | undefined) {
   return /^\d{2}:\d{2}$/.test(trimmed) ? trimmed : ""
 }
 
+export function resolveDueTimeInput(
+  dueDate: string | undefined,
+  dueTime: string | undefined,
+) {
+  const safeDate = normalizeDueDateInput(dueDate)
+  if (!safeDate) return ""
+
+  const safeTime = normalizeDueTimeInput(dueTime)
+  return safeTime || "23:59"
+}
+
 export function combineDueDateTimeToIso(
   dueDate: string | undefined,
   dueTime: string | undefined,
 ) {
   const safeDate = normalizeDueDateInput(dueDate)
-  const safeTime = normalizeDueTimeInput(dueTime)
+  const safeTime = resolveDueTimeInput(safeDate, dueTime)
   if (!safeDate || !safeTime) return null
 
   const localDate = new Date(`${safeDate}T${safeTime}:00`)
@@ -69,7 +80,7 @@ export function buildCalendarLocalDateTime(
   dueTime: string | undefined,
 ) {
   const safeDate = normalizeDueDateInput(dueDate)
-  const safeTime = normalizeDueTimeInput(dueTime)
+  const safeTime = resolveDueTimeInput(safeDate, dueTime)
   if (!safeDate || !safeTime) return null
   return `${safeDate}T${safeTime}:00`
 }

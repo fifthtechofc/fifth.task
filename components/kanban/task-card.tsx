@@ -24,6 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { useAppNotifications } from "@/lib/app-notifications-context"
 import {
   type CardComment,
@@ -214,6 +215,7 @@ export function TaskCard({
   const [comments, setComments] = React.useState<CardComment[]>([])
   const [commentDraft, setCommentDraft] = React.useState("")
   const [posting, setPosting] = React.useState(false)
+  const isTouchDevice = useMediaQuery("(pointer: coarse)")
   const [meProfile, setMeProfile] = React.useState<{
     full_name: string | null
     display_name: string | null
@@ -348,14 +350,21 @@ export function TaskCard({
   return (
     <>
       <div
-        draggable
+        draggable={!isTouchDevice}
         data-no-drag-scroll="true"
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
+        onDragStart={() => {
+          if (isTouchDevice) return
+          onDragStart()
+        }}
+        onDragEnd={() => {
+          if (isTouchDevice) return
+          onDragEnd()
+        }}
         onClick={() => setOpenDetails(true)}
         className={cn(
-          "cursor-grab rounded-lg border p-3 shadow-sm transition-all duration-150",
-          "hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
+          "rounded-lg border p-3 shadow-sm transition-all duration-150",
+          !isTouchDevice &&
+            "cursor-grab hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
           isDragging && "rotate-2 opacity-50",
         )}
         style={{
@@ -404,7 +413,7 @@ export function TaskCard({
                 e.stopPropagation()
                 onEdit()
               }}
-              className="rounded-md p-1.5 transition-all duration-200"
+              className="rounded-md p-2 transition-all duration-200"
               style={{
                 backgroundColor: isEditHovered
                   ? "rgba(59, 130, 246, 0.12)"
@@ -427,7 +436,7 @@ export function TaskCard({
                 e.stopPropagation()
                 setOpenComments(true)
               }}
-              className="relative rounded-md p-1.5 transition-all duration-200 hover:bg-white/5"
+              className="relative rounded-md p-2 transition-all duration-200 hover:bg-white/5"
               aria-label="Comentários"
               title="Comentários"
             >
@@ -449,7 +458,7 @@ export function TaskCard({
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={() => setIsDeleteHovered(true)}
                   onMouseLeave={() => setIsDeleteHovered(false)}
-                  className="rounded-md p-1.5 transition-all duration-200"
+                  className="rounded-md p-2 transition-all duration-200"
                   style={{
                     backgroundColor: isDeleteHovered
                       ? "rgba(239, 68, 68, 0.12)"
