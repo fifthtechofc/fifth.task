@@ -402,66 +402,113 @@ export function Board({
     setDropTarget(columnId)
   }
 
-  const handleDrop = async (targetColumnId: string) => {
-    if (!draggedTask || draggedTask.sourceColumnId === targetColumnId) {
+  const handleDrop = React.useCallback(
+    async (targetColumnId: string) => {
+      if (!draggedTask || draggedTask.sourceColumnId === targetColumnId) {
+        setDraggedTask(null)
+        setDropTarget(null)
+        return
+      }
+
+      const dragSnapshot = draggedTask
+      const movedCardId = dragSnapshot.task.id
+      const sourceColumnId = dragSnapshot.sourceColumnId
+
+      const targetColumn = columns.find((c) => c.id === targetColumnId)
+      const nextPosition =
+        Math.max(
+          0,
+          ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0),
+        ) + 1
+      const targetColor = targetColumn
+        ? getColumnColor(targetColumn)
+        : defaultColumnPalette.custom
+
+      const updatedColumns = columns.map((column) => {
+        if (column.id === sourceColumnId) {
+          return {
+            ...column,
+            tasks: column.tasks.filter((task) => task.id !== movedCardId),
+          }
+        }
+
+        if (column.id === targetColumnId) {
+          return {
+            ...column,
+            tasks: [
+              ...column.tasks,
+              {
+                ...dragSnapshot.task,
+                position: nextPosition,
+                color: targetColor,
+              },
+            ],
+          }
+        }
+
+        return column
+      })
+
+      setColumns(updatedColumns.map(withColumnDefaults))
       setDraggedTask(null)
       setDropTarget(null)
-      return
-    }
 
-    const dragSnapshot = draggedTask
-    const movedCardId = dragSnapshot.task.id
-    const sourceColumnId = dragSnapshot.sourceColumnId
+      try {
+        await moveBoardCard({
+          id: movedCardId,
+          columnId: targetColumnId,
+          position: nextPosition,
+        })
+        // Notificação: trigger board_cards_column_change_app_notify na base (kanban_activity_notifications_rpc.sql).
+        refreshNotifications()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Falha ao mover card.")
+      }
+    },
+    [columns, draggedTask, refreshNotifications],
+  )
 
-    const targetColumn = columns.find((c) => c.id === targetColumnId)
-    const nextPosition =
-      Math.max(0, ...(targetColumn?.tasks ?? []).map((t) => t.position ?? 0)) +
-      1
-    const targetColor = targetColumn
-      ? getColumnColor(targetColumn)
-      : defaultColumnPalette.custom
+  const resolveTaskDropColumnId = React.useCallback(
+    (clientX: number, clientY: number) => {
+      const target = document.elementFromPoint(clientX, clientY)
+      if (!(target instanceof Element)) return null
 
-    const updatedColumns = columns.map((column) => {
-      if (column.id === sourceColumnId) {
-        return {
-          ...column,
-          tasks: column.tasks.filter((task) => task.id !== movedCardId),
-        }
+      const columnElement = target.closest("[data-kanban-column-id]")
+      const columnId = columnElement?.getAttribute("data-kanban-column-id")
+      if (!columnId) return null
+
+      return columns.some((column) => column.id === columnId) ? columnId : null
+    },
+    [columns],
+  )
+
+  const handleTaskPointerDragMove = React.useCallback(
+    (clientX: number, clientY: number) => {
+      dragClientXRef.current = clientX
+      const targetColumnId = resolveTaskDropColumnId(clientX, clientY)
+      setDropTarget(
+        targetColumnId && targetColumnId !== draggedTask?.sourceColumnId
+          ? targetColumnId
+          : null,
+      )
+    },
+    [draggedTask?.sourceColumnId, resolveTaskDropColumnId],
+  )
+
+  const handleTaskPointerDragDrop = React.useCallback(
+    (clientX: number, clientY: number) => {
+      dragClientXRef.current = null
+      const targetColumnId = resolveTaskDropColumnId(clientX, clientY)
+      if (!targetColumnId) {
+        setDraggedTask(null)
+        setDropTarget(null)
+        return
       }
 
-      if (column.id === targetColumnId) {
-        return {
-          ...column,
-          tasks: [
-            ...column.tasks,
-            {
-              ...dragSnapshot.task,
-              position: nextPosition,
-              color: targetColor,
-            },
-          ],
-        }
-      }
-
-      return column
-    })
-
-    setColumns(updatedColumns.map(withColumnDefaults))
-    setDraggedTask(null)
-    setDropTarget(null)
-
-    try {
-      await moveBoardCard({
-        id: movedCardId,
-        columnId: targetColumnId,
-        position: nextPosition,
-      })
-      // Notificação: trigger board_cards_column_change_app_notify na base (kanban_activity_notifications_rpc.sql).
-      refreshNotifications()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha ao mover card.")
-    }
-  }
+      void handleDrop(targetColumnId)
+    },
+    [handleDrop, resolveTaskDropColumnId],
+  )
 
   const handleOpenAddTask = (columnId: string, columnColor: string) => {
     setEditingTask(null)
@@ -1306,6 +1353,8 @@ export function Board({
                   onDragLeave={() => setDropTarget(null)}
                   onTaskDragStart={handleDragStart}
                   onTaskDragEnd={() => setDraggedTask(null)}
+                  onTaskPointerDragMove={handleTaskPointerDragMove}
+                  onTaskPointerDragDrop={handleTaskPointerDragDrop}
                   onOpenAddCard={handleOpenAddTask}
                   onOpenEditTask={(colId, task, colColor) =>
                     void handleOpenEditTask(colId, task, colColor)
